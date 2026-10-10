@@ -134,7 +134,8 @@ return {
 		local hadDust = data.Trails.Owned.Dust == true
 		local equipped: string = data.Trails.Equipped
 		local speed = SpeedService.Get(player)
-		MoneyService.Add(player, SpeedConfig.Trails.Dust.Price, "Debug")
+		-- (Set et pas Add : l'argent de test ne compte pas dans TotalEarned)
+		MoneyService.Set(player, money + SpeedConfig.Trails.Dust.Price, "Debug")
 		if not hadDust then
 			t:Check(TrailService.Buy(player, "Dust"), "buy Dust")
 		end

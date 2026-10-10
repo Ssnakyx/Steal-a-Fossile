@@ -9,7 +9,11 @@
 --   ShopService.RegisterSection(nom, fn)                ajoute une section au contenu du shop (GetShop)
 -- Produits : chaque produit de Config.Shop.Products est donné par le service de son champ Owner, qui l'enregistre avec
 -- ReceiptService.Register ; ShopService enregistre ServerLuck. Un produit pas enregistré ou à Id = 0 reste caché.
+-- Passes : Roblox est la source. À chaque arrivée, chaque passe en vente est redemandé (UserOwnsGamePassAsync) ; la
+-- sauvegarde (data.Passes) ne sert que quand Roblox ne répond pas. Un passe que Roblox dit ne plus avoir (remboursé)
+-- est retiré, sauf s'il vient d'être acheté sur ce serveur (Roblox peut répondre en retard).
 -- Signaux : PassOwned(player, clé)                    passe trouvé au chargement ou acheté en jeu
+--           PassLost(player, clé)                     passe retiré (Roblox dit que le joueur ne l'a plus)
 --           ServerLuckChanged(multiplier, endsAt)     Server Luck commencé, prolongé ou fini (endsAt = os.time())
 -- Replica : Passes ({ [clé] = true }). Attributs : VIP (joueur) ; ServerLuck et ServerLuckEndsAt (Workspace).
 
@@ -40,6 +44,7 @@ local PRICE_RETRY = 30 -- secondes avant de redemander un prix que Roblox n'a pa
 local PASS_CHECK_ATTEMPTS = 3
 
 local owned: { [Player]: { [string]: boolean } } = {}
+local boughtHere: { [Player]: { [string]: boolean } } = {} -- passes achetés sur ce serveur (jamais retirés)
 local passById: { [number]: string } = {}
 local prices: { [string]: CachedPrice } = {}
 local sections: { [string]: Section } = {}
@@ -74,14 +79,16 @@ local function publishPasses(player: Player)
 	player:SetAttribute("VIP", ShopService.HasPass(player, "VIP"))
 end
 
--- Donne un passe pour de bon (acheté en jeu ou trouvé chez Roblox)
-local function grantPass(player: Player, key: string)
+-- Donne un passe (acheté en jeu ou trouvé chez Roblox). remember : le noter dans la sauvegarde.
+local function grantPass(player: Player, key: string, remember: boolean)
 	local set = owned[player]
 	local data = DataService.Get(player)
 	if not set or not data then
 		return
 	end
-	data.Passes[key] = true
+	if remember then
+		data.Passes[key] = true
+	end
 	if set[key] then
 		return
 	end
@@ -90,10 +97,27 @@ local function grantPass(player: Player, key: string)
 	Signals.Fire("PassOwned", player, key)
 end
 
--- Demande à Roblox les passes que le joueur a achetés (hors du jeu aussi). Peut attendre.
+-- Retire un passe que Roblox dit ne plus être au joueur
+local function revokePass(player: Player, key: string)
+	local set = owned[player]
+	local data = DataService.Get(player)
+	local here = boughtHere[player]
+	if not set or not data or (here and here[key]) then
+		return
+	end
+	data.Passes[key] = nil
+	if not set[key] then
+		return
+	end
+	set[key] = nil
+	publishPasses(player)
+	Signals.Fire("PassLost", player, key)
+end
+
+-- Demande à Roblox chaque passe en vente (achetés hors du jeu, remboursés). Peut attendre.
 local function checkPasses(player: Player)
 	for key, pass in Shop.Passes do
-		if pass.Id == 0 or ShopService.HasPass(player, key) then
+		if pass.Id == 0 then
 			continue
 		end
 		for attempt = 1, PASS_CHECK_ATTEMPTS do
@@ -105,7 +129,9 @@ local function checkPasses(player: Player)
 			end
 			if ok then
 				if result == true then
-					grantPass(player, key)
+					grantPass(player, key, true)
+				elseif result == false then
+					revokePass(player, key)
 				end
 				break
 			end
@@ -309,8 +335,12 @@ function ShopService.Init()
 
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player: Player, passId: number, purchased: boolean)
 		local key = passById[passId]
-		if purchased and key and player.Parent == Players then
-			grantPass(player, key)
+		if purchased and key and player.Parent == Players and owned[player] then
+			local here = boughtHere[player] or {}
+			boughtHere[player] = here
+			here[key] = true
+			-- (un achat de test dans Studio ne va jamais dans la sauvegarde)
+			grantPass(player, key, not RunService:IsStudio())
 			Notify.Send(player, Shop.Passes[key].Name .. " unlocked!", "success")
 		end
 	end)
@@ -353,9 +383,7 @@ function ShopService.Init()
 				set[key] = nil
 			end
 			publishPasses(target)
-			if give then
-				Signals.Fire("PassOwned", target, key)
-			end
+			Signals.Fire(if give then "PassOwned" else "PassLost", target, key)
 			return true, string.format("%s %s %s", target.Name, if give then "now has" else "lost", key)
 		end,
 	})
@@ -387,6 +415,7 @@ end
 
 function ShopService.OnPlayerRemoving(player: Player)
 	owned[player] = nil
+	boughtHere[player] = nil
 end
 
 return ShopService

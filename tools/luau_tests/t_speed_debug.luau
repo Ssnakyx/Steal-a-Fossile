@@ -18,6 +18,7 @@ for _, characterless in { false, true } do
 	SpeedService.Add(player, 77, "Test")
 	local data = T.data(player)
 	data.TreadmillLevel = 2
+	local earned = data.TotalEarned
 	for _, name in { "speed", "treadmill", "trails", "shop" } do
 		T.check(table.find(DebugService.Tests(), name) ~= nil, "test en jeu " .. name)
 		local ok, fail, lines = DebugService.RunTest(name)
@@ -28,6 +29,7 @@ for _, characterless in { false, true } do
 		end
 	end
 	T.eq(MoneyService.Get(player), 1234, "argent remis")
+	T.eq(data.TotalEarned, earned, "TotalEarned intact")
 	T.eq(data.Speed, 77, "vitesse remise")
 	T.eq(data.TreadmillLevel, 2, "niveau remis")
 	T.eq(next(data.Trails.Owned), nil, "trail de test retirée")

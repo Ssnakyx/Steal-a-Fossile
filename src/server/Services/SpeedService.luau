@@ -31,6 +31,7 @@ type State = {
 	Bonuses: { [string]: number },
 	Modifiers: { [string]: Modifier },
 	Claiming: boolean,
+	Connection: RBXScriptConnection?,
 }
 
 local SpeedService = {}
@@ -301,16 +302,21 @@ function SpeedService.Start()
 end
 
 function SpeedService.OnPlayerReady(player: Player, data: { [string]: any })
-	states[player] = { Bonuses = {}, Modifiers = {}, Claiming = false }
+	local state: State = { Bonuses = {}, Modifiers = {}, Claiming = false, Connection = nil }
+	states[player] = state
 	ReplicaService.Set(player, "GroupRewardClaimed", data.GroupRewardClaimed)
 	publish(player)
-	player.CharacterAdded:Connect(function()
+	state.Connection = player.CharacterAdded:Connect(function()
 		-- (le Humanoid arrive parfois un peu après le Model : Refresh repasse toutes les 0.2 s de toute façon)
 		SpeedService.Refresh(player)
 	end)
 end
 
 function SpeedService.OnPlayerRemoving(player: Player)
+	local state = states[player]
+	if state and state.Connection then
+		state.Connection:Disconnect()
+	end
 	states[player] = nil
 end
 

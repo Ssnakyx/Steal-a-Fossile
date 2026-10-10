@@ -28,6 +28,7 @@ local TOP_NAME = "SAF_TrailTop"
 local BOTTOM_NAME = "SAF_TrailBottom"
 
 local players: { [Player]: boolean } = {}
+local connections: { [Player]: RBXScriptConnection } = {}
 
 function TrailService.Equipped(player: Player): string
 	local data = DataService.Get(player)
@@ -157,7 +158,7 @@ end
 function TrailService.OnPlayerReady(player: Player)
 	players[player] = true
 	apply(player)
-	player.CharacterAdded:Connect(function(character: Model)
+	connections[player] = player.CharacterAdded:Connect(function(character: Model)
 		-- (la pièce centrale arrive parfois juste après le Model)
 		task.spawn(function()
 			character:WaitForChild("HumanoidRootPart", 10)
@@ -170,6 +171,11 @@ end
 
 function TrailService.OnPlayerRemoving(player: Player)
 	players[player] = nil
+	local connection = connections[player]
+	if connection then
+		connection:Disconnect()
+		connections[player] = nil
+	end
 end
 
 return TrailService

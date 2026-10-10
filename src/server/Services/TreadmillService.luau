@@ -34,7 +34,7 @@ local ReplicaService = require(script.Parent.ReplicaService)
 local ShopService = require(script.Parent.ShopService)
 local SpeedService = require(script.Parent.SpeedService)
 
-type Pending = { Level: number, Since: number }
+type Pending = { Level: number, Since: number, Paid: boolean }
 
 local TreadmillService = {}
 
@@ -182,12 +182,13 @@ local function buy(player: Player): (boolean, string)
 	if not ReceiptService.IsOnSale(key) then
 		return false, "Coming soon!"
 	end
-	-- (un achat de ce niveau en cours : on ne le propose pas une deuxième fois)
+	-- (un achat de ce niveau en cours : on ne le propose pas une deuxième fois. Payé mais pas encore donné, par exemple
+	-- pendant une panne de sauvegarde : bloqué jusqu'à ce que le niveau arrive, sinon il serait payé deux fois)
 	local waiting = pending[player]
-	if waiting and waiting.Level == nextLevel and os.clock() - waiting.Since < Shop.Treadmill.PendingSeconds then
+	if waiting and waiting.Level == nextLevel and (waiting.Paid or os.clock() - waiting.Since < Shop.Treadmill.PendingSeconds) then
 		return false, "Purchase in progress..."
 	end
-	pending[player] = { Level = nextLevel, Since = os.clock() }
+	pending[player] = { Level = nextLevel, Since = os.clock(), Paid = false }
 	local ok = pcall(function()
 		MarketplaceService:PromptProductPurchase(player, LEVELS[nextLevel].Id)
 	end)
@@ -231,6 +232,10 @@ function TreadmillService.Init()
 				return false
 			end
 			data.TreadmillLevel = level
+			local waiting = pending[player]
+			if waiting and waiting.Level <= level then
+				pending[player] = nil
+			end
 			publish(player)
 			return true
 		end)
@@ -253,19 +258,23 @@ function TreadmillService.Init()
 		Signals.Fire("TreadmillUpgraded", player, level)
 	end)
 
-	Signals.Connect("PassOwned", function(player: Player, key: string)
+	local function passChanged(player: Player, key: string)
 		if key == "DoubleTreadmill" and players[player] then
 			publish(player)
 		end
-	end)
+	end
+	Signals.Connect("PassOwned", passChanged)
+	Signals.Connect("PassLost", passChanged)
 
 	MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId: number, productId: number, purchased: boolean)
-		if purchased then
-			return -- (le verrou tombe quand le niveau est donné, ou après PendingSeconds)
-		end
 		local player = Players:GetPlayerByUserId(userId)
 		local waiting = player and pending[player]
-		if player and waiting and LEVELS[waiting.Level] and LEVELS[waiting.Level].Id == productId then
+		if not (player and waiting and LEVELS[waiting.Level] and LEVELS[waiting.Level].Id == productId) then
+			return
+		end
+		if purchased then
+			waiting.Paid = true -- (le verrou tombe quand le niveau est donné)
+		else
 			pending[player] = nil
 		end
 	end)
