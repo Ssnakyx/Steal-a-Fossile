@@ -1,0 +1,34 @@
+# Vérifications du projet à chaque push sur main et à chaque PR : analyse stricte (luau-lsp), selene, tests hors Studio,
+# build Rojo. La même chose se lance en local avec : python3 tools/check.py
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: PyYAML (bibliothèque Roblox de selene, secours)
+        run: python -m pip install pyyaml
+
+      - name: Cache des outils
+        uses: actions/cache@v4
+        with:
+          path: tools/.bin
+          key: tools-${{ runner.os }}-${{ hashFiles('rokit.toml', 'tools/setup_tools.py') }}
+
+      - name: Outils (rojo, luau-lsp, selene, luau)
+        run: python tools/setup_tools.py
+
+      - name: Analyse, selene, tests, build
+        run: python tools/check.py
