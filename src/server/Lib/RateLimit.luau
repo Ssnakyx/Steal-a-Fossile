@@ -9,9 +9,14 @@ local RateLimit = {}
 type Bucket = { Tokens: number, Last: number, Blocked: number }
 
 local buckets: { [Player]: { [string]: Bucket } } = {}
+-- joueurs partis (clés faibles) : un appel qui arrive après leur départ est refusé sans recréer de compteur
+local gone: { [Player]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 
 -- perSecond : appels permis par seconde en moyenne ; burst : rafale maximale (par défaut max(1, perSecond))
 function RateLimit.Allow(player: Player, key: string, perSecond: number, burst: number?): boolean
+	if gone[player] then
+		return false
+	end
 	local playerBuckets = buckets[player]
 	if not playerBuckets then
 		playerBuckets = {}
@@ -43,6 +48,7 @@ function RateLimit.Reset(player: Player)
 end
 
 Players.PlayerRemoving:Connect(function(player)
+	gone[player] = true
 	buckets[player] = nil
 end)
 

@@ -16,7 +16,9 @@
 --
 -- Usage : DataService.Get(player) renvoie la table vivante (nil tant que le joueur n'est pas chargé) ; les services la
 -- modifient directement. OnPlayerReady(player, data) des services reçoit la même table. Avant l'écriture, les nombres
--- NaN ou infinis deviennent 0 et ce qui ne se sauvegarde pas (fonctions, instances) est retiré, avec un warn.
+-- NaN ou infinis deviennent 0, ce qui ne se sauvegarde pas (fonctions, instances) est retiré, et une clé nombre dans une
+-- table à clés texte (ou une liste à trous) devient une clé texte ("3"), avec un warn. Clés conseillées : texte, ou listes
+-- sans trou.
 -- Studio lit la vraie sauvegarde mais ne l'écrit jamais (sauf Config.Core.Data.SaveInStudio) ; sans accès aux API dans
 -- Studio, les données repartent de zéro.
 --
@@ -146,12 +148,23 @@ local function storable(value: any, path: string, problems: { string }, seen: { 
 		else
 			for key, item in value do
 				local keyPath = path .. "." .. tostring(key)
-				if type(key) ~= "string" then
-					table.insert(problems, keyPath .. " : clé " .. type(key) .. " dans une table à clés texte")
+				local textKey: string? = nil
+				if type(key) == "string" then
+					textKey = key
+				elseif type(key) == "number" and key == key and math.abs(key) ~= math.huge then
+					-- clé nombre dans une table à clés texte (ou liste à trous) : gardée sous forme de texte, jamais perdue
+					local converted = tostring(key)
+					if value[converted] == nil then
+						textKey = converted
+						table.insert(problems, keyPath .. " : clé nombre gardée en texte \"" .. converted .. "\"")
+					end
+				end
+				if textKey == nil then
+					table.insert(problems, keyPath .. " : clé " .. type(key) .. " retirée")
 				else
 					local cleaned = storable(item, keyPath, problems, seen)
 					if cleaned ~= nil then
-						clean[key] = cleaned
+						clean[textKey] = cleaned
 					end
 				end
 			end

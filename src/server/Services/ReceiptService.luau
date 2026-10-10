@@ -10,7 +10,7 @@
 -- renvoie true si le produit est donné. Ensuite la sauvegarde est écrite tout de suite ; Roblox n'est prévenu
 -- (PurchaseGranted) qu'après une écriture réussie. Un même achat (PurchaseId) n'est jamais donné deux fois.
 -- Id = 0 : le produit n'existe pas encore dans le Creator Hub. Il reste caché en jeu (IsOnSale = false) et ne peut
--- être obtenu que par un achat simulé (Simulate : Studio, commande d'admin « simulate », tests).
+-- être obtenu que par un achat simulé (Simulate : commande d'admin « simulate » dans Studio, FossilDebug, tests).
 -- Ne jamais poser MarketplaceService.ProcessReceipt ailleurs : il n'y en a qu'un par jeu.
 
 local HttpService = game:GetService("HttpService")
@@ -28,6 +28,8 @@ export type Receipt = {
 	ProductId: number,
 	CurrencySpent: number,
 	Simulated: boolean,
+	-- (achat simulé sans PurchaseId choisi : pas noté dans data.Purchases, qui ne garde que les vrais achats)
+	Temporary: boolean?,
 }
 export type Grant = (player: Player, data: { [string]: any }, receipt: Receipt) -> boolean
 type Product = { Key: string, Id: number, Grant: Grant }
@@ -104,7 +106,9 @@ local function grantPurchase(player: Player, data: { [string]: any }, receipt: R
 		warn(string.format("[ReceiptService] %s non donné à %s (achat %s)", product.Key, player.Name, purchaseId))
 		return NOT_YET
 	end
-	remember(data, purchaseId)
+	if not receipt.Temporary then
+		remember(data, purchaseId)
+	end
 	if not receipt.Simulated then
 		data.RobuxSpent += receipt.CurrencySpent
 	end
@@ -171,6 +175,7 @@ function ReceiptService.Simulate(player: Player, key: string, purchaseId: string
 		ProductId = product.Id,
 		CurrencySpent = 0,
 		Simulated = true,
+		Temporary = purchaseId == nil,
 	}
 	local decision = process(receipt, product)
 	if decision == GRANTED then

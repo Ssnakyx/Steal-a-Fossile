@@ -201,9 +201,13 @@ AdminService.RegisterCommand("money", {
 })
 
 AdminService.RegisterCommand("simulate", {
-	Description = "Simulate a free purchase of a developer product (for tests)",
+	Description = "Simulate a free purchase of a developer product (Studio only)",
 	Usage = "simulate <productKey> [player]",
 	Run = function(player, args)
+		-- (jamais sur un vrai serveur : un produit payant ne se donne pas gratuitement en jeu)
+		if not RunService:IsStudio() then
+			return false, "Studio only"
+		end
 		local target = AdminService.FindPlayer(player, args[2])
 		if not target then
 			return false, "Player not found"
@@ -218,8 +222,21 @@ function AdminService.Init()
 	end)
 end
 
+function AdminService.Start()
+	-- (le propriétaire d'un groupe se demande à Roblox une fois, avant l'arrivée des joueurs si possible)
+	if game.CreatorType == Enum.CreatorType.Group and game.CreatorId ~= 0 then
+		groupOwnerId()
+	end
+end
+
 function AdminService.OnPlayerReady(player: Player)
-	player:SetAttribute("Admin", AdminService.IsAdmin(player))
+	-- (IsAdmin peut attendre une réponse web : jamais dans OnPlayerReady lui-même)
+	task.spawn(function()
+		local admin = AdminService.IsAdmin(player)
+		if player.Parent == Players then
+			player:SetAttribute("Admin", admin)
+		end
+	end)
 end
 
 return AdminService

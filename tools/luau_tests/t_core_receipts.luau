@@ -116,9 +116,11 @@ T.eq(ReceiptService.Process({ PlayerId = 1, ProductId = 111, PurchaseId = "P9", 
 T.eq(T.data(player).RobuxSpent, spent, "prix NaN compté 0")
 
 T.section("achat simulé")
+local remembered = #T.data(player).Purchases
 local ok, text = ReceiptService.Simulate(player, "TestHidden")
 T.check(ok, "Simulate donne un produit Id = 0 (" .. text .. ")")
 T.eq(T.data(player).TreadmillLevel, 1, "produit simulé donné")
+T.eq(#T.data(player).Purchases, remembered, "achat simulé sans PurchaseId pas noté (la liste garde les vrais achats)")
 T.eq(T.data(player).RobuxSpent, spent, "achat simulé gratuit")
 ok = ReceiptService.Simulate(player, "Nope")
 T.check(not ok, "Simulate produit inconnu")

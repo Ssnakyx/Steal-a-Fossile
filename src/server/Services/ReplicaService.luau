@@ -21,6 +21,8 @@ ReplicaService.Priority = -90
 local states: { [Player]: { [string]: any } } = {}
 local pending: { [Player]: Batch } = {}
 local sequence: { [Player]: number } = {}
+-- joueurs partis (clés faibles) : un Set fait pendant leur départ ne recrée pas leur état
+local gone: { [Player]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 
 local function flush()
 	if next(pending) == nil then
@@ -44,7 +46,7 @@ end
 
 -- Pose une valeur (nil l'efface) ; elle part au client à la fin de l'image
 function ReplicaService.Set(player: Player, key: string, value: any)
-	if player.Parent ~= Players then
+	if player.Parent ~= Players or gone[player] then
 		return
 	end
 	local state = states[player]
@@ -82,10 +84,13 @@ ReplicaService.Flush = flush
 
 function ReplicaService.Init()
 	Net.Function("GetReplica", { Rate = 1, Burst = 5 }, function(player: Player)
+		-- (les changements en attente partent d'abord : l'état complet et son numéro les incluent, rien n'arrive deux fois)
+		flush()
 		return ReplicaService.Snapshot(player)
 	end)
 	RunService.Heartbeat:Connect(flush)
 	Players.PlayerRemoving:Connect(function(player)
+		gone[player] = true
 		states[player] = nil
 		pending[player] = nil
 		sequence[player] = nil

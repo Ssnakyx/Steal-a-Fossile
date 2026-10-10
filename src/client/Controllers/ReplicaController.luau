@@ -25,6 +25,8 @@ local state: { [string]: any } = {}
 local ready = false
 local lastSeq = 0
 local buffered: { Batch } = {}
+-- (envois gardés avant l'état complet : les plus vieux sont déjà dans l'état complet, on n'en garde pas plus)
+local MAX_BUFFERED = 300
 
 local function apply(changes: { [string]: any }, removed: { string })
 	for key, value in changes do
@@ -49,6 +51,9 @@ local function receive(seq: any, changes: any, removed: any)
 	end
 	if not ready then
 		table.insert(buffered, { Seq = seq, Changes = changes, Removed = removed })
+		if #buffered > MAX_BUFFERED then
+			table.remove(buffered, 1)
+		end
 		return
 	end
 	if seq <= lastSeq then
@@ -141,13 +146,17 @@ function ReplicaController.Start()
 	while player:GetAttribute("Ready") ~= true do
 		player:GetAttributeChangedSignal("Ready"):Wait()
 	end
-	for _ = 1, 20 do
-		if fetchSnapshot() then
-			return
+	-- (on réessaie jusqu'au bout, de plus en plus lentement : sans l'état complet, l'interface reste vide)
+	local pause = 1
+	local attempts = 0
+	while not fetchSnapshot() do
+		attempts += 1
+		if attempts == 10 then
+			warn("[ReplicaController] état du joueur toujours pas reçu, on réessaie")
 		end
-		task.wait(1)
+		task.wait(pause)
+		pause = math.min(pause * 2, 10)
 	end
-	warn("[ReplicaController] état du joueur jamais reçu")
 end
 
 return ReplicaController

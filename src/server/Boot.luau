@@ -6,7 +6,9 @@
 --   Init()                            appelée une fois, dans l'ordre, avant tout Start : poser les handlers de remotes
 --   Start()                           appelée ensuite dans son propre fil : boucles, minuteurs
 --   OnPlayerReady(player, data)       joueur chargé (data = sa sauvegarde), dans l'ordre des services. Ne doit pas attendre.
---   OnPlayerRemoving(player, data)    joueur qui part, dans l'ordre inverse, juste avant la dernière sauvegarde
+--   OnPlayerRemoving(player, data)    joueur qui part, dans l'ordre inverse, juste avant la dernière sauvegarde : c'est ici
+--                                     qu'on vide les tables par joueur. Appelé pour chaque service dont OnPlayerReady
+--                                     a été appelé, même si le joueur part avant d'être prêt ou si sa sauvegarde est perdue.
 -- Une erreur dans un service est notée (warn « [Boot] ») sans empêcher les autres de démarrer.
 -- Quand tous les OnPlayerReady sont passés : attribut « Ready » = true sur le joueur et signal PlayerReady.
 
@@ -29,6 +31,10 @@ Boot.Errors = {} :: { string }
 local entries: { Entry } = {}
 local ready: { [Player]: boolean } = {}
 local removed: { [Player]: boolean } = {}
+-- (joueur dont les OnPlayerReady tournent, nombre de OnPlayerReady terminés, données passées aux hooks)
+local running: { [Player]: boolean } = {}
+local hooksDone: { [Player]: number } = {}
+local hookData: { [Player]: { [string]: any } } = {}
 local started = false
 
 local function report(where: string, err: any)
@@ -106,9 +112,17 @@ local function playerAdded(player: Player)
 	if data == nil or player.Parent ~= Players or removed[player] then
 		return
 	end
-	for _, entry in entries do
+	hookData[player] = data
+	running[player] = true
+	for index, entry in entries do
+		-- (un joueur parti pendant un OnPlayerReady qui attend : les services suivants ne le voient pas)
+		if removed[player] then
+			break
+		end
 		call(entry, "OnPlayerReady", player, data)
+		hooksDone[player] = index
 	end
+	running[player] = nil
 	if player.Parent ~= Players or removed[player] then
 		return
 	end
@@ -122,14 +136,21 @@ local function playerRemoving(player: Player)
 		return
 	end
 	removed[player] = true
+	ready[player] = nil
 	local dataService = getDataService()
-	if ready[player] then
-		ready[player] = nil
-		local data = dataService.Get(player)
-		if data then
-			for index = #entries, 1, -1 do
-				call(entries[index], "OnPlayerRemoving", player, data)
-			end
+	-- un OnPlayerReady en train d'attendre (contre la règle) : on le laisse finir, puis on défait ce qui a été fait
+	local deadline = os.clock() + 10
+	while running[player] and os.clock() < deadline do
+		task.wait(0.1)
+	end
+	-- (les données gardées par Boot : même si DataService a lâché la sauvegarde, chaque service fait son ménage)
+	local data = hookData[player]
+	local done = hooksDone[player] or 0
+	hookData[player] = nil
+	hooksDone[player] = nil
+	if data then
+		for index = done, 1, -1 do
+			call(entries[index], "OnPlayerRemoving", player, data)
 		end
 	end
 	local ok, err = xpcall(dataService.Release, debug.traceback, player)

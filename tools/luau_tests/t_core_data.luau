@@ -87,10 +87,15 @@ T.check(type(saved._Lock) == "table", "verrou gardé pendant le jeu")
 T.check(saved.PlayTime > 0, "temps de jeu compté (BeforeSave)")
 data.Money = 0 / 0
 data.Bad = function() end
+data.Tanks[3] = { Rarity = "Rare" } -- (clé nombre par erreur dans une table à clés texte)
+data.Quests.List = { "a", "b", "c" }
+data.Quests.List[2] = nil -- (liste à trou)
 T.leave(player)
 saved = env.saved("SAF_Players_1", key(101))
 T.eq(saved.Money, 0, "NaN remplacé par 0 à la sauvegarde")
 T.eq(saved.Bad, nil, "fonction retirée de la sauvegarde")
+T.eq(saved.Tanks["3"] and saved.Tanks["3"].Rarity, "Rare", "clé nombre gardée en texte")
+T.check(saved.Quests.List["1"] == "a" and saved.Quests.List["3"] == "c", "liste à trou gardée (clés texte)")
 T.eq(saved._Lock, nil, "verrou rendu au départ")
 T.check(warned("réparée"), "warn sur les valeurs réparées")
 

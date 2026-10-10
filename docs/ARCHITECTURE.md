@@ -67,7 +67,7 @@ function GemService.OnPlayerReady(player: Player, data: { [string]: any })
 end
 
 function GemService.OnPlayerRemoving(player: Player, data: { [string]: any })
-	-- juste avant la dernière sauvegarde
+	-- juste avant la dernière sauvegarde : vider ici les tables par joueur (appelé même si la sauvegarde est perdue)
 end
 
 return GemService
@@ -157,7 +157,7 @@ return {
 
 - Un champ appartient à un seul domaine (doublon = erreur au démarrage). `Version`, `Domains` et `_Lock` sont réservés.
 - Un champ manquant prend sa valeur de départ, aussi dans les sous-tables ; une valeur du mauvais type est remplacée.
-- Clés des tables : texte (`"1"`, `"Triceratops"`) ou listes sans trou. NaN et infini deviennent 0 à la sauvegarde (avec un warn).
+- Clés des tables : texte (`"1"`, `"Triceratops"`) ou listes sans trou. NaN et infini deviennent 0 à la sauvegarde ; une clé nombre dans une table à clés texte (ou une liste à trou) est gardée en texte (`3` devient `"3"`), avec un warn.
 - La sauvegarde a un verrou de session (deux serveurs n'écrivent jamais la même), est écrite toutes les 60 s, au départ et à l'arrêt du serveur. Une sauvegarde plus récente que le code n'est jamais chargée.
 - Studio lit la vraie sauvegarde mais ne l'écrit pas (`Config.Core.Data.SaveInStudio`).
 
@@ -177,7 +177,7 @@ ReceiptService.Register("TreadmillLevel2", Config.Shop.Products.TreadmillLevel2.
 end)
 ```
 
-Le reçu n'est confirmé à Roblox qu'après une sauvegarde réussie, et un même `PurchaseId` n'est jamais donné deux fois. `ReceiptService.IsOnSale(clé)` dit si le produit existe (Id ≠ 0). Pour tester sans Robux : commande d'admin `simulate <clé>` ou `ReceiptService.Simulate(player, clé)`.
+Le reçu n'est confirmé à Roblox qu'après une sauvegarde réussie, et un même `PurchaseId` n'est jamais donné deux fois. `ReceiptService.IsOnSale(clé)` dit si le produit existe (Id ≠ 0). Pour tester sans Robux : commande d'admin `simulate <clé>` (Studio seulement) ou `ReceiptService.Simulate(player, clé)`.
 
 ## Ajouter une commande d'admin
 

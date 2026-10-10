@@ -53,10 +53,25 @@ T.eq(Replica.Get("Money"), 78, "envoi plus ancien ignoré")
 env.fire(env.signal(remote, "OnClientEvent"), "bad", nil, 5)
 T.eq(Replica.Get("Money"), 78, "envoi abîmé ignoré")
 
+-- l'état complet demandé alors que des changements attendent : ils n'arrivent pas deux fois
+local changedCount = 0
+Replica.Changed:Connect(function(key)
+	if key == "Money" then
+		changedCount += 1
+	end
+end)
+MoneyService.Add(player, 2, "Test")
+local snapshot0, seq0 = env.invokeServer(player, "GetReplica")
+T.eq(snapshot0.Money, 80, "l'état complet inclut les changements en attente")
+env.advance(0.1)
+T.check(seq0 >= #env.received(player, "Replica"), "numéro de l'état complet à jour")
+T.eq(changedCount, 1, "changement reçu une seule fois")
+T.eq(Replica.Get("Money"), 80, "argent à jour")
+
 T.section("état d'un autre joueur")
 MoneyService.Add(other, 1000, "Test")
 env.advance(0.1)
-T.eq(Replica.Get("Money"), 78, "l'argent d'un autre joueur n'arrive pas chez moi")
+T.eq(Replica.Get("Money"), 80, "l'argent d'un autre joueur n'arrive pas chez moi")
 T.eq(ReplicaService.Get(other, "Money"), 1000, "mais il est bien posé pour lui")
 local snapshot, seq = ReplicaService.Snapshot(other)
 T.eq(snapshot.Money, 1000, "Snapshot")

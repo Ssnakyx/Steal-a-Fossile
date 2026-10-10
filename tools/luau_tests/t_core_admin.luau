@@ -100,12 +100,17 @@ ReceiptService.Register("AdminTestProduct", 0, function(_player, data)
 	return true
 end)
 ok, text = AdminService.Run(snaky, "simulate", { "AdminTestProduct" })
-T.check(ok, "simulate (" .. tostring(text) .. ")")
+T.check(not ok and text == "Studio only", "simulate refusé sur un vrai serveur")
+T.eq(T.data(snaky).TankCount, 2, "rien donné hors Studio")
+env.studio = true
+ok, text = AdminService.Run(snaky, "simulate", { "AdminTestProduct" })
+T.check(ok, "simulate en Studio (" .. tostring(text) .. ")")
 T.eq(T.data(snaky).TankCount, 3, "produit simulé donné")
-ok = AdminService.Run(random, "simulate", { "AdminTestProduct" })
-T.check(not ok, "simulate refusé à un joueur normal")
 ok = AdminService.Run(snaky, "simulate", { "Nope" })
 T.check(not ok, "simulate produit inconnu")
+env.studio = false
+ok = AdminService.Run(random, "simulate", { "AdminTestProduct" })
+T.check(not ok, "simulate refusé à un joueur normal")
 
 T.section("remote Admin")
 ok, text = env.invokeServer(snaky, "Admin", "money", { "1" })
