@@ -8,6 +8,7 @@
 --   SpeedService.SetBonus(player, "Trail", 1500)      bonus tant qu'il est posé (nil ou 0 l'enlève)
 --   SpeedService.SetModifier(player, "BearTrap", 0, 3) multiplie le WalkSpeed pendant 3 s (nil l'enlève)
 --   SpeedService.Refresh(player)                      recalcule le WalkSpeed tout de suite (sinon toutes les 0.2 s)
+-- Le signal CarryChanged(player, bloc | nil) du brief 3 (ramassage, dépôt, perte) recalcule tout de suite.
 -- Signaux : SpeedChanged(player, delta, reason, total)  vitesse gagnée (total = vitesse totale)
 -- Replica : Speed (vitesse totale), GroupRewardClaimed. Leaderstats : Speed.
 
@@ -254,6 +255,12 @@ end
 -- ===== cycle de vie =====
 
 function SpeedService.Init()
+	Signals.Connect("CarryChanged", function(player: Player)
+		if typeof(player) == "Instance" and player:IsA("Player") then
+			SpeedService.Refresh(player)
+		end
+	end)
+
 	Net.Function("ClaimGroupReward", { Rate = 0.5, Burst = 2 }, function(player: Player)
 		return claimGroupReward(player)
 	end)

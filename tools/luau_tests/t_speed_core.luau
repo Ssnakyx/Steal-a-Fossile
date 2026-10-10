@@ -114,6 +114,9 @@ local original = CarryService.GetSpeedMultiplier
 CarryService.GetSpeedMultiplier = function(p)
 	return if p == player then 0.6 else 1
 end
+Signals.Fire("CarryChanged", player, {})
+env.flush()
+T.near(humanoid.WalkSpeed, walk(1000) * 0.6, 1e-6, "signal CarryChanged : malus appliqué tout de suite")
 T.advance(0.3)
 T.near(humanoid.WalkSpeed, walk(1000) * 0.6, 1e-6, "malus du bloc appliqué")
 SpeedService.SetModifier(player, "Slow", 0.5)
@@ -130,6 +133,9 @@ end
 T.advance(0.3)
 T.near(humanoid.WalkSpeed, walk(1000), 1e-6, "CarryService en erreur ignoré")
 CarryService.GetSpeedMultiplier = original
+Signals.Fire("CarryChanged", "not a player")
+Signals.Fire("CarryChanged", nil)
+env.flush()
 if fake then
 	carry:Destroy()
 end
