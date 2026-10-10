@@ -22,7 +22,7 @@ local list: { SpeciesDef } = {
 	-- 1. Beach
 	{ Name = "Compy", Model = "Compy", Family = "Biped", Zone = "Beach", BaseSize = 4, Income = 1 },
 	{ Name = "Oviraptor", Model = "Oviraptor", Family = "Biped", Zone = "Beach", BaseSize = 5, Income = 2 },
-	{ Name = "Pteranodon", Model = "Pteranodon", Family = "Flyer", Zone = "Beach", BaseSize = 15, Income = 3 },
+	{ Name = "Pteranodon", Model = "Pteranodon", Family = "Flyer", Zone = "Beach", BaseSize = 16, Income = 3 },
 	-- 2. Fern Forest
 	{ Name = "Gallimimus", Model = "Gallimimus", Family = "Biped", Zone = "Fern Forest", BaseSize = 9, Income = 8 },
 	{ Name = "Parasaurolophus", Model = "Parasaurolophus", Family = "Quadruped", Zone = "Fern Forest", BaseSize = 12, Income = 11 },
