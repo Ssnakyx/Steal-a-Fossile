@@ -6,6 +6,9 @@ local env = T.env
 
 env.quiet = true
 local Boot = T.bootServer()
+-- (gardiens du brief 7 éteints : ici le trajet du retour se fait en attendant sur place ; t_pvp_guardians refait le
+-- tutoriel en courant devant le gardien de la Beach)
+Boot.Services.GuardianService.SetEnabled(false)
 local CarryService = Boot.Services.CarryService
 local DigSiteService = Boot.Services.DigSiteService
 local EnclosureService = Boot.Services.EnclosureService
