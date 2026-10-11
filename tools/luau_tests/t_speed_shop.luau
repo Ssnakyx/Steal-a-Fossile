@@ -5,7 +5,7 @@ local env = T.env
 
 env.studio = false
 env.quiet = true
-local Config = T.config()
+local Config = T.clearRobuxIds()
 local Shop = Config.Shop
 -- (passes et produits « créés dans le Creator Hub » pour ce test ; FastRevive et BearTraps5 restent à Id = 0)
 Shop.Passes.DoubleMoney.Id = 501

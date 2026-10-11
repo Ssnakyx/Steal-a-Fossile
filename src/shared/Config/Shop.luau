@@ -108,23 +108,23 @@ local Shop = {
 	-- LuckBonus : chance en plus du VIP (mutations à la révélation, brief 3). Trail : la trail Robux que donne le
 	-- passe (Config.Speed.RobuxTrails, avec ses couleurs).
 	Passes = {
-		DoubleMoney = { Id = 0, Name = "x2 Money", Description = "Earn double money from all your dinos.", Price = 299, Order = 1, Multiplier = 2 },
-		DoubleTreadmill = { Id = 0, Name = "x2 Treadmill", Description = "Gain double speed on your treadmill.", Price = 199, Order = 2, Multiplier = 2 },
-		FastRevive = { Id = 0, Name = "Fast Revive", Description = "Your revival tanks work twice as fast.", Price = 249, Order = 3, Multiplier = 2 },
-		VIP = { Id = 0, Name = "VIP", Description = "VIP tag and a little extra luck.", Price = 149, Order = 4, LuckBonus = 1.1 },
-		NeonTrail = { Id = 0, Name = "Neon Trail", Description = "A glowing neon trail. x1.5 Speed while you wear it, on top of your best trail.", Price = 99, Order = 5, Multiplier = 1.5, Trail = "Neon" },
-		GalaxyTrail = { Id = 0, Name = "Galaxy Trail", Description = "A trail full of stars. x2 Speed while you wear it, on top of your best trail.", Price = 249, Order = 6, Multiplier = 2, Trail = "Galaxy" },
-		GoldenTrail = { Id = 0, Name = "Golden Trail", Description = "A shining gold trail. x3 Speed while you wear it, on top of your best trail.", Price = 499, Order = 7, Multiplier = 3, Trail = "Golden" },
+		DoubleMoney = { Id = 2026551002, Name = "x2 Money", Description = "Earn double money from all your dinos.", Price = 299, Order = 1, Multiplier = 2 },
+		DoubleTreadmill = { Id = 2025152896, Name = "x2 Treadmill", Description = "Gain double speed on your treadmill.", Price = 199, Order = 2, Multiplier = 2 },
+		FastRevive = { Id = 2026814954, Name = "Fast Revive", Description = "Your revival tanks work twice as fast.", Price = 249, Order = 3, Multiplier = 2 },
+		VIP = { Id = 2026520956, Name = "VIP", Description = "VIP tag and a little extra luck.", Price = 149, Order = 4, LuckBonus = 1.1 },
+		NeonTrail = { Id = 2026094921, Name = "Neon Trail", Description = "A glowing neon trail. x1.5 Speed while you wear it, on top of your best trail.", Price = 99, Order = 5, Multiplier = 1.5, Trail = "Neon" },
+		GalaxyTrail = { Id = 2025920982, Name = "Galaxy Trail", Description = "A trail full of stars. x2 Speed while you wear it, on top of your best trail.", Price = 249, Order = 6, Multiplier = 2, Trail = "Galaxy" },
+		GoldenTrail = { Id = 2026028944, Name = "Golden Trail", Description = "A shining gold trail. x3 Speed while you wear it, on top of your best trail.", Price = 499, Order = 7, Multiplier = 3, Trail = "Golden" },
 	} :: { [string]: Pass },
 
 	-- Produits développeur (achats répétables). Owner = le service qui donne l'effet : c'est lui qui appelle
 	-- ReceiptService.Register(clé, Config.Shop.Products[clé].Id, grant). Un produit sans Register reste caché.
 	Products = {
-		BearTraps5 = { Id = 0, Name = "Bear Traps x5", Description = "5 bear traps to stop thieves on the road.", Price = 49, Order = 1, Owner = "PvpService" },
-		ServerLuck = { Id = 0, Name = "Server Luck x2", Description = "Double luck for everyone in the server for 15 minutes.", Price = 99, Order = 2, Owner = "ShopService" },
-		InstantRevive = { Id = 0, Name = "Instant Revive", Description = "Finish your revivals right now.", Price = 29, Order = 3, Owner = "ReviveService" },
+		BearTraps5 = { Id = 3717982859, Name = "Bear Traps x5", Description = "5 bear traps to stop thieves on the road.", Price = 49, Order = 1, Owner = "PvpService" },
+		ServerLuck = { Id = 3717983391, Name = "Server Luck x2", Description = "Double luck for everyone in the server for 15 minutes.", Price = 99, Order = 2, Owner = "ShopService" },
+		InstantRevive = { Id = 3717983480, Name = "Instant Revive", Description = "Finish your revivals right now.", Price = 29, Order = 3, Owner = "ReviveService" },
 		-- sérums de mutation (Config.Mutator) : 3 par achat
-		MutationSerums3 = { Id = 0, Name = "Mutation Serums x3", Description = "3 serums to mutate your dinos in the lab.", Price = 99, Order = 4, Owner = "MutatorService" },
+		MutationSerums3 = { Id = 3717983549, Name = "Mutation Serums x3", Description = "3 serums to mutate your dinos in the lab.", Price = 99, Order = 4, Owner = "MutatorService" },
 	} :: { [string]: Product },
 
 	-- Server Luck x2 : toute la chance du serveur est multipliée pendant Duration secondes. Un nouvel achat pendant
@@ -144,10 +144,10 @@ local Shop = {
 	-- (le pack reste utile à tout moment du jeu). Les gros packs donnent plus par Robux : le shop affiche « +N% MORE »
 	-- par rapport au plus petit et « BEST VALUE » sur le meilleur.
 	Cash = {
-		CashSmall = { Id = 0, Name = "Pile of Cash", Price = 49, Order = 1, Icon = "coin", Reward = { Kind = "Money", IncomeMinutes = 10, Amount = 5_000 } },
-		CashMedium = { Id = 0, Name = "Bag of Cash", Price = 149, Order = 2, Icon = "coins", Reward = { Kind = "Money", IncomeMinutes = 40, Amount = 20_000 } },
-		CashLarge = { Id = 0, Name = "Chest of Cash", Price = 399, Order = 3, Icon = "chest", Reward = { Kind = "Money", IncomeMinutes = 150, Amount = 80_000 } },
-		CashHuge = { Id = 0, Name = "Vault of Cash", Price = 999, Order = 4, Icon = "crate", Reward = { Kind = "Money", IncomeMinutes = 480, Amount = 300_000 } },
+		CashSmall = { Id = 3717983783, Name = "Pile of Cash", Price = 49, Order = 1, Icon = "coin", Reward = { Kind = "Money", IncomeMinutes = 10, Amount = 5_000 } },
+		CashMedium = { Id = 3717983845, Name = "Bag of Cash", Price = 149, Order = 2, Icon = "coins", Reward = { Kind = "Money", IncomeMinutes = 40, Amount = 20_000 } },
+		CashLarge = { Id = 3717983927, Name = "Chest of Cash", Price = 399, Order = 3, Icon = "chest", Reward = { Kind = "Money", IncomeMinutes = 150, Amount = 80_000 } },
+		CashHuge = { Id = 3717984004, Name = "Vault of Cash", Price = 999, Order = 4, Icon = "crate", Reward = { Kind = "Money", IncomeMinutes = 480, Amount = 300_000 } },
 	} :: { [string]: CashPack },
 
 	-- Packs : un produit développeur par pack, contenu en plusieurs morceaux, prix barré (Worth) et réduction.
@@ -157,7 +157,7 @@ local Shop = {
 	-- Un pack qui contient un passe déjà possédé n'est pas proposé à ce joueur.
 	Packs = {
 		Starter = {
-			Id = 0, Name = "Starter Pack", Kind = "Starter", Price = 99, Worth = 399, Order = 1, Icon = "gift",
+			Id = 3717984091, Name = "Starter Pack", Kind = "Starter", Price = 99, Worth = 399, Order = 1, Icon = "gift",
 			Items = {
 				{ Kind = "Pass", Key = "NeonTrail" },
 				{ Kind = "Money", IncomeMinutes = 30, Amount = 15_000 },
@@ -166,7 +166,7 @@ local Shop = {
 			},
 		},
 		SpeedRush = {
-			Id = 0, Name = "Speed Rush Pack", Kind = "Limited", Price = 299, Worth = 699, Order = 2, Icon = "speed",
+			Id = 3717984182, Name = "Speed Rush Pack", Kind = "Limited", Price = 299, Worth = 699, Order = 2, Icon = "speed",
 			Items = {
 				{ Kind = "Pass", Key = "DoubleTreadmill" },
 				{ Kind = "Speed", SpeedPercent = 25, Amount = 5_000 },
@@ -174,7 +174,7 @@ local Shop = {
 			},
 		},
 		FossilHunter = {
-			Id = 0, Name = "Fossil Hunter Pack", Kind = "Limited", Price = 399, Worth = 899, Order = 3, Icon = "hammer",
+			Id = 3717984283, Name = "Fossil Hunter Pack", Kind = "Limited", Price = 399, Worth = 899, Order = 3, Icon = "hammer",
 			Items = {
 				{ Kind = "Pass", Key = "FastRevive" },
 				{ Kind = "Revives", Amount = 5 },
@@ -183,7 +183,7 @@ local Shop = {
 			},
 		},
 		DinoTycoon = {
-			Id = 0, Name = "Dino Tycoon Pack", Kind = "Limited", Price = 699, Worth = 1_499, Order = 4, Icon = "crown",
+			Id = 3717984403, Name = "Dino Tycoon Pack", Kind = "Limited", Price = 699, Worth = 1_499, Order = 4, Icon = "crown",
 			Items = {
 				{ Kind = "Pass", Key = "DoubleMoney" },
 				{ Kind = "Pass", Key = "VIP" },
@@ -192,23 +192,23 @@ local Shop = {
 			},
 		},
 		CashDeal = {
-			Id = 0, Name = "Mega Cash Deal", Kind = "Deal", Price = 249, Worth = 499, Order = 5, Icon = "coins",
+			Id = 3717984487, Name = "Mega Cash Deal", Kind = "Deal", Price = 249, Worth = 499, Order = 5, Icon = "coins",
 			Items = { { Kind = "Money", IncomeMinutes = 240, Amount = 150_000 } },
 		},
 		TrapCrate = {
-			Id = 0, Name = "Trap Crate", Kind = "Deal", Price = 79, Worth = 196, Order = 6, Icon = "shield",
+			Id = 3717984615, Name = "Trap Crate", Kind = "Deal", Price = 79, Worth = 196, Order = 6, Icon = "shield",
 			Items = { { Kind = "BearTraps", Amount = 20 } },
 		},
 		ReviveBundle = {
-			Id = 0, Name = "Revive Bundle", Kind = "Deal", Price = 99, Worth = 203, Order = 7, Icon = "egg_gold",
+			Id = 3717984686, Name = "Revive Bundle", Kind = "Deal", Price = 99, Worth = 203, Order = 7, Icon = "egg_gold",
 			Items = { { Kind = "Revives", Amount = 7 } },
 		},
 		LuckParty = {
-			Id = 0, Name = "Luck Party", Kind = "Deal", Price = 149, Worth = 297, Order = 8, Icon = "star",
+			Id = 3717984760, Name = "Luck Party", Kind = "Deal", Price = 149, Worth = 297, Order = 8, Icon = "star",
 			Items = { { Kind = "ServerLuck", Minutes = 45 } },
 		},
 		SpeedBoost = {
-			Id = 0, Name = "Speed Boost", Kind = "Deal", Price = 99, Worth = 199, Order = 9, Icon = "muscle",
+			Id = 3717984852, Name = "Speed Boost", Kind = "Deal", Price = 99, Worth = 199, Order = 9, Icon = "muscle",
 			Items = { { Kind = "Speed", SpeedPercent = 15, Amount = 3_000 } },
 		},
 	} :: { [string]: Pack },
@@ -227,13 +227,13 @@ local Shop = {
 	-- gardé dans la sauvegarde du joueur qui le reçoit (data.Offers.Granted, jamais retiré). Si le joueur choisi est parti
 	-- ou a déjà le passe quand Roblox confirme l'achat, le cadeau est gardé (« gift ready ») et s'envoie plus tard.
 	Gifts = {
-		DoubleMoney = { Id = 0, Price = 299 },
-		DoubleTreadmill = { Id = 0, Price = 199 },
-		FastRevive = { Id = 0, Price = 249 },
-		VIP = { Id = 0, Price = 149 },
-		NeonTrail = { Id = 0, Price = 99 },
-		GalaxyTrail = { Id = 0, Price = 249 },
-		GoldenTrail = { Id = 0, Price = 499 },
+		DoubleMoney = { Id = 3717984927, Price = 299 },
+		DoubleTreadmill = { Id = 3717985072, Price = 199 },
+		FastRevive = { Id = 3717985180, Price = 249 },
+		VIP = { Id = 3717985270, Price = 149 },
+		NeonTrail = { Id = 3717985343, Price = 99 },
+		GalaxyTrail = { Id = 3717985433, Price = 249 },
+		GoldenTrail = { Id = 3717985505, Price = 499 },
 	} :: { [string]: Gift },
 	GiftHoldSeconds = 180, -- temps pendant lequel le joueur choisi reste réservé, fenêtre d'achat de Roblox ouverte
 }
