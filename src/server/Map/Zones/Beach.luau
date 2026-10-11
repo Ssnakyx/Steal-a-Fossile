@@ -1,6 +1,8 @@
 --!strict
 -- Zone 1 : Beach. Sable clair, mer à gauche (eau peu profonde, écume, aiguilles de roche, arche dans la mer, ponton),
--- falaises de grès couronnées de palmiers à droite, coquillages, étoiles de mer, bois flotté, flaques entre les rochers.
+-- falaises de grès couronnées de palmiers à droite, coquillages, étoiles de mer, bois flotté, flaques entre les rochers,
+-- squelette fossile à demi enterré dans le sable, nids d'œufs de dino, barques échouées, flaques de marée qui luisent
+-- et quelques cristaux « verre de mer » (turquoise, rose, aqua).
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -13,6 +15,8 @@ local SHALLOW = rgb(96, 196, 222)
 local DEEP = rgb(52, 142, 204)
 local FOAM = rgb(240, 250, 255)
 local ROCK = rgb(150, 140, 130)
+local SEA_GLASS = { Crystal = rgb(90, 232, 222), Crystal2 = rgb(255, 142, 192), Crystal3 = rgb(152, 250, 240), Rock = ROCK }
+local BONE = { Bone = rgb(238, 226, 198) }
 
 local function water(parent: Instance, size: Vector3, cframe: CFrame, color: Color3, transparency: number): Part
 	local part = Kit.prop(parent, size, cframe, color, Enum.Material.SmoothPlastic)
@@ -104,6 +108,13 @@ local function landmark(info: ZoneBase.Info)
 			pools += 1
 		end
 	end
+	-- squelette fossile à demi enterré dans le sable, côté falaises, le crâne devant
+	local spot = ZoneBase.Spot(info, 19, 44, 68, 0.64, 0.9, 1)
+	if spot then
+		local base = CFrame.new(spot) * CFrame.Angles(0, math.rad(Kit.range(rng, 20, 60)), 0)
+		Props.ribcage(info.Decor, base * CFrame.new(0, 0, 5), 1.3, rng, BONE)
+		Props.skull(info.Decor, base * CFrame.new(0, 0, -10.5) * CFrame.Angles(0, math.rad(10), 0), 1.2, rng, BONE)
+	end
 end
 
 local theme: ZoneBase.Theme = {
@@ -125,6 +136,10 @@ local theme: ZoneBase.Theme = {
 		{ Prop = Props.palm, Count = 10, Radius = 6, XMin = 40, XMax = 84, Side = 1, Scale = { 0.9, 1.3 } },
 		{ Prop = Props.palm, Count = 7, Radius = 6, XMin = 40, XMax = 76, Side = -1, Scale = { 0.9, 1.2 } },
 		{ Prop = Props.palm, Count = 7, Radius = 6, XMin = 104, XMax = 122, Side = 1, Scale = { 1, 1.4 } },
+		{ Prop = Props.rowboat, Count = 2, Radius = 6, XMin = 56, XMax = 78, Side = -1, Scale = { 1, 1.2 } },
+		{ Prop = Props.eggNest, Count = 4, Radius = 4.5, XMin = 30, XMax = 84, Side = 1, Scale = { 0.9, 1.2 } },
+		{ Prop = Props.tidePool, Count = 5, Radius = 4, XMin = 36, XMax = 80, Side = -1, Scale = { 0.9, 1.2 }, Pal = { Rock = ROCK } },
+		{ Prop = Props.glowCrystal, Count = 4, Radius = 3.5, XMin = 40, XMax = 84, Side = -1, Scale = { 0.55, 0.8 }, Pal = SEA_GLASS },
 		{ Prop = Props.rock, Count = 12, Radius = 4, Pal = { Rock = ROCK } },
 		{ Prop = Props.log, Count = 5, Radius = 5, Pal = { Trunk = rgb(186, 166, 136), Moss = rgb(206, 192, 160) } },
 		{ Prop = Props.reeds, Count = 18, Radius = 3, XMin = 30, Pal = { Leaf = rgb(150, 172, 82), Tip = rgb(206, 186, 126) } },

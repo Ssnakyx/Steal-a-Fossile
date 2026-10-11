@@ -3,7 +3,10 @@
 -- collidable, placement par raycast, grille des places à éviter et budget de lumières. Utilisé par MapBuilder, Plots,
 -- Plaza, ZoneBase, Props et les modules de zone.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+
+local Ambience = require(ReplicatedStorage.Shared.Config.Ambience)
 
 local Kit = {}
 
@@ -115,6 +118,17 @@ function Kit.group(name: string): Model
 	model.Name = name
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	return model
+end
+
+-- Le modèle flotte chez les joueurs (AmbienceController) : monte et descend de `height` studs (vitesse `speed` rad/s)
+-- et tourne de `spin` rad/s autour de `core` (pièce droite, au centre)
+function Kit.float(model: Model, core: BasePart, height: number, speed: number, spin: number)
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- (arrive d'un bloc chez le joueur, pièce centrale comprise)
+	model.PrimaryPart = core
+	model:SetAttribute("FloatHeight", height)
+	model:SetAttribute("FloatSpeed", speed)
+	model:SetAttribute("FloatSpin", spin)
+	model:AddTag(Ambience.Float.Tag)
 end
 
 function Kit.folder(name: string, parent: Instance): Folder
@@ -259,6 +273,20 @@ function Kit.groundAt(ctx: Ctx, x: number, z: number, fallback: number?): number
 		end
 	end
 	return fallback or ctx.GroundTop
+end
+
+-- X de la paroi du côté `side` (-1 gauche, 1 droite) à la hauteur y : raycast horizontal depuis X = side * from vers
+-- l'extérieur, vers les pièces de sol du contexte (falaises). nil si le rayon bute avant `minAbs` (un gros volume d'un
+-- lieu marquant : les raycasts touchent les pièces collidables même avec CanQuery à false) ; `fallback` sans impact.
+function Kit.wallAt(ctx: Ctx, side: number, from: number, y: number, z: number, fallback: number, minAbs: number): number?
+	local params = ctx.Ray
+	if params then
+		local hit = Workspace:Raycast(Vector3.new(side * from, y, z), Vector3.new(side * 120, 0, 0), params)
+		if hit then
+			return if math.abs(hit.Position.X) >= minAbs then hit.Position.X else nil
+		end
+	end
+	return fallback
 end
 
 -- Paramètres de raycast qui ne touchent que les descendants de `folders`
