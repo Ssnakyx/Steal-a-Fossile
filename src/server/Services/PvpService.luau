@@ -6,10 +6,12 @@
 --   * Bear Trap (outil « Bear Trap » tant qu'il en reste) : remote PlaceTrap, à ses pieds. Celui qui marche dessus
 --     (joueur ou gardien, jamais celui qui l'a posé) est immobilisé 3 s et lâche son bloc. Achat avec l'argent du jeu
 --     (BuyTraps) ou par 5 avec le produit Robux BearTraps5 (Config.Shop.Products).
---   * Protection débutant : les 10 premières minutes de jeu (data.PlayTime), ni bonk ni piège. Attributs joueur
---     Protected (booléen) et ProtectedUntil (heure serveur).
+--   * Protection débutant : les 10 premières minutes de jeu (data.PlayTime), ni bonk ni piège. Elle s'arrête plus
+--     tôt si le joueur bonke, pose un piège ou ramasse le bloc lâché par un autre. Attributs joueur Protected (booléen)
+--     et ProtectedUntil (heure serveur).
 --   * Knock(player, secondes, raison) : immobile (SpeedService.SetModifier) et chute côté client (remote Knocked).
--- Pièges posés : modèles « BearTrap » tagués « BearTrap » dans Workspace.BearTraps, attributs OwnerUserId, Armed.
+-- Pièges posés : modèles « BearTrap » tagués « BearTrap » dans Workspace.BearTraps, attributs OwnerUserId, Armed,
+-- ArmsAt (heure serveur à partir de laquelle il se ferme : 1 s après la pose).
 -- Clé replica « BearTraps » (pièges en réserve).
 -- Signaux : Bonked(attacker, victim, block), TrapPlaced(player), TrapSprung(owner?, victim (Player ou nom de zone du
 -- gardien), block?), ProtectionEnded(player)
@@ -43,6 +45,7 @@ export type Trap = {
 	Model: Model,
 	Position: Vector3, -- point du sol
 	Armed: boolean,
+	ArmsAt: number, -- os.clock() : se ferme sur quelqu'un à partir de là
 	ExpiresAt: number, -- os.clock()
 }
 
@@ -97,6 +100,17 @@ function PvpService.SetProtection(player: Player, protected: boolean, seconds: n
 	end
 	setProtected(player, state, protected)
 	return true
+end
+
+-- Le joueur protégé attaque ou vole un autre joueur : sa protection s'arrête (Config.Pvp.Protection.EndsOnAttack)
+local function endProtection(player: Player, message: string)
+	local state = states[player]
+	if not (Pvp.Protection.EndsOnAttack and state and state.Protected) then
+		return
+	end
+	state.ProtectedUntil = 0
+	setProtected(player, state, false)
+	Notify.Send(player, message, "info")
 end
 
 -- Le joueur est-il au sol ou bloqué (bonk, gardien, piège) ?
@@ -334,6 +348,7 @@ function PvpService.Bonk(attacker: Player, wanted: any): (boolean, string)
 	effect("Bonk", position)
 	Notify.Send(target, "Bonk! You dropped your fossil!", "error")
 	Notify.Send(attacker, "Bonk! Grab the fossil!", "success")
+	endProtection(attacker, "You attacked a player: your new player protection is over!")
 	Signals.Fire("Bonked", attacker, target, block)
 	return true, "Bonk!"
 end
@@ -383,6 +398,7 @@ local function buildTrap(ground: Vector3, owner: Player): Model
 	model:SetAttribute("OwnerUserId", owner.UserId)
 	model:SetAttribute("Armed", true)
 	model:SetAttribute("PlacedAt", Workspace:GetServerTimeNow())
+	model:SetAttribute("ArmsAt", Workspace:GetServerTimeNow() + Pvp.Trap.ArmTime)
 	return model
 end
 
@@ -462,6 +478,7 @@ function PvpService.PlaceTrap(player: Player): (boolean, string)
 		Model = model,
 		Position = ground,
 		Armed = true,
+		ArmsAt = now + Pvp.Trap.ArmTime,
 		ExpiresAt = now + Pvp.Trap.Lifetime,
 	}
 	traps[trap.Id] = trap
@@ -475,6 +492,7 @@ function PvpService.PlaceTrap(player: Player): (boolean, string)
 	publishTraps(player)
 	Signals.Fire("TrapPlaced", player)
 	Notify.Send(player, "Bear trap placed!", "success")
+	endProtection(player, "You placed a bear trap: your new player protection is over!")
 	return true, "Placed"
 end
 
@@ -495,8 +513,9 @@ function PvpService.SpringTrapAt(position: Vector3, extra: number?, zoneName: st
 		return false
 	end
 	local radius = Pvp.Trap.Radius + (Guard.Number(extra, 0, 100) or 0)
+	local now = os.clock()
 	for _, trap in traps do
-		if trap.Armed and flatDistance(trap.Position, position) <= radius and math.abs(trap.Position.Y - position.Y) <= TRAP_HEIGHT then
+		if trap.Armed and now >= trap.ArmsAt and flatDistance(trap.Position, position) <= radius and math.abs(trap.Position.Y - position.Y) <= TRAP_HEIGHT then
 			spring(trap, zoneName or "Guardian", nil)
 			return true
 		end
@@ -510,7 +529,7 @@ local function checkTraps(now: number)
 			removeTrap(trap)
 			continue
 		end
-		if not trap.Armed then
+		if not trap.Armed or now < trap.ArmsAt then
 			continue
 		end
 		for player, state in states do
@@ -585,12 +604,11 @@ local function registerProduct()
 		return
 	end
 	ReceiptService.Register("BearTraps5", product.Id, function(player: Player, data, _receipt): boolean
-		if data.BearTraps + Pvp.Trap.PerProduct > Pvp.Trap.MaxOwned then
-			return false
-		end
-		data.BearTraps += Pvp.Trap.PerProduct
+		-- (toujours accordé, sinon l'achat serait retenté sans fin : au plafond, seulement ce qui tient)
+		local count = math.clamp(Pvp.Trap.MaxOwned - data.BearTraps, 0, Pvp.Trap.PerProduct)
+		data.BearTraps += count
 		publishTraps(player)
-		Notify.Send(player, "+" .. Pvp.Trap.PerProduct .. " bear traps!", "success")
+		Notify.Send(player, "+" .. count .. " bear traps!", "success")
 		return true
 	end)
 end
@@ -647,6 +665,11 @@ function PvpService.Init()
 	end)
 	registerProduct()
 	registerCommands()
+	Signals.Connect("BlockPickedUp", function(player: Player, _block: any, droppedByUserId: number)
+		if droppedByUserId ~= 0 and droppedByUserId ~= player.UserId then
+			endProtection(player, "You took another player's fossil: your new player protection is over!")
+		end
+	end)
 end
 
 function PvpService.Start()

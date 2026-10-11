@@ -9,6 +9,7 @@ env.quiet = true
 local Boot = T.bootServer()
 local GuardianService = Boot.Services.GuardianService
 local CarryService = Boot.Services.CarryService
+local DroppedBlockService = Boot.Services.DroppedBlockService
 local DigSiteService = Boot.Services.DigSiteService
 local PlotService = Boot.Services.PlotService
 local PvpService = Boot.Services.PvpService
@@ -341,6 +342,58 @@ CarryService.ReturnToSite(runner)
 waitFor(function()
 	return beach.State == "Sleep"
 end, 90)
+
+T.section("bloc ramassé au sol : le gardien se réveille")
+T.eq(beach.State, "Sleep", "le gardien de la Beach dort")
+local finder = T.join({ Name = "Finder", Character = true })
+env.flush()
+local function pickUpLoose(player, id: number, ground: Vector3)
+	local entry = DroppedBlockService.Place({ Id = id, Rarity = "Rare", Zone = "Beach" }, ground, nil, "Test")
+	player.Character:PivotTo(CFrame.new(entry.Part.Position + Vector3.new(0, 1.5, 3)))
+	RateLimit.Reset(player)
+	env.fire(env.signal(entry.Part.PickUpPrompt, "Triggered"), player)
+	env.flush()
+end
+-- loin de sa zone : il dort toujours
+local canyon = ZoneService.Get("Canyon").Area
+pickUpLoose(finder, 990001, canyon.Position + Vector3.new(0, canyon.Size.Y / 2, 0))
+T.check(CarryService.IsCarrying(finder), "Finder ramasse un bloc de la Beach au Canyon")
+env.advance(1)
+T.eq(beach.State, "Sleep", "loin de sa zone : le gardien dort toujours")
+CarryService.ReturnToSite(finder)
+-- près de lui : il se réveille contre celui qui l'a ramassé
+pickUpLoose(finder, 990002, beach.Home.Position + Vector3.new(0, 0, 30))
+T.check(CarryService.IsCarrying(finder), "Finder ramasse un bloc de la Beach près du gardien")
+T.check(waitFor(function()
+	return beach.State == "Wake"
+end, 0.5), "le gardien se réveille")
+T.eq(beach.Target, finder, "contre Finder")
+T.check(waitFor(function()
+	return beach.State == "Run"
+end, 5), "et le poursuit")
+env.advance(1)
+
+T.section("bloqué en rentrant : il réapparaît chez lui")
+finder.Character:PivotTo(CFrame.new(canyon.Position + Vector3.new(0, canyon.Size.Y / 2 + 3, 0)))
+T.check(waitFor(function()
+	return beach.State == "Return"
+end, 10), "Finder hors de portée : recherche puis retour")
+local returnSpeed = beach.ReturnSpeed
+local away = (flat(beach.CFrame.Position) - flat(beach.Home.Position)).Magnitude
+T.check(away > 2, "loin de chez lui (" .. math.floor(away) .. " studs)")
+beach.ReturnSpeed = 0 -- (comme un parc sur le chemin : il n'avance plus)
+local startedAt = env.now()
+T.check(waitFor(function()
+	return beach.State == "BackToSleep"
+end, away / returnSpeed + Guardians.ReturnSlack + 1), "il se recouche au bout de distance / vitesse + 5 s")
+T.check(env.now() - startedAt >= Guardians.ReturnSlack - 0.2, "pas avant l'échéance")
+T.near((beach.CFrame.Position - beach.Home.Position).Magnitude, 0, 1e-6, "replacé chez lui")
+beach.ReturnSpeed = returnSpeed
+CarryService.ReturnToSite(finder)
+waitFor(function()
+	return beach.State == "Sleep"
+end, 10)
+T.leave(finder)
 
 T.section("Bear Trap sur un gardien")
 local trapper = T.join({ Name = "Trapper", Character = true })

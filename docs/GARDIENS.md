@@ -14,17 +14,24 @@ valeurs de jeu sont dans `Config/Guardians.luau` et `Config/Pvp.luau` (valeurs d
   4 studs + 0.35 x sa taille : chute de 2 s et le bloc retourne à son gisement. Il poursuit tant que le porteur garde un
   bloc de sa zone, reste à moins de 40 studs de la zone (`Leash`) et hors des parcs ; sinon il cherche 3 s, rentre en
   marchant, se recouche. Réveillé, il prend la proie la plus proche (le voleur qui a ramassé le bloc, par exemple).
+  Endormi, il se réveille aussi dès qu'un porteur d'un bloc de sa zone est à portée (celui qui ramasse au sol un bloc
+  lâché près de lui). S'il reste coincé en rentrant (un parc sur le chemin), il réapparaît chez lui au bout de
+  distance / vitesse + 5 s (`ReturnSlack`).
 - **Pelle** (outil « Shovel » donné à chaque apparition) : un coup toutes les 2 s, portée 8 studs (+4 de tolérance).
   Le porteur touché tombe 1.5 s et lâche son bloc à ses pieds. Un joueur sans bloc ne subit rien.
 - **Bear Trap** (outil « Bear Trap » tant qu'il en reste) : posé à ses pieds sur la route, 3 posés au plus (le plus
-  ancien disparaît), 4 studs entre deux pièges, disparaît au bout de 120 s s'il ne sert pas. Celui qui marche dessus
-  (joueur ou gardien, jamais celui qui l'a posé) est immobilisé 3 s et lâche son bloc. Achat : 5 000 $ pièce (10 au
+  ancien disparaît), 4 studs entre deux pièges, disparaît au bout de 120 s s'il ne sert pas. Il ne se ferme qu'1 s
+  après la pose (`ArmTime` : on ne le pose pas sous les pieds d'un porteur comme un coup de pelle). Celui qui marche
+  dessus (joueur ou gardien, jamais celui qui l'a posé) est immobilisé 3 s et lâche son bloc. Achat : 5 000 $ pièce (10 au
   plus d'un coup) ou 5 avec le produit Robux `BearTraps5`.
-- **Bloc au sol** : ramassable par tous (prompt « Pick up », E, instantané), sauf par celui qui l'a lâché pendant 3 s.
+- **Bloc au sol** : ramassable par tous (prompt « Pick up », E, instantané), sauf par celui qui l'a lâché pendant 3 s,
+  et seulement debout, vivant et sur la route (pas depuis un parc : le bloc y serait rangé aussitôt).
   Pas ramassé en 30 s, il retourne à son gisement (un bloc sans gisement, comme ceux des météorites, disparaît). Le
   bloc du tutoriel reste réservé aux nouveaux joueurs.
 - **Protection débutant** : les 10 premières minutes de jeu au total (`data.PlayTime`), ni bonk ni piège. Un joueur
-  protégé peut voler, et les gardiens l'attrapent comme les autres.
+  protégé peut voler aux gardiens, et les gardiens l'attrapent comme les autres. Sa protection s'arrête dès qu'il
+  bonke quelqu'un, pose un piège ou ramasse le bloc lâché par un autre joueur (`Protection.EndsOnAttack`), sinon un
+  compte neuf volerait les autres sans risque pendant 10 min.
 
 ## Pour la map (brief 10)
 
@@ -93,7 +100,7 @@ Remotes (`Remotes/Pvp.luau`) :
 - `PvpEffect(genre, position)` : à tous (`Bonk`, `Catch`, `Trap`) : étoiles, piège qui se ferme, sons.
 
 Attributs : joueur `ChasedBy` (zone du gardien qui le poursuit, "" sinon), `Protected`, `ProtectedUntil` (heure
-serveur) ; gardiens (ci-dessus) ; pièges tagués `BearTrap` (`OwnerUserId`, `Armed`, `PlacedAt`, `SprungAt`) dans
+serveur) ; gardiens (ci-dessus) ; pièges tagués `BearTrap` (`OwnerUserId`, `Armed`, `PlacedAt`, `ArmsAt`, `SprungAt`) dans
 `Workspace.BearTraps` ; blocs au sol tagués `DroppedFossil` (`BlockId`, `Rarity`, `Zone`, `DroppedBy`, `LockedUntil`,
 `ReturnAt`) dans `Workspace.DroppedFossils`, avec une étiquette « Returns in 0:27 ». Clé replica `BearTraps`.
 

@@ -19,6 +19,8 @@ local RateLimit = require(script.Parent.Parent.Lib.RateLimit)
 local Signals = require(script.Parent.Parent.Lib.Signals)
 local CarryService = require(script.Parent.CarryService)
 local DataService = require(script.Parent.DataService)
+local PlotService = require(script.Parent.PlotService)
+local SpeedService = require(script.Parent.SpeedService)
 
 type Block = CarryService.Block
 export type Dropped = {
@@ -135,6 +137,19 @@ function DroppedBlockService.PickUp(player: Player, id: number): (boolean, strin
 	end
 	if not Guard.Near(player, entry.Part.Position, Pvp.Dropped.PickupDistance + DISTANCE_TOLERANCE) then
 		return false, "Too far"
+	end
+	-- (vivant, debout et sur la route : pas de ramassage à l'abri depuis le bord d'un parc)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then
+		return false, "Not ready"
+	end
+	if SpeedService.HasModifier(player, "Knocked") or SpeedService.HasModifier(player, "BearTrap") then
+		return false, "Knocked"
+	end
+	if PlotService.IsPlayerSafe(player) then
+		Notify.Send(player, "Step onto the road to grab it!", "error")
+		return false, "Safe zone"
 	end
 	if not CarryService.Carry(player, entry.Block) then
 		return false, "Cannot carry"

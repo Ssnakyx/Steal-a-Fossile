@@ -43,6 +43,7 @@ local Guardians = {
 	CatchTime = 1.2, -- Catch : coup de tête cartoon, puis Run (autre porteur) ou Return
 	SearchTime = 3, -- Search : a perdu le joueur, renifle, puis Return
 	BackToSleepTime = 2, -- BackToSleep : tourne sur lui-même et se recouche, puis Sleep
+	ReturnSlack = 5, -- Return : bloqué (un parc sur le chemin) plus de distance / vitesse + 5 s, il réapparaît chez lui
 	TrappedState = "Idle", -- animation jouée pendant qu'un Bear Trap le bloque (attribut Trapped = true)
 
 	-- Poursuite

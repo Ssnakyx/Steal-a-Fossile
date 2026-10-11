@@ -5,7 +5,8 @@
 --   * Bear Trap : posé au sol, immobilise 3 s celui qui marche dessus (joueur ou gardien) et lui fait lâcher son bloc.
 --     Acheté avec l'argent du jeu, ou par 5 avec le produit Robux « BearTraps5 » (Config.Shop.Products).
 --   * Bloc au sol : ramassable par tous, sauf par celui qui l'a lâché pendant 3 s ; retourne à son gisement en 30 s.
---   * Protection débutant : impossible d'être bonké ou piégé pendant les 10 premières minutes de jeu.
+--   * Protection débutant : impossible d'être bonké ou piégé pendant les 10 premières minutes de jeu ; elle s'arrête
+--     plus tôt si le joueur attaque ou ramasse le bloc lâché par un autre (EndsOnAttack).
 
 local Pvp = {
 	Shovel = {
@@ -23,6 +24,7 @@ local Pvp = {
 		MaxOwned = 999, -- pièges gardés au plus
 		PerProduct = 5, -- pièges donnés par le produit Robux BearTraps5
 		HoldTime = 3, -- secondes d'immobilisation (joueur ou gardien)
+		ArmTime = 1, -- secondes après la pose avant qu'il se ferme (on ne le pose pas sous les pieds d'un porteur)
 		Radius = 3, -- studs (horizontal) autour du piège où l'on marche dessus
 		MaxActive = 3, -- pièges posés en même temps par joueur (le plus ancien disparaît)
 		Lifetime = 120, -- secondes avant qu'un piège posé et pas déclenché disparaisse
@@ -38,6 +40,9 @@ local Pvp = {
 
 	Protection = {
 		Time = 600, -- secondes de jeu (au total) pendant lesquelles un nouveau joueur ne peut être ni bonké ni piégé
+		-- true : la protection s'arrête dès que le joueur attaque (bonk qui touche, piège posé) ou ramasse un bloc
+		-- lâché par un autre joueur (sinon un compte neuf volerait sans risque pendant 10 min)
+		EndsOnAttack = true,
 	},
 }
 

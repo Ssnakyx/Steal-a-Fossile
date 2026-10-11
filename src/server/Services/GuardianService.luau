@@ -1,9 +1,10 @@
 --!strict
 -- Gardiens des zones (brief 7 « gardiens-vol », GDD sections Carte et Animations) : un dino géant par zone dort sur le
--- point « Guardian » de sa zone (docs/BOUCLE.md). Quand un bloc de sa zone est arraché, il se réveille, rugit
--- (« RUN!! ») et poursuit le porteur ; plus la zone est loin, plus il court vite (Config.Guardians). S'il l'attrape :
--- chute cartoon, le bloc retourne à son gisement. Il ne sort pas de sa zone (+ Leash studs) et n'entre jamais dans un
--- parc : il cherche, puis rentre à son gisement et se rendort. Un Bear Trap le bloque 3 s (PvpService).
+-- point « Guardian » de sa zone (docs/BOUCLE.md). Quand un bloc de sa zone est arraché (ou qu'un porteur d'un bloc de
+-- sa zone passe à portée), il se réveille, rugit (« RUN!! ») et poursuit le porteur ; plus la zone est loin, plus il
+-- court vite (Config.Guardians). S'il l'attrape : chute cartoon, le bloc retourne à son gisement. Il ne sort pas de sa
+-- zone (+ Leash studs) et n'entre jamais dans un parc : il cherche, puis rentre chez lui et se rendort (coincé en
+-- rentrant, il y réapparaît). Un Bear Trap le bloque 3 s (PvpService).
 -- États (noms identiques aux animations du brief 2) : Sleep, Wake, Roar, Run, Catch, Search, Return, BackToSleep.
 -- Modèle : contrat du brief 2 (DinoAnimController) : Model tagué « Dino » (et « Guardian ») dans Workspace.Guardians,
 -- pièce invisible « Root » au sol (PrimaryPart), attributs Species, Scale, State, StateAt, Speed (studs/s, cadence de
@@ -246,10 +247,11 @@ local function nearestPrey(g: Guardian): Player?
 	return best
 end
 
--- Hauteur du sol sous une position (raycast ; sinon la hauteur où il dort)
-local function groundY(g: Guardian, position: Vector3): number
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
+-- Raycast du sol : sans les gardiens, les personnages, les blocs au sol et les pièges (filtre refait une fois par tour)
+local groundParams = RaycastParams.new()
+groundParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local function refreshGroundFilter()
 	local ignore: { Instance } = { container() }
 	for _, player in Players:GetPlayers() do
 		if player.Character then
@@ -262,8 +264,12 @@ local function groundY(g: Guardian, position: Vector3): number
 			table.insert(ignore, found)
 		end
 	end
-	params.FilterDescendantsInstances = ignore
-	local result = Workspace:Raycast(Vector3.new(position.X, g.Home.Position.Y + 40, position.Z), Vector3.new(0, -120, 0), params)
+	groundParams.FilterDescendantsInstances = ignore
+end
+
+-- Hauteur du sol sous une position (raycast ; sinon la hauteur où il dort)
+local function groundY(g: Guardian, position: Vector3): number
+	local result = Workspace:Raycast(Vector3.new(position.X, g.Home.Position.Y + 40, position.Z), Vector3.new(0, -120, 0), groundParams)
 	return if result then result.Position.Y else g.Home.Position.Y
 end
 
@@ -298,6 +304,12 @@ local function face(g: Guardian, position: Vector3)
 	end
 end
 
+local function wake(g: Guardian, player: Player)
+	setTarget(g, player)
+	setState(g, "Wake", GuardiansConfig.WakeTime)
+	Signals.Fire("GuardianWoke", g.Zone, player)
+end
+
 local function roar(g: Guardian, target: Player)
 	setTarget(g, target)
 	setState(g, "Roar", GuardiansConfig.RoarTime)
@@ -309,6 +321,12 @@ local function startRun(g: Guardian, target: Player)
 	setTarget(g, target)
 	setState(g, "Run")
 	alert(target, g.Zone, "Run")
+end
+
+-- Rentre chez lui en marchant (avec une échéance : s'il reste coincé, il réapparaît chez lui)
+local function goHome(g: Guardian)
+	local distance = (flat(g.Home.Position) - flat(g.CFrame.Position)).Magnitude
+	setState(g, "Return", distance / g.ReturnSpeed + GuardiansConfig.ReturnSlack)
 end
 
 local function lose(g: Guardian)
@@ -366,8 +384,14 @@ local function tick(g: Guardian, dt: number, now: number)
 		g.Model:SetAttribute("StateAt", Workspace:GetServerTimeNow())
 	end
 	local state = g.State
-	if state == "Sleep" then
-		return
+	if state == "Sleep" or state == "BackToSleep" then
+		-- (un porteur d'un bloc de sa zone tout près, par exemple celui qui a ramassé un bloc lâché : il se réveille)
+		local other = nearestPrey(g)
+		if other then
+			wake(g, other)
+		elseif state == "BackToSleep" and now >= g.StateEndsAt then
+			setState(g, "Sleep")
+		end
 	elseif state == "Wake" then
 		if now >= g.StateEndsAt then
 			local target = g.Target
@@ -429,7 +453,7 @@ local function tick(g: Guardian, dt: number, now: number)
 			if other then
 				startRun(g, other)
 			else
-				setState(g, "Return")
+				goHome(g)
 			end
 		end
 	elseif state == "Search" then
@@ -437,7 +461,7 @@ local function tick(g: Guardian, dt: number, now: number)
 		if other then
 			startRun(g, other)
 		elseif now >= g.StateEndsAt then
-			setState(g, "Return")
+			goHome(g)
 		end
 	elseif state == "Return" then
 		local other = nearestPrey(g)
@@ -446,15 +470,11 @@ local function tick(g: Guardian, dt: number, now: number)
 			return
 		end
 		local left = moveToward(g, g.Home.Position, g.ReturnSpeed, dt, 0)
-		if left <= 0.5 then
+		if left <= 0.5 or now >= g.StateEndsAt then
 			place(g, g.Home)
 			setState(g, "BackToSleep", GuardiansConfig.BackToSleepTime)
 		elseif PvpService.SpringTrapAt(g.CFrame.Position, g.Size * 0.25, g.Zone) then
 			trap(g, Pvp.Trap.HoldTime)
-		end
-	elseif state == "BackToSleep" then
-		if now >= g.StateEndsAt then
-			setState(g, "Sleep")
 		end
 	end
 end
@@ -470,9 +490,7 @@ local function onGrab(player: Player, block: CarryService.Block)
 	end
 	local state = g.State
 	if state == "Sleep" or state == "BackToSleep" then
-		setTarget(g, player)
-		setState(g, "Wake", GuardiansConfig.WakeTime)
-		Signals.Fire("GuardianWoke", g.Zone, player)
+		wake(g, player)
 	elseif state == "Search" or state == "Return" then
 		roar(g, player)
 	end
@@ -522,9 +540,7 @@ function GuardianService.Wake(zone: string, player: Player): boolean
 	if not g or not enabled then
 		return false
 	end
-	setTarget(g, player)
-	setState(g, "Wake", GuardiansConfig.WakeTime)
-	Signals.Fire("GuardianWoke", g.Zone, player)
+	wake(g, player)
 	return true
 end
 
@@ -597,6 +613,7 @@ function GuardianService.Start()
 		local dt = math.min(now - last, 0.5)
 		last = now
 		if enabled then
+			refreshGroundFilter()
 			for _, g in guardians do
 				tick(g, dt, now)
 			end
