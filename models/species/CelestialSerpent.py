@@ -19,10 +19,10 @@ VOXEL = 0.38
 
 NIGHT = (48, 40, 118)
 GOLD = (255, 196, 58)
-PALE = (255, 226, 140)
 STAR = (236, 240, 255)
 STAR_GOLD = (255, 228, 150)
 FLAME = (255, 236, 170)
+WHISKER = (255, 206, 84)    # moustaches lumineuses (Neon or)
 MOUTH = (196, 70, 116)
 TOOTH = (250, 248, 240)
 PUPIL = (30, 18, 50)
@@ -93,11 +93,11 @@ def build():
     d.limb("Head", (-3.8, 18.0, -19.0), (-3.8, 19.4, -16.4), 0.65, 0.45, GOLD)
     d.limb("Head", (-2.8, 13.8, -22.3), (-3.6, 15.8, -25.0), 0.7, 0.5, GOLD)
     d.limb("Head", (-3.5, 16.5, -20.3), (-4.6, 19.2, -21.6), 0.6, 0.45, GOLD)
-    # moustaches lumineuses (Neon or pâle) : partent du museau, retombent le long de la tête et se relèvent au bout
+    # moustaches lumineuses (Neon or) : partent du museau, retombent le long de la tête et se relèvent au bout
     wh = [(-2.5, 8.0, -32.5), (-3.8, 7.6, -32.6), (-5.0, 6.6, -31.8), (-5.8, 5.4, -30.4), (-6.2, 5.0, -28.4),
           (-6.6, 4.0, -26.4), (-6.8, 3.6, -24.4), (-7.0, 3.0, -22.4), (-7.0, 4.2, -20.8)]
     for (a, b) in zip(wh, wh[1:]):
-        d.limb("Head", a, b, 0.5, 0.5, STAR_GOLD, "Neon")
+        d.limb("Head", a, b, 0.5, 0.5, WHISKER, "Neon")
     # ---------------------------------------------------------------- pattes griffues (FinF / FinB)
     for f1, f2, z0 in (("FinF1L", "FinF2L", -5.5), ("FinB1L", "FinB2L", 6.0)):
         d.limb(f1, (-2.4, 6.0, z0), (-4.0, 3.2, z0 + 0.5), 1.3, 1.1, NIGHT)

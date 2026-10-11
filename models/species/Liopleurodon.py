@@ -223,7 +223,7 @@ def build():
     for b in ("FinB1L", "FinB2L"):
         lift(d, b, lambda x: (x <= -9) + (x <= -13))
     # ---------------------------------------------------------------- oeil ambre sous une arcade
-    socket_eye(d, 11, -20, 2, 2, IRIS, PUPIL, BACK, BACK, ring_top=DARK, pupil_rows=[0])
+    socket_eye(d, 11, -20, 2, 2, IRIS, PUPIL, BACK, BACK, ring_top=BACK, pupil_rows=[0])
     d.mirror()
     mouth_slot(d, MOUTH, (6, 7, 8, 9))
     seal_joint(d, "Head", "Neck1")

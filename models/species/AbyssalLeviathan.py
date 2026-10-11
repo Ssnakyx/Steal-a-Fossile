@@ -31,7 +31,25 @@ PUPIL = (6, 8, 18)
 DEEP = (16, 150, 210)
 STALK = (34, 48, 84)
 EYE_PUPIL = -21                # colonne du milieu de l'oeil : iris cyan dans le blanc lumineux
-CRYSTAL = (20.4, -29.6, 2.7, 4.6)   # cristal du leurre : centre y, z, demi-largeur, demi-hauteur
+CRYSTAL = (21, -30)            # cristal du leurre : centre y, z
+CRYSTAL_R = (0, 1, 2, 2, 2, 2, 2, 1, 0)   # rayon de chaque couche, de la pointe haute à la pointe basse
+HIPS_UP = 4.0                  # pivot du bassin au-dessus de l'axe du corps : le tonneau tourne autour du milieu
+                               # de la silhouette (leurre compris) et le leurre ne plonge pas dans le sol
+
+
+
+def crystal_color(i, x, dz):
+    """Facettes du cristal (couche i depuis la pointe haute, décalage x et dz depuis son axe) : arête avant pâle,
+    faces avant cyan, faces arrière bleu profond. La couleur ne dépend que de la colonne (x, dz), ce qui garde le
+    cristal en peu de pièces."""
+    if i == 0:
+        return PALE
+    if i == len(CRYSTAL_R) - 1 or dz > 0:
+        return DEEP
+    if dz < 0 and x == 0 and CRYSTAL_R[i] == max(CRYSTAL_R):
+        return PALE
+    return NEON
+
 
 PERSONALITY = {
     "tempo": 0.8,           # géant des abysses : ondulations lentes et amples
@@ -181,7 +199,7 @@ def build():
         return catmull(prof, min(max(z, prof[0][0]), prof[-1][0]), j)
 
     # ---------------------------------------------------------------- os
-    d.bone("Hips", (0, axis(2.5), 2.5))
+    d.bone("Hips", (0, axis(2.5) + HIPS_UP, 2.5))
     d.bone("Chest", (0, axis(2.0), 2.0), "Hips")
     d.bone("Neck1", (0, axis(-10.0), -10.0), "Chest")
     d.bone("Neck2", (0, axis(-13.5), -13.5), "Neck1")
@@ -302,18 +320,17 @@ def build():
     neon_rim(d, "Tail6", 0, lambda x, y, z: z >= 29)
     # ---------------------------------------------------------------- leurre : tige segmentée courbée vers l'avant, cristal Neon
     # tige : blocs épais empilés en escalier, qui montent puis partent vers l'avant en s'affinant (3 -> 1 voxel)
-    blocks = [((-1, 19, -21), (0, 21, -19), BODY), ((-1, 22, -22), (0, 23, -20), STALK),
-              ((-1, 24, -24), (0, 25, -22), BODY), ((-1, 25, -27), (0, 26, -25), STALK),
+    blocks = [((-1, 19, -21), (1, 21, -19), BODY), ((-1, 22, -22), (1, 23, -20), STALK),
+              ((-1, 24, -24), (1, 25, -22), BODY), ((0, 25, -27), (0, 26, -25), STALK),
               ((0, 25, -29), (0, 26, -28), BODY)]
     for a, b, col in blocks:
         d.box("Crest", a, b, col)
-    cy, cz = CRYSTAL[0], CRYSTAL[1]
-    hw, hh = CRYSTAL[2], CRYSTAL[3]
-    for x in range(-3, 4):
-        for y in range(10, 30):
-            for z in range(-36, -22):
-                dy = y - cy
-                if abs(x) / hw + abs(z - cz) / hw + abs(dy) / hh <= 1.0:
-                    col = PALE if abs(dy) < 0.5 else (NEON if dy > 0 else DEEP)
-                    d.set("Crest", x, y, z, col, "Neon")
+    # cristal : colonne à pointes (losange de face comme de profil), rayon des couches de haut en bas
+    cy, cz = CRYSTAL
+    for i, r in enumerate(CRYSTAL_R):
+        y = cy + len(CRYSTAL_R) // 2 - i
+        for x in range(-r, r + 1):
+            for z in range(cz - r, cz + r + 1):
+                if abs(x) + abs(z - cz) <= r:
+                    d.set("Crest", x, y, z, crystal_color(i, x, z - cz), "Neon")
     return d

@@ -36,9 +36,23 @@ PERSONALITY = {
     "catch": "toss",
 }
 
-# casque, profil (y, z) : monte en pente depuis le haut du bec, sommet au-dessus de l'oeil, arrondi derrière le crâne
+# casque, profil (y, z) : part du haut du museau, monte en pente, sommet au-dessus de l'oeil, arrondi derrière le
+# crâne ; le bord du bas suit le dessus de la tête (l'oeil reste dessous, sur la peau)
 HELMET = [(16.6, -18.6), (18.2, -19.0), (20.0, -18.7), (21.8, -17.8), (23.2, -16.3), (24.0, -14.5), (24.3, -12.6),
-          (24.0, -10.8), (23.0, -9.3), (21.4, -8.4), (19.6, -8.2), (18.0, -8.9), (17.0, -10.6)]
+          (24.0, -10.8), (23.0, -9.3), (21.4, -8.4), (19.6, -8.2), (19.4, -9.0), (19.4, -15.2), (17.4, -16.2)]
+# bas du demi-disque complet (sous la tête), seulement pour trouver le bord extérieur
+DISC_BOTTOM = [(18.0, -8.9), (14.0, -10.6), (14.0, -17.0)]
+
+
+def inside(poly, a, b):
+    n, j, ok = len(poly), len(poly) - 1, False
+    for i in range(n):
+        ai, bi = poly[i]
+        aj, bj = poly[j]
+        if (bi > b) != (bj > b) and a < (aj - ai) * (b - bi) / (bj - bi + 1e-12) + ai:
+            ok = not ok
+        j = i
+    return ok
 
 
 def build():
@@ -84,27 +98,29 @@ def build():
             d.set("Jaw", 0, 14, z, MOUTH)
     d.set("Head", -1, 16, -20, (98, 60, 36), "Smooth")      # narine
     # ---------------------------------------------------------------- casque en demi-disque, bleu cerclé d'orange
-    d.plate("Crest", 0, -1, HELMET, CREST, thick=2)
-    d.plate("Crest", 0, -2, [(a, b) for a, b in HELMET], CREST)
-    for (x, y, z) in [k for k, v in d.vox.items() if v[0] == "Crest" and k[0] == -2 and k[1] > 19]:
-        d.clear(x, y, z)
-    # arcs concentriques : liseré orange d'un voxel, bande bleue, arc orange, coeur bleu (comme un soleil levant)
-    crest = {(y, z) for (x, y, z), v in d.vox.items() if v[0] == "Crest"}
-    dist = {k: 0 for k in crest if any((k[0] + dy, k[1] + dz) not in crest for dy, dz in ((1, 0), (0, 1), (0, -1)))}
+    # posé SUR le crâne : il ne recouvre jamais la peau de la tête (l'oeil reste sur la peau brune). Bombé : le bord
+    # orange n'a qu'un voxel d'épaisseur, le casque bleu en a 3 juste derrière, et 5 à la base pour l'ancrer au crâne
+    # (de face : arête orange au milieu, flancs bleus).
+    cells = {(y, z) for y in range(16, 26) for z in range(-20, -7) if inside(HELMET, y, z)}
+    # bord extérieur (dessus, avant, arrière) : le bas du casque, posé sur la tête, n'est pas un bord
+    disc = {(y, z) for y in range(14, 26) for z in range(-20, -7) if inside(HELMET + DISC_BOTTOM, y, z)}
+    dist = {k: 0 for k in cells if any((k[0] + dy, k[1] + dz) not in disc for dy, dz in ((1, 0), (0, 1), (0, -1)))}
     front = list(dist)
     while front:
         nxt = []
         for (y, z) in front:
             for dy, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 k = (y + dy, z + dz)
-                if k in crest and k not in dist:
+                if k in cells and k not in dist:
                     dist[k] = dist[(y, z)] + 1
                     nxt.append(k)
         front = nxt
-    for (x, y, z), (bone, col, mat) in list(d.vox.items()):
-        d0 = dist.get((y, z), 9)
-        if bone == "Crest" and y >= 18 and (d0 == 0 or (d0 == 3 and y >= 21)):
-            d.set(bone, x, y, z, CREST_RIM)
+    for (y, z), k in dist.items():
+        for x in (0, -1, -2):
+            if x == -1 and k < 1 or x == -2 and (k < 2 or y > 20):
+                continue
+            if d.vox.get((x, y, z), ("",))[0] != "Head":
+                d.set("Crest", x, y, z, CREST_RIM if k == 0 and y >= 18 else CREST)
     # ---------------------------------------------------------------- pattes avant fines, pattes arrière fortes
     d.limb("ArmL", (-4.2, 8.6, -3.8), (-4.6, 5.4, -2.2), 1.8, 1.5, BODY)
     d.limb("ForearmL", (-4.6, 5.4, -2.2), (-4.6, 2.2, -4.2), 1.4, 1.2, BODY)
@@ -125,7 +141,7 @@ def build():
         d.limb(f"Tail{i + 1}", (0, ty[i], tz[i]), (0, ty[i + 1], tz[i + 1]), tr[i], tr[i + 1], BODY, where=left,
                flat=1.25)
     # ---------------------------------------------------------------- yeux + symétrie + peinture
-    d.eye("Head", "LidL", 17, -14, IRIS, PUPIL, lid_color=CREST, h=2, w=2)
+    d.eye("Head", "LidL", 16, -14, IRIS, PUPIL, lid_color=BODY, h=2, w=2)
     d.remove(lambda x, y, z: y < 0)
     d.mirror()
     belly = {"Hips": 7, "Chest": 6, "Neck1": 9, "Neck2": 12, "Tail1": 8, "Tail2": 8, "Tail3": 8}

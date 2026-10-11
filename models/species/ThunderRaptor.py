@@ -1,9 +1,10 @@
 """Thunder Raptor : Legendary fantastique du Canyon, raptor de tempête plus grand que le Velociraptor.
 
 Voxels de 0,33 stud : environ 16 studs de long et 11 de haut (crête comprise) à la taille Normal. Plumage bleu nuit
-orageux, ventre gris d'orage, zébrures en éclairs Neon cyan qui passent sur le dos et descendent les flancs et la
-queue, grande crête de plumes en éclair sur la tête (os Crest, pointe Neon jaune), plumes d'avant-bras en dents de scie
-à pointes Neon cyan, queue terminée par un éclair de plumes, yeux Neon jaune, griffes en faucille Neon cyan."""
+orageux, ventre gris d'orage, zébrures Neon cyan en zigzag d'éclair (chevrons sur le dos, brisées en éclair sur les
+flancs) des épaules au bout de la queue, grande crête de plumes en éclair sur la tête (os Crest, pointe Neon jaune),
+lame de plumes en dents de scie sous chaque avant-bras (pointe Neon cyan), queue terminée par un éclair de plumes,
+yeux Neon jaune, griffes en faucille Neon cyan."""
 import math
 import os
 import sys
@@ -29,7 +30,7 @@ TOOTH = (250, 250, 255)
 PERSONALITY = {
     "tempo": 1.25,          # vif comme l'éclair
     "weight": 0.9,
-    "stride": 1.1,
+    "stride": 1.0,
     "bob": 1.0,
     "headBob": 1.0,
     "tail": 1.15,
@@ -43,7 +44,7 @@ PERSONALITY = {
 CREST = [
     ".........YY",
     "........YYY",
-    ".......FFF.",
+    ".......YYF.",
     "......FFF..",
     ".....FFF...",
     "....FFFFFFF",
@@ -53,14 +54,9 @@ CREST = [
     ".....FFF...",
     "...FFFFF...",
 ]
-# Plumes d'avant-bras en dents de scie, pointes Neon cyan.
-WING = [
-    "FFFFFFF.",
-    ".FFFFFFF",
-    "..FFFFFF",
-    "...F.F.F",
-    "...C.C.C",
-]
+CREST_X = [(0,)] * 9 + [(-1, 0, 1)] * 2      # épaisseur de chaque rangée (x)
+# Plumes d'avant-bras : lame de plumes en marches sous l'avant-bras, pointe Neon cyan (reste devant le genou).
+WING = ["FFFFF", "FFFFF", ".FFFF", "..FF.", "..C.."]
 # Bout de la queue : éclair de plumes dressé.
 TAIL_BOLT = [
     "......CCC",
@@ -73,18 +69,9 @@ TAIL_BOLT = [
     "...FFF...",
 ]
 # Zébrure : rangée u = distance le long de la peau depuis l'échine, colonnes = z - z0 (vers l'arrière). Vue de
-# dessus elle fait un chevron rabattu vers l'arrière, vue de profil un éclair (trait, barre, trait, pointe).
-ZIG = [
-    "....XX",
-    "...XX.",
-    "..XX..",
-    ".XX...",
-    ".XXXX.",
-    "...XX.",
-    "..XX..",
-    ".XX...",
-    ".X....",
-]
+# dessus elle fait un chevron rabattu vers l'arrière (zigzag le long de l'échine), sur le flanc elle se brise en éclair
+# (barre puis pointe).
+ZIG = ["......XXX", ".....XXX.", "....XXX..", "...XXX...", "..XXXXXX.", ".....XXX.", "....XX...", "....X...."]
 STRIPES = [-4, 2, 8, 14, 19]
 
 
@@ -144,9 +131,9 @@ def build():
     # ---------------------------------------------------------------- bras : plumes en dents de scie
     d.limb("ArmL", (-3.0, 11.5, -6.2), (-3.6, 9.6, -7.6), 1.3, 1.1, NAVY)
     d.limb("ForearmL", (-3.6, 9.6, -7.6), (-3.4, 8.4, -9.8), 1.0, 0.8, NAVY)
-    for p in ((-4, 7, -10), (-3, 7, -10), (-4, 8, -11)):
-        d.set("ForearmL", *p, CLAW, "Smooth")
     sprite("ForearmL", WING, -4, -4, 9, -11, {"F": (FEATHER, "Plastic"), "C": (BOLT, "Neon")}, keep=("Chest",))
+    for p in ((-4, 7, -11), (-3, 7, -10), (-4, 8, -12)):
+        d.set("ForearmL", *p, CLAW, "Smooth")
     # ---------------------------------------------------------------- pattes, griffes en faucille Neon
     d.ellipsoid("ThighL", (-4.0, 9.2, 0.6), (2.4, 3.5, 3.3), NAVY)
     d.limb("ShinL", (-3.8, 6.5, -0.6), (-3.7, 3.2, 2.6), 1.7, 1.3, NAVY)
@@ -200,7 +187,8 @@ def build():
         return (BOLT, "Neon") if (u, z) in cells else None
     d.paint(zebra)
     # ---------------------------------------------------------------- crête et bout de queue (après les zébrures)
-    sprite("Crest", CREST, 0, 0, 33, -16, {"F": (FEATHER, "Plastic"), "Y": (SPARK, "Neon")})
-    sprite("Crest", CREST[-2:], -1, 1, 24, -16, {"F": (FEATHER, "Plastic")})
+    for i, xs in enumerate(CREST_X):
+        for x in xs:
+            sprite("Crest", CREST[i:i + 1], x, x, 33 - i, -16, {"F": (FEATHER, "Plastic"), "Y": (SPARK, "Neon")})
     sprite("Tail5", TAIL_BOLT, 0, 0, 20, 19, {"F": (FEATHER, "Plastic"), "C": (BOLT, "Neon")})
     return d

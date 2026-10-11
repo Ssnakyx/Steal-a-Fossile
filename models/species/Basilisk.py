@@ -3,10 +3,11 @@
 Voxels de 0,25 stud : environ 15 studs de long, 5 de large (capuchon) et 6 de haut (couronne comprise) à la taille
 Normal. Corps long et bas sur quatre pattes courtes écartées, longue queue de serpent ; cou dressé qui porte une tête
 de vipère en flèche (large derrière, museau arrondi), deux grands crocs blancs, yeux vert toxique (Neon) à pupille
-fendue sous des arcades noires. Sur le crâne, une couronne de 5 pointes noires (os Crest) posées sur un cercle d'or, aux
-bouts Neon ; derrière la tête, un immense capuchon de cobra (os Frill, écusson accroché au cou, un peu creusé et penché
-en arrière) : membrane émeraude, anneau noir autour de la tête, taches Neon, bord noir en relief. Écailles
-émeraude-noir annelées de noir, deux rangées de taches Neon sur le dos, ventre jaune d'or. Menaçant mais pas gore."""
+fendue sous des arcades noires. Sur le crâne, une couronne de 5 pointes noires (os Crest) sur un bandeau d'or en
+diadème, aux bouts Neon ; derrière la tête, un immense capuchon de cobra (os Frill, écusson accroché au cou, un peu
+creusé et penché en arrière) : membrane émeraude, anneau noir autour de la tête, taches Neon, bord noir en relief.
+Écailles émeraude-noir annelées de noir, deux rangées de taches Neon sur le dos, ventre jaune d'or. Menaçant mais pas
+gore."""
 import math
 import os
 import sys
@@ -99,28 +100,21 @@ def build():
     for y in (11, 10, 9):
         d.set("Head", -2, y, -21, FANG, "Smooth")
     d.set("Head", -1, 13, -22, BLACK, "Smooth")                      # narine
-    # ---------------------------------------------------------------- couronne de 5 pointes sur un cercle d'or
-    # pointe = socle de 2 x 2, tige d'un voxel penchée vers l'arrière, bout Neon de 2 voxels
-    for x0, y0, z0, h, lean in ((0, 17, -14, 6, 1), (-2, 17, -14, 5, 1), (-4, 16, -14, 4, 1)):
-        xs = (x0 - 1, x0)
-        for y in (y0, y0 + 1):
-            for x in xs:
-                for z in (z0, z0 + 1):
-                    d.set("Crest", x, y, z, BLACK)
-        xt = x0 - (1 if x0 < 0 else 0)
+    # ---------------------------------------------------------------- couronne de 5 pointes sur un bandeau d'or
+    # bandeau en V vu de dessus (il recule vers les côtés, comme un diadème) : de profil on voit trois pointes en
+    # escalier. Pointe = tige noire de 2 voxels d'épaisseur penchée vers l'arrière, bout Neon pointu.
+    for xs, z0, h in (((0, -1), -16, 6), ((-2, -3), -14, 5), ((-4, -5), -12, 4)):
+        for x in xs:
+            for z in range(z0, z0 + (2 if z0 == -12 else 3)):
+                top = d.surface_y(x, z, "Head")
+                for y in range((16 if top is None else top) + 1, 19):
+                    d.set("Crest", x, y, z, GOLD)
+        xt = min(xs) if min(xs) < -1 else 0
         for k in range(h):
-            y = y0 + 2 + k
-            z = z0 + (k * lean) // 3
-            top = k >= h - 2
-            for zz in ((z + 1,) if top else (z, z + 1)):              # tige de 2 voxels, bout pointu
-                d.set("Crest", xt, y, zz, NEON if top else BLACK, "Neon" if top else "Plastic")
-    for z in (-14, -13):
-        for x in range(-4, 1):
-            top = d.surface_y(x, z, "Head")
-            if top is not None:
-                for y in (top + 1, top + 2):
-                    if (x, y, z) not in d.vox or d.vox[(x, y, z)][1] == BLACK:
-                        d.set("Crest", x, y, z, GOLD)
+            z = z0 + k // 3
+            tip = k >= h - 2
+            for zz in ((z + 1,) if k >= h - 3 else (z, z + 1)):          # la tige s'affine vers le bout
+                d.set("Crest", xt, 19 + k, zz, NEON if tip else BLACK, "Neon" if tip else "Plastic")
     # ---------------------------------------------------------------- capuchon de cobra (écusson accroché au cou)
     for y, w in HOOD.items():
         for x in range(-int(w + 0.5), 1):

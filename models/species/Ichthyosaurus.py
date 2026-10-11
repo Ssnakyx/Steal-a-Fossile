@@ -25,6 +25,12 @@ GLINT = (255, 255, 255)
 TOOTH = (252, 250, 242)
 MOUTH = (178, 74, 90)
 
+EYE_Y = 6                      # rangée basse de l'oeil (3 x 3 voxels, paupière de 3 rangées au-dessus)
+EYE_H = 3
+EYE_IN = 1                      # oeil creusé d'un voxel : l'anneau pâle reste au ras de la tête
+BELLY_TOP = -1.2               # ventre blanc jusqu'à l'axe du corps - 1,2 voxel
+BAND_TOP = 0.8                 # bande gris foncé au-dessus du ventre, jusqu'à l'axe + 0,8
+
 PERSONALITY = {
     "tempo": 1.2,           # vif, nage nerveuse de dauphin
     "weight": 0.9,
@@ -63,14 +69,19 @@ def loft(d, pts, bone_at, color, power=2.0):
                         d.set(b, x, y, z, color)
 
 
-def socket_eye(d, ey, ez, h, w, iris, pupil, skin, ring, ring_top=None, pupil_rows=None, bone="Head", lid="LidL"):
+def socket_eye(d, ey, ez, h, w, iris, pupil, skin, ring, ring_top=None, pupil_rows=None, bone="Head", lid="LidL",
+               inset=0):
     """Oeil gauche dans une orbite : oeil et paupière sur un panneau plat (même x, la paupière couvre bien l'oeil en se
     fermant), cadre en relief d'un voxel tout autour (anneau `ring` autour de l'oeil, `ring_top` au-dessus), et creux
-    derrière la paupière (quand elle descend, on voit la peau `skin` et pas les voxels cachés du crâne)."""
+    derrière la paupière (quand elle descend, on voit la peau `skin` et pas les voxels cachés du crâne).
+    inset = 1 : le panneau est creusé d'un voxel dans la tête, le cadre reste au ras de la peau (rien ne dépasse de
+    face)."""
     cells = [(y, z) for y in range(ey, ey + 2 * h) for z in range(ez, ez + w)]
-    xe = min(d.surface_x(y, z) for y, z in cells if d.surface_x(y, z) is not None)
+    xe = min(d.surface_x(y, z) for y, z in cells if d.surface_x(y, z) is not None) + inset
     for y, z in cells:
         xs = d.surface_x(y, z)
+        for x in range(xs if xs is not None else xe, xe):
+            d.clear(x, y, z)
         for x in range(xe, xs if xs is not None else xe + 1):
             d.set(bone, x, y, z, skin)
     d.eye(bone, lid, ey, ez, iris, pupil, lid_color=skin, h=h, w=w, pupil_rows=pupil_rows)
@@ -115,7 +126,7 @@ def build():
     d.bone("Neck1", (0, 6.4, -4.5), "Chest")
     d.bone("Head", (0, 6.6, -8.0), "Neck1")
     d.bone("Jaw", (0, 4.6, -9.0), "Head")
-    d.bone_pair("Lid", (-2.8, 9.0, -10.5), "Head")
+    d.bone_pair("Lid", (-3.0, EYE_Y + EYE_H + 0.5, -11.0), "Head")
     d.bone_pair("FinF1", (-3.0, 2.6, -2.8), "Chest")
     d.bone_pair("FinF2", (-6.8, 2.6, -1.8), "FinF1L")
     d.bone_pair("FinB1", (-2.2, 3.0, 7.4), "Hips")
@@ -145,9 +156,9 @@ def build():
     prof = [(-23.0, 4.6, 0.8, 0.7, 0.6),
             (-20.0, 4.8, 1.4, 1.3, 1.0),
             (-16.5, 5.0, 1.9, 1.6, 1.5),
-            (-13.5, 5.8, 3.5, 2.4, 2.6),
-            (-11.0, 6.4, 4.4, 3.0, 3.3),
-            (-8.0, 6.4, 4.8, 3.6, 3.7),
+            (-13.5, 6.0, 4.1, 2.6, 2.6),
+            (-11.0, 6.5, 5.0, 3.1, 3.3),
+            (-8.0, 6.4, 5.0, 3.6, 3.7),
             (-4.5, 6.3, 5.2, 4.3, 4.1),
             (-1.0, 6.2, 5.4, 4.7, 4.3),
             (3.0, 6.3, 5.0, 4.4, 3.9),
@@ -172,11 +183,11 @@ def build():
     # ---------------------------------------------------------------- queue en croissant (plaque verticale)
     d.plate("Tail5", 0, 0, [(7.8, 17.6), (10.6, 20.0), (13.4, 23.2), (13.0, 24.2), (10.2, 23.0), (7.6, 22.0),
                             (6.4, 22.0), (3.6, 23.0), (0.8, 24.2), (0.4, 23.2), (3.2, 20.0), (6.0, 17.6)], FIN)
-    # ---------------------------------------------------------------- grand oeil cerclé (anneau sclérotique)
-    # grand oeil sombre dans un anneau osseux pâle en relief (anneau sclérotique)
-    socket_eye(d, 7, -12, 2, 3, EYE, GLINT, BACK, RING, pupil_rows=[1])
+    # ---------------------------------------------------------------- très grand oeil cerclé (anneau sclérotique)
+    # oeil sombre de 3 x 3 voxels dans un anneau osseux pâle en relief, reflet blanc en haut à l'avant
+    socket_eye(d, EYE_Y, -12, EYE_H, 3, EYE, GLINT, BACK, RING, pupil_rows=[EYE_H - 1], inset=EYE_IN)
     # petites dents le long du museau
-    for z in range(-21, -12, 2):
+    for z in range(-21, -14, 2):
         x = d.surface_x(5, z, "Head")
         if x is not None:
             d.set("Head", x, 5, z, TOOTH, "Smooth")
@@ -191,13 +202,21 @@ def build():
             return None
         if bone == "Jaw":
             return BELLY
+        if bone == "Head":
+            return None                                 # museau : dessus bleu, mâchoire blanche, la ligne de la bouche reste nette
         axis = 6.2 + 0.04 * max(0, z)
-        if y <= axis - 2.2:
+        if y <= axis + BELLY_TOP:
             return BELLY
-        if z >= -13 and z <= 18 and axis - 1.2 <= y <= axis - 0.2 and bone != "Head" or (bone == "Head" and y == 5 and z >= -13):
+        if y <= axis + BAND_TOP and z <= 18:
             return BAND
         return None
     d.paint(paint)
     # ---------------------------------------------------------------- aileron dorsal (plaque verticale, au milieu du dos)
     d.plate("Hips", 0, 0, [(10.0, -1.6), (13.0, 0.8), (16.6, 4.0), (16.4, 5.0), (14.0, 4.8), (11.4, 6.6), (10.0, 6.6)], FIN)
+    # ---------------------------------------------------------------- bouts des nageoires gris foncé, comme la bande
+    tips = {"FinF2L": lambda x, y, z: x <= -9, "FinF2R": lambda x, y, z: x >= 9,
+            "FinB2L": lambda x, y, z: x <= -5, "FinB2R": lambda x, y, z: x >= 5,
+            "Tail5": lambda x, y, z: y >= 11 or y <= 2, "Hips": lambda x, y, z: y >= 15}
+    d.paint(lambda x, y, z, bone, c: BAND if c == FIN and tips[bone](x, y, z) else None, surface_only=False,
+            bones=list(tips))
     return d
