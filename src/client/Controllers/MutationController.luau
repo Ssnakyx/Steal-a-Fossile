@@ -7,8 +7,9 @@
 --   * éclats posés sur le corps qui s'allument et s'éteignent : cristal, nacre, rubis, étoiles de la galaxie ;
 --   * Rainbow : éclats de toutes les couleurs et arc-en-ciel qui défile en vague sur tout le corps.
 -- Pour tout modèle tagué « Dino » (DinoBuilder.Tag) qui a un attribut Mutation connu (Config.Economy.Mutations), dans
--- workspace (rien dans les ViewportFrame). Coupé au loin et derrière la caméra ; budget de cubes borné. Les cubes vivent
--- dans workspace.MutationFx, créé chez le client (jamais répliqué), sans collision ni requête.
+-- workspace (rien dans les ViewportFrame). Coupé au loin et derrière la caméra ; budget de cubes borné, les dinos les plus
+-- proches servis d'abord, vague arc-en-ciel sur les MaxWaves plus proches seulement. Les cubes vivent dans
+-- workspace.MutationFx, créé chez le client (jamais répliqué), sans collision ni requête, déplacés en un seul BulkMoveTo.
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -62,7 +63,8 @@ MutationController.Range = 150 -- studs (x taille du dino) : plus loin, aucun cu
 MutationController.WaveRange = 110 -- studs (x taille du dino) : vague arc-en-ciel
 MutationController.WaveRate = 12 -- mises à jour de la vague par seconde
 MutationController.WaveSpeed = 0.35 -- tours du cercle chromatique par seconde
-MutationController.MaxCubes = 260 -- cubes en même temps, tous dinos confondus
+MutationController.MaxWaves = 3 -- dinos Rainbow animés en même temps (les plus proches)
+MutationController.MaxCubes = 260 -- cubes en même temps, tous dinos confondus (les plus proches d'abord)
 MutationController.MaxPerDino = 28
 
 type Cube = {
@@ -94,6 +96,8 @@ type Tracked = {
 	Length: number, -- plus grande dimension du dino (studs, à son échelle)
 	Cubes: { Cube },
 	Conns: { RBXScriptConnection },
+	Dist: number, -- distance à la caméra (image en cours)
+	Pivot: CFrame,
 }
 
 local tracked: { [Model]: Tracked } = {}
@@ -103,6 +107,10 @@ local alive = 0
 local clock = 0
 local folder: Folder? = nil
 local rng = Random.new()
+-- (réutilisés à chaque image : cubes déplacés en un seul BulkMoveTo, dinos visibles triés par distance)
+local moveParts: { BasePart } = {}
+local moveFrames: { CFrame } = {}
+local near: { Tracked } = {}
 
 local function fxFolder(): Folder
 	local current = folder
@@ -146,10 +154,16 @@ end
 -- Briques du dino (pièces avec l'attribut Bone, construites par DinoBuilder ici ou sur le modèle)
 local function scan(t: Tracked)
 	local bricks, paint, shade = {}, {}, {}
+	local species = t.Model:GetAttribute("Species")
+	local data = if type(species) == "string" then DinoBuilder.Get(species) else nil
 	for _, inst in t.Model:GetDescendants() do
 		if inst:IsA("BasePart") and inst:GetAttribute("Bone") ~= nil then
 			table.insert(bricks, inst)
-			if inst.Material ~= Enum.Material.SmoothPlastic and inst.Material ~= Enum.Material.Neon then
+			-- détails (yeux, dents, griffes : boîtes « Smooth » du modèle) jamais repeints, même dorés en Foil (Golden)
+			local index = inst:GetAttribute("Box")
+			local box = if data and type(index) == "number" then data.Boxes[index] else nil
+			local detail = if box then box.Material == "Smooth" else inst.Material == Enum.Material.SmoothPlastic
+			if not detail and inst.Material ~= Enum.Material.Neon then
 				table.insert(paint, inst)
 				local known = t.Shade[inst]
 				if known then
@@ -166,8 +180,6 @@ local function scan(t: Tracked)
 	t.Scanned = clock
 	local scale = t.Model:GetAttribute("Scale")
 	local s = if type(scale) == "number" and scale > 0 and scale < 100 then scale else 1
-	local species = t.Model:GetAttribute("Species")
-	local data = if type(species) == "string" then DinoBuilder.Get(species) else nil
 	t.Length = if data then math.max(data.Size.X, data.Size.Y, data.Size.Z) * s else 10 * s
 end
 
@@ -211,6 +223,8 @@ local function track(model: Model)
 		Length = 10,
 		Cubes = {},
 		Conns = {},
+		Dist = math.huge,
+		Pivot = CFrame.identity,
 	}
 	tracked[model] = t
 	-- (briques faites ou défaites : DinoAnimController construit et retire tout un modèle de briques d'un coup)
@@ -221,8 +235,9 @@ local function track(model: Model)
 	table.insert(t.Conns, model.DescendantRemoving:Connect(dirty))
 end
 
+-- (appelé en différé : le modèle a pu quitter le jeu entre-temps, déjà vu par unwatch)
 local function watch(inst: Instance)
-	if not (inst:IsA("Model") and inst:HasTag(DinoBuilder.Tag)) then
+	if not (inst:IsA("Model") and inst:HasTag(DinoBuilder.Tag) and inst:IsDescendantOf(game)) then
 		return
 	end
 	local model = inst :: Model
@@ -269,41 +284,6 @@ local function onSurface(part: BasePart): CFrame
 	return CFrame.new(x, y, z)
 end
 
-local function spawnCube(t: Tracked, scale: number)
-	local fx = t.Effect
-	local bricks = t.Bricks
-	local brick = bricks[rng:NextInteger(1, #bricks)]
-	if not brick.Parent then
-		t.Dirty = true -- (briques défaites depuis le dernier inventaire)
-		return
-	end
-	local part = takePart()
-	local size = math.clamp(fx.Size * scale, 0.18, 1.6)
-	part.Size = Vector3.new(size, size, size)
-	part.Material = if fx.Neon then Enum.Material.Neon else Enum.Material.SmoothPlastic
-	part.Color = if fx.Rainbow then Color3.fromHSV(rng:NextNumber(), 0.8, 1) else pick(fx.Colors)
-	part.Transparency = 0
-	local offset = onSurface(brick)
-	local cube: Cube = {
-		Part = part,
-		Kind = fx.Kind,
-		Age = 0,
-		Life = fx.Life * (0.8 + 0.4 * rng:NextNumber()),
-		Size = size,
-		Start = (brick.CFrame * offset).Position,
-		Speed = fx.Speed * math.sqrt(scale) * (0.8 + 0.4 * rng:NextNumber()),
-		Drift = fx.Drift * math.sqrt(scale),
-		Phase = rng:NextNumber() * math.pi * 2,
-		Spin = fx.Spin,
-		Anchor = if fx.Kind == "Glint" then brick else nil,
-		Offset = offset,
-	}
-	part.CFrame = CFrame.new(cube.Start)
-	part.Parent = fxFolder()
-	alive += 1
-	table.insert(t.Cubes, cube)
-end
-
 -- Avance un cube ; false quand il a fini (rendu au stock)
 local function stepCube(cube: Cube, dt: number): boolean
 	cube.Age += dt
@@ -327,8 +307,45 @@ local function stepCube(cube: Cube, dt: number): boolean
 	size = math.max(size, 0.05)
 	part.Size = Vector3.new(size, size, size)
 	local turn = if cube.Spin then cube.Age * 2.4 + cube.Phase else 0
-	part.CFrame = CFrame.new(position) * CFrame.Angles(math.rad(45) + turn, math.rad(45) + turn * 0.7, 0)
+	-- (placé avec les autres cubes en un seul BulkMoveTo, en fin d'image)
+	table.insert(moveParts, part)
+	table.insert(moveFrames, CFrame.new(position) * CFrame.Angles(math.rad(45) + turn, math.rad(45) + turn * 0.7, 0))
 	return true
+end
+
+local function spawnCube(t: Tracked, scale: number)
+	local fx = t.Effect
+	local bricks = t.Bricks
+	local brick = bricks[rng:NextInteger(1, #bricks)]
+	if not brick.Parent then
+		t.Dirty = true -- (briques défaites depuis le dernier inventaire)
+		return
+	end
+	local part = takePart()
+	local size = math.clamp(fx.Size * scale, 0.18, 1.6)
+	part.Material = if fx.Neon then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	part.Color = if fx.Rainbow then Color3.fromHSV(rng:NextNumber(), 0.8, 1) else pick(fx.Colors)
+	part.Transparency = 0
+	local offset = onSurface(brick)
+	local cube: Cube = {
+		Part = part,
+		Kind = fx.Kind,
+		Age = 0,
+		Life = fx.Life * (0.8 + 0.4 * rng:NextNumber()),
+		Size = size,
+		Start = (brick.CFrame * offset).Position,
+		Speed = fx.Speed * math.sqrt(scale) * (0.8 + 0.4 * rng:NextNumber()),
+		Drift = fx.Drift * math.sqrt(scale),
+		Phase = rng:NextNumber() * math.pi * 2,
+		Spin = fx.Spin,
+		Anchor = if fx.Kind == "Glint" then brick else nil,
+		Offset = offset,
+	}
+	part.CFrame = CFrame.new(cube.Start)
+	part.Parent = fxFolder()
+	alive += 1
+	table.insert(t.Cubes, cube)
+	stepCube(cube, 0) -- (taille et place de départ : un éclat naît tout petit)
 end
 
 -- Vague arc-en-ciel : la teinte de chaque brique dépend de sa place le long du dino et du temps
@@ -347,6 +364,7 @@ local function update(dt: number)
 	local camera = Workspace.CurrentCamera
 	local camPos = if camera then camera.CFrame.Position else nil
 	local camLook = if camera then camera.CFrame.LookVector else nil
+	table.clear(near)
 	for model, t in tracked do
 		-- cubes en cours (même loin ou hors de vue : ils finissent leur vie)
 		local i = 1
@@ -367,17 +385,25 @@ local function update(dt: number)
 			continue
 		end
 		local pivot = model:GetPivot()
-		local center = pivot.Position
 		local length = t.Length
-		local sizeFactor = math.clamp(length / 10, 0.5, 3)
-		local toDino = center - camPos
+		local toDino = pivot.Position - camPos
 		local dist = toDino.Magnitude
 		-- derrière la caméra (au-delà de sa propre taille) ou trop loin : rien de neuf
 		local behind = dist > length and toDino:Dot(camLook) < 0
-		if behind or dist > MutationController.Range * math.max(1, sizeFactor) then
+		if behind or dist > MutationController.Range * math.max(1, math.clamp(length / 10, 0.5, 3)) then
 			continue
 		end
+		t.Dist, t.Pivot = dist, pivot
+		table.insert(near, t)
+	end
+	-- les plus proches d'abord : ils prennent les cubes libres et la vague arc-en-ciel
+	table.sort(near, function(a: Tracked, b: Tracked): boolean
+		return a.Dist < b.Dist
+	end)
+	local waves = 0
+	for _, t in near do
 		local fx = t.Effect
+		local sizeFactor = math.clamp(t.Length / 10, 0.5, 3)
 		t.Acc += dt * fx.Rate * sizeFactor
 		while t.Acc >= 1 do
 			t.Acc -= 1
@@ -385,13 +411,19 @@ local function update(dt: number)
 				spawnCube(t, sizeFactor)
 			end
 		end
-		if fx.Rainbow and dist <= MutationController.WaveRange * math.max(1, sizeFactor) then
+		if fx.Rainbow and waves < MutationController.MaxWaves and t.Dist <= MutationController.WaveRange * math.max(1, sizeFactor) then
+			waves += 1
 			t.WaveAcc += dt * MutationController.WaveRate
 			if t.WaveAcc >= 1 then
 				t.WaveAcc %= 1
-				wave(t, center, pivot.LookVector, math.max(length, 4))
+				wave(t, t.Pivot.Position, t.Pivot.LookVector, math.max(t.Length, 4))
 			end
 		end
+	end
+	if #moveParts > 0 then
+		Workspace:BulkMoveTo(moveParts, moveFrames, Enum.BulkMoveMode.FireCFrameChanged)
+		table.clear(moveParts)
+		table.clear(moveFrames)
 	end
 end
 

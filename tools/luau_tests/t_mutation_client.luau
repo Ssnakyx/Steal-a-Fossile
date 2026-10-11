@@ -295,4 +295,115 @@ end
 env.advance(0.1)
 T.eq(MutationController.Alive(), 0, "foule détruite : aucun cube")
 
+T.section("budget plein : les plus proches d'abord")
+-- (débit énorme : chaque dino voudrait un cube à chaque image, le budget de 6 décide seul)
+local galaxyRate, maxCubes = MutationController.Effects.Galaxy.Rate, MutationController.MaxCubes
+MutationController.Effects.Galaxy.Rate = 400
+MutationController.MaxCubes = 6
+local farDino = proxy("Velociraptor", "Galaxy", Vector3.new(0, 0, -110))
+local nearDino = proxy("Velociraptor", "Galaxy", Vector3.new(0, 0, -15))
+local nearCount, farCount = 0, 0
+for _ = 1, 20 do
+	env.advance(0.05)
+	for _, cube in fx() do
+		if (cube.Position - nearDino:GetPivot().Position).Magnitude < 12 then
+			nearCount += 1
+		elseif (cube.Position - farDino:GetPivot().Position).Magnitude < 12 then
+			farCount += 1
+		end
+	end
+	T.check(MutationController.Alive() <= 6, "budget de 6 respecté")
+end
+T.check(nearCount > 0, "le dino proche a ses cubes (" .. nearCount .. ")")
+T.eq(farCount, 0, "le dino lointain attend qu'il reste des cubes")
+MutationController.Effects.Galaxy.Rate = galaxyRate
+MutationController.MaxCubes = maxCubes
+farDino:Destroy()
+nearDino:Destroy()
+env.advance(0.1)
+
+T.section("vague arc-en-ciel : les plus proches seulement")
+local rainbows = {}
+for index = 1, MutationController.MaxWaves + 1 do
+	table.insert(rainbows, proxy("Compy", "Rainbow", Vector3.new(index * 4, 0, -10 - index * 6)))
+end
+env.advance(0.1)
+local start: { [any]: any } = {}
+for _, model in rainbows do
+	for _, part in painted(model) do
+		start[part] = part.Color
+	end
+end
+env.advance(0.6)
+for index, model in rainbows do
+	local parts, moved = painted(model), 0
+	for _, part in parts do
+		if part.Color ~= start[part] then
+			moved += 1
+		end
+	end
+	if index <= MutationController.MaxWaves then
+		T.check(moved > #parts * 0.8, "Rainbow n°" .. index .. " (proche) : la vague défile (" .. moved .. "/" .. #parts .. ")")
+	else
+		T.eq(moved, 0, "Rainbow n°" .. index .. " (au-delà de MaxWaves) : couleurs posées, pas de vague")
+	end
+end
+for _, model in rainbows do
+	model:Destroy()
+end
+env.advance(0.1)
+
+T.section("Rainbow doré : dents et griffes gardent leur couleur")
+local golden = DinoBuilder.CreateProxy("Velociraptor", { Mutation = "Rainbow", Level = "Golden" })
+golden:PivotTo(CFrame.new(0, 0, -12))
+golden.Parent = workspace
+env.advance(0.2)
+local boxes = DinoBuilder.Get("Velociraptor").Boxes
+local details, body = {}, {}
+for _, part in golden:GetDescendants() do
+	local index = part:GetAttribute("Box")
+	if part:IsA("BasePart") and type(index) == "number" then
+		if boxes[index].Material == "Smooth" then
+			details[part] = part.Color
+		elseif part.Material ~= Enum.Material.Neon then
+			body[part] = part.Color
+		end
+	end
+end
+local foil = 0
+for part in details do
+	if part.Material == Enum.Material.Foil then
+		foil += 1
+	end
+end
+T.check(foil > 0, "Golden : des détails clairs dorés en Foil (" .. foil .. ")")
+env.advance(0.6)
+local detailMoved, bodyMoved, bodyCount = 0, 0, 0
+for part, color in details do
+	if part.Color ~= color then
+		detailMoved += 1
+	end
+end
+for part, color in body do
+	bodyCount += 1
+	if part.Color ~= color then
+		bodyMoved += 1
+	end
+end
+T.eq(detailMoved, 0, "Golden Rainbow : yeux, dents et griffes jamais repeints")
+T.check(bodyMoved > bodyCount * 0.8, "Golden Rainbow : le corps défile (" .. bodyMoved .. "/" .. bodyCount .. ")")
+golden:Destroy()
+env.advance(0.1)
+
+T.section("modèle parti avant d'être suivi")
+-- (arrivé puis reparti dans la même image, après un à-coup du réseau : le suivi, différé, arrive après le départ ;
+-- le modèle garde son tag hors du jeu)
+local gone = proxy("Compy", "Lava", Vector3.new(0, 0, -12))
+gone.Parent = nil
+env.advance(0.5)
+T.check(gone:HasTag(DinoBuilder.Tag), "toujours tagué hors du jeu")
+T.eq(MutationController.Tracked(gone), nil, "modèle parti avant le suivi : jamais suivi")
+T.eq(MutationController.Alive(), 0, "modèle parti avant le suivi : aucun cube")
+gone:Destroy()
+
 T.done("mutation_client")
