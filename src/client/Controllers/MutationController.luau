@@ -1,7 +1,7 @@
 --!strict
 -- MutationController : effets animés des mutations autour des dinos, chez le client (docs/MUTATIONS.md).
 -- Les couleurs des briques viennent de DinoBuilder (mutation peinte à la construction) ; ici, ce qui bouge, en petits
--- cubes nets comme les effets de rareté de DinoAnimController (qui ne s'occupe pas des mutations) :
+-- cubes nets, à côté de l'aura de rareté (module Aura, posée par DinoAnimController, qui ne s'occupe pas des mutations) :
 --   * chute : gouttes d'ambre, pétales (Bloom), flocons (Frost) ;
 --   * montée : bulles toxiques ou des abysses, braises de lave, éclats violets d'obsidienne ;
 --   * éclats posés sur le corps qui s'allument et s'éteignent : cristal, nacre, rubis, étoiles de la galaxie ;
@@ -227,9 +227,12 @@ local function track(model: Model)
 		Pivot = CFrame.identity,
 	}
 	tracked[model] = t
-	-- (briques faites ou défaites : DinoAnimController construit et retire tout un modèle de briques d'un coup)
-	local function dirty()
-		t.Dirty = true
+	-- (briques faites ou défaites : DinoAnimController construit et retire tout un modèle de briques d'un coup ; les
+	-- pièces de l'aura, rangées dans le modèle et ajoutées ou retirées selon la distance, ne comptent pas)
+	local function dirty(inst: Instance)
+		if inst:IsA("BasePart") and inst:GetAttribute("Bone") ~= nil then
+			t.Dirty = true
+		end
 	end
 	table.insert(t.Conns, model.DescendantAdded:Connect(dirty))
 	table.insert(t.Conns, model.DescendantRemoving:Connect(dirty))
