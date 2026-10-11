@@ -3,8 +3,9 @@
 Modélisé ailes déployées (plaques horizontales), voxels de 0,381 stud : environ 24 studs d'envergure à la taille
 Normal. Grandes ailes de plumes en dégradé rouge > orange > jaune, bord de fuite en plumes dentelées aux bouts
 incandescents (Neon), rémiges écartées comme des doigts au bout des ailes ; longues plumes de queue en flammes (Neon
-orange et jaune) ; crête de trois plumes-flammes (Neon) ; bec doré crochu (Metal) ; corps cramoisi à poitrail de braise.
-Au parc il se tient replié sur ses pattes et ses poignets (les animations replient les ailes)."""
+orange et jaune) ; crête de cinq plumes-flammes (Neon) qui s'ouvre en couronne ; bec doré crochu (Metal) ; yeux de
+braise ; corps cramoisi à poitrail de braise. Au sol il se tient sur ses pattes dorées, ailes repliées couchées sur les
+flancs (les animations replient les ailes), et les déploie en grand pour rugir, se réjouir et s'envoler."""
 import os
 import sys
 
@@ -54,11 +55,11 @@ def build():
     d.bone("Jaw", (0, 16.6, -9.4), "Head")
     d.bone("Crest", (0, 20.5, -7.0), "Head")
     d.bone_pair("Lid", (-2.2, 20, -9), "Head")
-    WZ = float(os.environ.get("PH_WZ", "0"))
-    HZ = float(os.environ.get("PH_HZ", "7"))
-    d.bone_pair("Wing1", (-3.0, 12.5, -1.0 + WZ), "Chest")
-    d.bone_pair("Wing2", (-9.0, 12.5, -1.0 + WZ), "Wing1L")
-    d.bone_pair("Wing3", (-18.0, 12.5, -1.5 + WZ), "Wing2L")
+    # pivots des ailes en arrière du bord d'attaque (axes inchangés, donc vol identique) : repliées, les ailes se
+    # couchent plus bas et plus en arrière sur le flanc, la tête et le poitrail restent dégagés
+    d.bone_pair("Wing1", (-3.0, 12.5, 2.0), "Chest")
+    d.bone_pair("Wing2", (-9.0, 12.5, 2.0), "Wing1L")
+    d.bone_pair("Wing3", (-18.0, 12.5, 1.5), "Wing2L")
     d.bone_pair("Thigh", (-2.0, 9.5, 3.5), "Hips")
     d.bone_pair("Shin", (-2.2, 6.2, 1.4), "ThighL")
     d.bone_pair("Foot", (-2.2, 2.6, 3.4), "ShinL")
@@ -77,12 +78,17 @@ def build():
     d.limb("Head", (0, 17.2, -13.4), (0, 16.2, -13.8), 0.6, 0.4, GOLD, "Metal", where=left)
     d.limb("Jaw", (0, 16.6, -9.6), (0, 16.4, -12.4), 1.0, 0.5, GOLD, "Metal", where=lambda x, y, z: x <= 0 and y <= 16)
     d.eye("Head", "LidL", 19, -9, IRIS, PUPIL, lid_color=CRIMSON, h=1, w=2)
-    # ---------------------------------------------------------------- crête de trois plumes-flammes
+    # ---------------------------------------------------------------- crête : trois plumes-flammes dans l'axe
     for base, tip, rb in (((0, 20.5, -8.5), (0, 28.0, -6.0), 1.5), ((0, 21.0, -6.5), (0, 27.0, -2.0), 1.4),
                           ((0, 20.5, -4.5), (0, 24.5, 0.5), 1.2)):
         mid = tuple(base[i] + (tip[i] - base[i]) * 0.45 for i in range(3))
         d.limb("Crest", base, mid, rb, rb * 0.75, FLAME, "Neon", flat=4)
         d.limb("Crest", mid, tip, rb * 0.75, 0.3, FLAME_TIP, "Neon", flat=4)
+    # deux flammes latérales, penchées vers l'extérieur : de face, la crête s'ouvre en couronne de feu
+    lb, lt = (-1.0, 20.5, -6.5), (-4.0, 25.5, -4.5)
+    lm = tuple(lb[i] + (lt[i] - lb[i]) * 0.45 for i in range(3))
+    d.limb("Crest", lb, lm, 1.0, 0.8, FLAME, "Neon", where=left)
+    d.limb("Crest", lm, lt, 0.8, 0.3, FLAME_TIP, "Neon", where=left)
     # ---------------------------------------------------------------- ailes (gauche) : plumes posées une à une
     # couvertures (bande avant) : plaque d'un voxel, de l'épaule au bout de l'aile
     cov = [(-2.5, -1.5), (-9, -1.5), (-18, -2.0), (-26, -0.5), (-31, 1.5), (-31, 3.5), (-26, 4.5), (-18, 5.0),
@@ -90,7 +96,7 @@ def build():
     d.plate("Wing1L", 1, Y_W, cov, CRIMSON)
     # rémiges secondaires (vers l'arrière) : plumes de 2 voxels, une longue une courte (bord dentelé en arc)
     for x, z1 in zip(range(-4, -18, -2), (13, 15, 13, 12, 10, 11, 9)):
-        d.box("Wing1L", (x - 1, Y_W, 5), (x, Y_W, z1), RED)
+        d.box("Wing1L", (x - 1, Y_W, 3), (x, Y_W, z1), RED)
     # main et rémiges primaires écartées comme des doigts au bout de l'aile
     d.box("Wing1L", (-21, Y_W, 4), (-18, Y_W, 13), RED)
     for z, x1 in ((4, -31), (7, -30), (10, -28), (13, -25)):
@@ -113,14 +119,15 @@ def build():
             d.set(bone, x, y, z, tips[bone], "Neon")
     # les rémiges du bras suivent l'avant-bras : ailes repliées, elles se couchent le long du flanc vers l'arrière
     for (x, y, z), (bone, col, mat) in list(d.vox.items()):
-        if bone == "Wing1L" and z >= int(os.environ.get("PH_RZ", "6")):
+        if bone == "Wing1L" and z >= 3:
             d.set("Wing2L", x, y, z, col, mat)
     # bord d'attaque : bras, avant-bras, main (plumes de couverture)
     d.limb("Wing1L", (-3.0, 12.5, -1.0), (-9.0, 12.5, -1.0), 1.2, 1.0, CRIMSON)
     d.limb("Wing2L", (-9.0, 12.5, -1.0), (-18.0, 12.5, -1.5), 1.0, 0.8, RED)
     d.limb("Wing3L", (-18.0, 12.5, -1.5), (-31.0, 12.5, 2.0), 0.7, 0.4, ORANGE)
-    d.point("HandL", "Wing2L", (-18.0, 11.5, HZ))         # poignet (au sol quand il marche ailes repliées)
-    d.point("WingTipL", "Wing3L", (-31.0, 12.5, 2.0 + WZ))
+    # point d'appui de l'aile repliée (posé au sol par la famille) : en arrière du poignet, plumes au-dessus du sol
+    d.point("HandL", "Wing2L", (-18.0, 11.5, 10.0))
+    d.point("WingTipL", "Wing3L", (-31.0, 12.5, 5.0))
     # ---------------------------------------------------------------- pattes : cuisses emplumées, tarses dorés
     d.limb("ThighL", (-2.0, 9.5, 3.5), (-2.2, 6.2, 1.4), 1.5, 1.1, CRIMSON)
     d.limb("ShinL", (-2.2, 6.2, 1.4), (-2.2, 2.6, 3.4), 0.7, 0.6, GOLD, "Metal")
@@ -139,7 +146,8 @@ def build():
                             (10.5, 30.0), (10.0, 25.0)], FLAME_TIP, "Neon")
     for bone, x0, x1, z0, z1, col in (
             ("Tail2", -3, -1, 12, 15, FLAME), ("Tail3", -5, -2, 16, 20, FLAME), ("Tail4", -6, -3, 21, 23, FLAME),
-            ("Tail4", -6, -4, 24, 26, FLAME_TIP), ("Tail4", -6, -5, 27, 28, FLAME_TIP), ("Tail4", -6, -6, 29, 29, FLAME_TIP),
+            ("Tail4", -6, -4, 24, 26, FLAME_TIP), ("Tail4", -6, -5, 27, 28, FLAME_TIP),
+            ("Tail4", -6, -6, 29, 29, FLAME_TIP),
             ("Tail2", -5, -4, 12, 14, FLAME), ("Tail3", -8, -6, 15, 17, FLAME), ("Tail3", -9, -8, 18, 19, FLAME_TIP),
             ("Tail3", -9, -9, 20, 20, FLAME_TIP)):
         d.box(bone, (x0, 11, z0), (x1, 11, z1), col, "Neon")
@@ -147,4 +155,6 @@ def build():
     d.remove(lambda x, y, z: y < 0)
     d.mirror()
     d.paint(lambda x, y, z, bone, c: BREAST if c == CRIMSON and bone in ("Chest", "Neck1") and y <= 10 else None)
+    # yeux de braise : l'iris doré brille
+    d.paint(lambda x, y, z, bone, c: (IRIS, "Neon") if c == IRIS and bone == "Head" else None)
     return d

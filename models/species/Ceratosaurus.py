@@ -127,7 +127,7 @@ def build():
     # deux bandes sur le haut de chaque cuisse (la peinture suit celle du corps)
     d.paint(lambda x, y, z, bone, c: BAND if bone in ("ThighL", "ThighR") and c == BODY and y >= 10 and (z + 2) % 4 < 2
             else None)
-    # ---------------------------------------------------------------- plaques osseuses au milieu du dos (après la peinture)
+    # ---------------------------------------------------------------- plaques osseuses du dos (après la peinture)
     for zc in range(-11, 26, 3):
         bone = seg_of(zc + 0.5)
         h = 2 if -5 <= zc <= 14 else 1

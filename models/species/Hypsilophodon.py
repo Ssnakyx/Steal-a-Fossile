@@ -12,9 +12,9 @@ from vox import Dino  # noqa: E402
 FAMILY = "Biped"
 VOXEL = 0.143
 
-BODY = (104, 178, 66)
-DARK = (60, 122, 52)
-LID = (80, 148, 58)
+BODY = (74, 158, 58)
+DARK = (40, 104, 48)
+LID = (56, 128, 52)
 STRIPE = (250, 240, 200)
 BELLY = (214, 230, 150)
 BEAK = (178, 150, 94)
@@ -82,10 +82,11 @@ def build():
     # ---------------------------------------------------------------- tête ronde, grands yeux, petit bec corné
     d.ellipsoid("Head", (0, 20.6, -10.6), (3.0, 3.0, 3.0), BODY, where=left, power=2.2)
     d.ellipsoid("Head", (0, 19.9, -13.4), (2.0, 1.8, 2.0), BODY, where=lambda x, y, z: x <= 0 and y >= 19, power=2.3)
-    # bec corné : pointe étroite au bout du museau (haut) et de la mâchoire (bas)
-    d.limb("Head", (0, 19.8, -14.6), (0, 19.4, -15.9), 1.3, 0.7, BEAK, where=lambda x, y, z: x <= 0 and y >= 19)
+    # bec corné en coin : bloc au bout du museau, pointe un peu plus bas devant, bec du bas sous lui
+    d.box("Head", (-1, 19, -16), (0, 20, -15), BEAK)
+    d.box("Head", (-1, 19, -17), (0, 19, -17), BEAK_DARK)
     d.ellipsoid("Jaw", (0, 18.2, -12.8), (1.7, 1.0, 2.4), BELLY, where=lambda x, y, z: x <= 0 and y <= 18, power=2.4)
-    d.limb("Jaw", (0, 18.2, -14.2), (0, 18.2, -15.2), 0.9, 0.6, BEAK, where=lambda x, y, z: x <= 0 and y <= 18)
+    d.box("Jaw", (-1, 18, -16), (0, 18, -14), BEAK)
     d.box("Jaw", (-1, 18, -11), (0, 18, -9), BODY)
     d.box("Head", (0, 19, -14), (0, 19, -11), MOUTH)
     # ---------------------------------------------------------------- petits bras à quatre doigts

@@ -32,6 +32,11 @@ local list: { SpeciesDef } = {
 	{ Name = "Gallimimus", Model = "Gallimimus", Family = "Biped", Zone = "Fern Forest", BaseSize = 9, Income = 8 },
 	{ Name = "Parasaurolophus", Model = "Parasaurolophus", Family = "Quadruped", Zone = "Fern Forest", BaseSize = 12, Income = 11 },
 	{ Name = "Stegosaurus", Model = "Stegosaurus", Family = "Quadruped", Zone = "Fern Forest", BaseSize = 14, Income = 15 },
+	{ Name = "Hypsilophodon", Model = "Hypsilophodon", Family = "Biped", Zone = "Fern Forest", BaseSize = 6, Income = 6 },
+	{ Name = "Microraptor", Model = "Microraptor", Family = "Flyer", Zone = "Fern Forest", BaseSize = 7, Income = 7 },
+	{ Name = "Kentrosaurus", Model = "Kentrosaurus", Family = "Quadruped", Zone = "Fern Forest", BaseSize = 11, Income = 10 },
+	{ Name = "Styracosaurus", Model = "Styracosaurus", Family = "Quadruped", Zone = "Fern Forest", BaseSize = 13, Income = 12 },
+	{ Name = "Dilophosaurus", Model = "Dilophosaurus", Family = "Biped", Zone = "Fern Forest", BaseSize = 12, Income = 18 },
 	-- 3. Swamp
 	{ Name = "Iguanodon", Model = "Iguanodon", Family = "Quadruped", Zone = "Swamp", BaseSize = 12, Income = 35 },
 	{ Name = "Baryonyx", Model = "Baryonyx", Family = "Biped", Zone = "Swamp", BaseSize = 13, Income = 45 },
@@ -48,6 +53,11 @@ local list: { SpeciesDef } = {
 	{ Name = "Carnotaurus", Model = "Carnotaurus", Family = "Biped", Zone = "Volcano", BaseSize = 16, Income = 3600 },
 	{ Name = "Brachiosaurus", Model = "Brachiosaurus", Family = "Quadruped", Zone = "Volcano", BaseSize = 32, Income = 5000 },
 	{ Name = "Spinosaurus", Model = "Spinosaurus", Family = "Biped", Zone = "Volcano", BaseSize = 20, Income = 7000 },
+	{ Name = "Dracorex", Model = "Dracorex", Family = "Biped", Zone = "Volcano", BaseSize = 10, Income = 3300 },
+	{ Name = "Ceratosaurus", Model = "Ceratosaurus", Family = "Biped", Zone = "Volcano", BaseSize = 16, Income = 4000 },
+	{ Name = "Acrocanthosaurus", Model = "Acrocanthosaurus", Family = "Biped", Zone = "Volcano", BaseSize = 19, Income = 5500 },
+	{ Name = "Magma Behemoth", Model = "MagmaBehemoth", Family = "Quadruped", Zone = "Volcano", BaseSize = 22, Income = 5800 },
+	{ Name = "Phoenix", Model = "Phoenix", Family = "Flyer", Zone = "Volcano", BaseSize = 24, Income = 8500 },
 	-- 7. Ocean Trench
 	{ Name = "Plesiosaurus", Model = "Plesiosaurus", Family = "Swimmer", Zone = "Ocean Trench", BaseSize = 18, Income = 18000 },
 	{ Name = "Megalodon", Model = "Megalodon", Family = "Swimmer", Zone = "Ocean Trench", BaseSize = 24, Income = 25000 },

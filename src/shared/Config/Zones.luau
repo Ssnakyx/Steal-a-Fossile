@@ -30,7 +30,7 @@ local List: { Zone } = {
 		Index = 2,
 		Speed = 1e3,
 		Weights = { Common = 60, Uncommon = 28, Rare = 12, Secret = 0.02 },
-		Species = { "Gallimimus", "Parasaurolophus", "Stegosaurus" },
+		Species = { "Gallimimus", "Parasaurolophus", "Stegosaurus", "Hypsilophodon", "Microraptor", "Kentrosaurus", "Styracosaurus", "Dilophosaurus" },
 		Color = Color3.fromRGB(88, 150, 70),
 	},
 	{
@@ -62,7 +62,7 @@ local List: { Zone } = {
 		Index = 6,
 		Speed = 1e6,
 		Weights = { Epic = 62, Legendary = 31, Mythic = 7, Secret = 0.12 },
-		Species = { "Carnotaurus", "Brachiosaurus", "Spinosaurus" },
+		Species = { "Carnotaurus", "Brachiosaurus", "Spinosaurus", "Dracorex", "Ceratosaurus", "Acrocanthosaurus", "Magma Behemoth", "Phoenix" },
 		Color = Color3.fromRGB(50, 45, 45),
 	},
 	{

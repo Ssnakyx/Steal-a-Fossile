@@ -1,11 +1,12 @@
 """Microraptor : volant de la Fern Forest, petit raptor à plumes qui plane avec quatre ailes.
 
-Modélisé ailes déployées (plaques horizontales : peu de pièces), voxels de 0,146 stud : environ 7 studs d'envergure à
-la taille Normal pour un corps de 5 studs (queue comprise). Petite tête de raptor aux grands yeux, ailes de plumes aux
-bras (couvertures, rémiges secondaires en dents, rémiges primaires écartées au bout), longues plumes aussi aux pattes
-arrière (sur les cuisses et les jambes : la deuxième paire d'ailes, qui traîne derrière en vol), longue queue raide
-finie par un éventail de plumes. Bleu-noir irisé : reflets sarcelle et violets en bandes.
-Au parc il se tient replié sur ses pattes et ses poignets (les animations replient les ailes)."""
+Modélisé ailes déployées (plaques horizontales : peu de pièces), voxels de 0,137 stud : environ 7 studs d'envergure à
+la taille Normal pour un corps de 5 studs (queue comprise). Petite tête de raptor aux grands yeux et petite huppe (os
+Crest), ailes de plumes aux bras (couvertures, rémiges secondaires en dents, bout d'aile en marches), longues plumes
+aussi aux pattes arrière (plaque sur les jambes : la deuxième paire d'ailes, qui traîne derrière en vol, pattes
+repliées), longue queue raide finie par un éventail de plumes. Bleu-noir irisé : reflets sarcelle et violets en
+bandes, bouts des plumes foncés. Au parc il se tient replié sur ses pattes et ses poignets : le point HandL est au bout
+des rémiges du poignet (ce sont les plumes qui touchent le sol, l'aile repliée ne passe pas sous le sol)."""
 import os
 import sys
 
@@ -49,6 +50,7 @@ def build():
     d.bone("Neck1", (0, 10.8, -3.4), "Chest")
     d.bone("Head", (0, 12.8, -5.4), "Neck1")
     d.bone("Jaw", (0, 12.2, -7.6), "Head")
+    d.bone("Crest", (0, 15.6, -6.0), "Head")
     d.bone_pair("Lid", (-1.8, 15, -7.5), "Head")
     d.bone_pair("Wing1", (-1.8, Y_W, -2.0), "Chest")
     d.bone_pair("Wing2", (-6.8, Y_W, -1.8), "Wing1L")
@@ -75,6 +77,11 @@ def build():
     for z in (-11, -9):
         d.set("Head", -1, 12, z, TOOTH, "Smooth")
     d.eye("Head", "LidL", 13, -8, IRIS, PUPIL, lid_color=DARK, h=2, w=2)
+    # petite huppe de plumes sur l'arrière du crâne (plaque droite au milieu)
+    d.plate("Crest", 0, 0, [(15.5, -8.6), (17.6, -7.4), (18.4, -5.0), (16.8, -4.0), (15.5, -5.0)], TEAL)
+    for (x, y, z), (bone, col, mat) in list(d.vox.items()):
+        if bone == "Crest" and ((x, y + 1, z) not in d.vox or (x, y, z + 1) not in d.vox):
+            d.set("Crest", x, y, z, VIOLET)
     # ---------------------------------------------------------------- plumes : bout foncé, bande violette, bande sarcelle
     def onion(bone_of, voxels, inner, core=BODY, dirs=None):
         """Colore des plumes en couches depuis le bord : bout foncé, violet, sarcelle, puis bleu nuit. `inner(x, y, z)`
@@ -120,8 +127,7 @@ def build():
     d.limb("Wing1L", (-1.8, Y_W, -2.0), (-6.8, Y_W, -1.8), 1.0, 0.8, BODY)
     d.limb("Wing2L", (-6.8, Y_W, -1.8), (-13.0, Y_W, -2.4), 0.8, 0.6, BODY)
     d.limb("Wing3L", (-13.0, Y_W, -2.4), (-21.0, Y_W, -0.6), 0.6, 0.4, BODY)
-    d.box("Wing2L", (-13, Y_W - 1, -4), (-12, Y_W - 1, -4), CLAW, "Smooth")
-    d.point("HandL", "Wing2L", (-12.5, Y_W - 1, -3.6))
+    d.point("HandL", "Wing2L", (-12.5, Y_W, 5.0))           # bout des rémiges au poignet : au sol, ailes repliées
     d.point("WingTipL", "Wing3L", (-25.0, Y_W, 0.0))
     # ---------------------------------------------------------------- pattes : longues plumes sur les jambes
     d.limb("ThighL", (-1.6, 8.6, 2.6), (-1.8, 5.2, 0.6), 1.3, 1.0, BODY)
@@ -134,7 +140,7 @@ def build():
     # plumes de la jambe : plaque verticale qui part vers l'arrière et le bas (à l'horizontale en vol, pattes repliées)
     tmp = Dino("tmp", FAMILY, voxel=VOXEL)
     tmp.bone("ShinL", (0, 0, 0))
-    tmp.plate("ShinL", 0, -2, [(6.2, 1.0), (5.8, 8.6), (4.8, 10.0), (3.6, 9.2), (2.6, 7.0), (2.4, 4.0)], BODY)
+    tmp.plate("ShinL", 0, -2, [(6.6, 1.0), (6.2, 9.0), (5.0, 11.2), (3.8, 10.4), (3.0, 7.6), (3.0, 4.0)], BODY)
     leg = [v for v in tmp.vox if v not in d.vox]
     for v in leg:
         d.set("ShinL", *v, BODY)
@@ -156,4 +162,9 @@ def build():
     d.mirror()
     d.paint(lambda x, y, z, bone, c: BELLY if c == BODY and bone in ("Chest", "Hips", "Neck1") and
             y <= {"Chest": 8, "Hips": 8, "Neck1": 10}[bone] else None)
+    # reflet sarcelle le long du dos (dessus du cou, du dos et du début de la queue)
+    back = ["Neck1", "Chest", "Hips", "Tail1", "Tail2"]
+    top = d.columns(back)
+    d.paint(lambda x, y, z, bone, c: TEAL if c == BODY and bone in back and abs(x) <= 1 and
+            y == top[(bone, x, z)][1] else None)
     return d

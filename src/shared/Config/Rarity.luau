@@ -42,6 +42,11 @@ local Species: { [string]: string } = {
 	Gallimimus = "Common",
 	Parasaurolophus = "Uncommon",
 	Stegosaurus = "Rare",
+	Hypsilophodon = "Common",
+	Microraptor = "Common",
+	Kentrosaurus = "Uncommon",
+	Styracosaurus = "Uncommon",
+	Dilophosaurus = "Rare",
 	-- Swamp
 	Iguanodon = "Uncommon",
 	Baryonyx = "Rare",
@@ -58,6 +63,11 @@ local Species: { [string]: string } = {
 	Carnotaurus = "Epic",
 	Brachiosaurus = "Legendary",
 	Spinosaurus = "Mythic",
+	Dracorex = "Epic",
+	Ceratosaurus = "Epic",
+	Acrocanthosaurus = "Legendary",
+	["Magma Behemoth"] = "Legendary",
+	Phoenix = "Mythic",
 	-- Ocean Trench
 	Plesiosaurus = "Epic",
 	Megalodon = "Legendary",
