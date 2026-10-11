@@ -767,6 +767,7 @@ local LOOKS: { [string]: Look } = {
 	BearTraps5 = { Icon = "shield", Glyph = "x5", Color = Colors.Orange },
 	InstantRevive = { Icon = "egg_gold", Glyph = "", Color = Colors.Pink },
 	ServerLuck = { Icon = "star", Glyph = "x2", Color = Colors.Blue },
+	MutationSerums3 = { Icon = "gem", Glyph = "x3", Color = Colors.Purple },
 }
 
 local function look(key: string): Look
@@ -1119,6 +1120,12 @@ local function itemsPage(page: ScrollingFrame)
 		local left = if type(endsAt) == "number" then endsAt - Workspace:GetServerTimeNow() else 0
 		return if left > 0 then "Active: " .. Format.Clock(left) .. " left!" else ""
 	end)
+	-- (produits ajoutés par d'autres systèmes, ex. sérums de mutation : montrés ici aussi)
+	for _, key in ordered(Config.Shop.Products) do
+		if key ~= "BearTraps5" and key ~= "InstantRevive" and key ~= "ServerLuck" then
+			productCard(items, key)
+		end
+	end
 	local spinsOnSale: { [string]: { [string]: any } } = {}
 	for _, offer in spinOffers do
 		if type(offer) == "table" and type(offer.Key) == "string" then
