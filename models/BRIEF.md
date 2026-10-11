@@ -109,6 +109,6 @@ et s'anime ensuite comme une espèce (`DinoBuilder.Build(cle, ...)`, `DinoAnimCo
 
 ## 8. Blocs fossiles (brief 9) et miniatures (brief 17)
 
-- Blocs fossiles : même bibliothèque `lib/vox.py`, un modèle sans animation par rareté et un décor par biome, exportés
-  dans `src/shared/BlockModels.luau` (`models/blocks/README.md`).
+- Blocs fossiles : même bibliothèque `lib/vox.py`, un modèle sans animation par biome et par rareté (une forme par
+  biome, aucun bloc pareil), exportés dans `src/shared/BlockModels/Data.luau` (`models/blocks/README.md`).
 - Miniatures : la scène Blender `models/species/blend/<Espece>.blend` contient l'armature et une Action par état.
