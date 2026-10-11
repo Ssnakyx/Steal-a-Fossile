@@ -55,6 +55,11 @@ local Species: { [string]: string } = {
 	Pachycephalosaurus = "Rare",
 	Velociraptor = "Epic",
 	Triceratops = "Legendary",
+	Coelophysis = "Rare",
+	Edmontonia = "Rare",
+	Allosaurus = "Epic",
+	Amargasaurus = "Epic",
+	["Thunder Raptor"] = "Legendary",
 	-- Glacier
 	Ankylosaurus = "Rare",
 	Therizinosaurus = "Epic",

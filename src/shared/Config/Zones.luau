@@ -46,7 +46,7 @@ local List: { Zone } = {
 		Index = 4,
 		Speed = 5e4,
 		Weights = { Rare = 62, Epic = 30, Legendary = 8, Secret = 0.05 },
-		Species = { "Pachycephalosaurus", "Velociraptor", "Triceratops" },
+		Species = { "Pachycephalosaurus", "Velociraptor", "Triceratops", "Coelophysis", "Edmontonia", "Allosaurus", "Amargasaurus", "Thunder Raptor" },
 		Color = Color3.fromRGB(185, 95, 55),
 	},
 	{

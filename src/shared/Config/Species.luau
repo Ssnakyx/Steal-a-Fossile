@@ -45,6 +45,11 @@ local list: { SpeciesDef } = {
 	{ Name = "Pachycephalosaurus", Model = "Pachycephalosaurus", Family = "Biped", Zone = "Canyon", BaseSize = 8, Income = 160 },
 	{ Name = "Velociraptor", Model = "Velociraptor", Family = "Biped", Zone = "Canyon", BaseSize = 14, Income = 220 },
 	{ Name = "Triceratops", Model = "Triceratops", Family = "Quadruped", Zone = "Canyon", BaseSize = 19, Income = 300 },
+	{ Name = "Coelophysis", Model = "Coelophysis", Family = "Biped", Zone = "Canyon", BaseSize = 9, Income = 150 },
+	{ Name = "Edmontonia", Model = "Edmontonia", Family = "Quadruped", Zone = "Canyon", BaseSize = 13, Income = 180 },
+	{ Name = "Allosaurus", Model = "Allosaurus", Family = "Biped", Zone = "Canyon", BaseSize = 17, Income = 240 },
+	{ Name = "Amargasaurus", Model = "Amargasaurus", Family = "Quadruped", Zone = "Canyon", BaseSize = 21, Income = 260 },
+	{ Name = "Thunder Raptor", Model = "ThunderRaptor", Family = "Biped", Zone = "Canyon", BaseSize = 16, Income = 360 },
 	-- 5. Glacier
 	{ Name = "Ankylosaurus", Model = "Ankylosaurus", Family = "Quadruped", Zone = "Glacier", BaseSize = 15, Income = 750 },
 	{ Name = "Therizinosaurus", Model = "Therizinosaurus", Family = "Biped", Zone = "Glacier", BaseSize = 16, Income = 1000 },
