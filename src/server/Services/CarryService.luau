@@ -99,6 +99,7 @@ local function attachVisual(root: BasePart, block: Block): Part
 	-- (dans le dos : +Z du HumanoidRootPart, qui regarde vers -Z)
 	part.CFrame = root.CFrame * CFrame.new(0, 0.6, 1.6)
 	part:SetAttribute("Rarity", block.Rarity)
+	part:SetAttribute("Zone", block.Zone) -- (décor du biome sur le bloc porté : FossilBlockController, brief 9)
 	local weld = Instance.new("WeldConstraint")
 	weld.Part0 = root
 	weld.Part1 = part

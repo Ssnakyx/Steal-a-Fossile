@@ -34,6 +34,7 @@ export type Tweak = {
 	HeadPitch: number?, -- rotation de repos du cou en plus, en degrés (+ relève la tête)
 	LimbScale: number?, -- échelle des ailes ou nageoires greffées
 	LimbOffset: Vector3?, -- décalage des ailes ou nageoires greffées (côté gauche, en miroir à droite)
+	LimbTurn: Vector3?, -- rotation de repos en plus des ailes ou nageoires greffées, degrés XYZ (côté gauche, en miroir)
 }
 
 local HybridBuilder = {}
@@ -45,13 +46,16 @@ HybridBuilder.FinScale = { Min = 0.5, Max = 1.6 }
 -- états où des ailes greffées sur un corps qui marche se déplient et battent
 HybridBuilder.FlapStates = { Happy = true, Roar = true, Fusion = true, Index = true } :: { [string]: boolean }
 
--- Ailes repliées le long des flancs (côté gauche, degrés XYZ ; à droite ry et rz changent de signe) : le bras part vers
--- l'arrière en montant un peu, la membrane pend vers le bas (Ry(80) Rz(-15) Rx(90) écrits en angles XYZ), puis
--- l'avant-bras revient vers l'avant et le doigt-aile repart vers l'arrière, dans le plan de la membrane (en accordéon)
+-- Ailes repliées le long des flancs (côté gauche, degrés XYZ ; à droite ry et rz changent de signe). Le bras part vers
+-- l'arrière en descendant de 12°, écarté de 6° vers l'extérieur, et sa membrane pend le long du flanc, penchée de 12°
+-- vers l'extérieur (Rx(90) Rz(-90), puis ces trois inclinaisons, écrits en angles XYZ). L'avant-bras revient vers
+-- l'avant et le doigt-aile repart vers l'arrière en accordéon : demi-tour autour de l'axe de la membrane (Rz), pas autour
+-- de sa normale, pour que chaque membrane pende encore vers le bas (brief 9 : dans le plan, elles se dressaient au-dessus
+-- des épaules) ; ±4° pour qu'elles se recouvrent vers l'extérieur.
 local FOLD: { [string]: Vector3 } = {
-	["1"] = Vector3.new(75.2, -2.6, -80.3),
-	["2"] = Vector3.new(0, -165, 0),
-	["3"] = Vector3.new(0, 165, 0),
+	["1"] = Vector3.new(103.2, -10.7, -84),
+	["2"] = Vector3.new(0, 0, 176),
+	["3"] = Vector3.new(0, 0, 184),
 }
 -- Battement (côté gauche) : relevé moyen, amplitude de rz et retard de phase par segment (les ailes montent plus
 -- qu'elles ne descendent : elles ne touchent jamais le sol)
@@ -77,14 +81,17 @@ local FALLBACK: { [string]: { string } } = {
 	Catch = { "Roar" },
 }
 
-local TWEAK_FIELDS = { "HeadScale", "HeadOffset", "HeadPitch", "LimbScale", "LimbOffset" }
+local TWEAK_FIELDS = { "HeadScale", "HeadOffset", "HeadPitch", "LimbScale", "LimbOffset", "LimbTurn" }
 local TWEAK_LIMITS: { [string]: { number } } = {
 	HeadScale = { 0.2, 4 },
 	HeadOffset = { -40, 40 },
 	HeadPitch = { -90, 90 },
 	LimbScale = { 0.2, 4 },
 	LimbOffset = { -40, 40 },
+	LimbTurn = { -180, 180 },
 }
+-- réglages qui sont des Vector3 (les autres sont des nombres)
+local TWEAK_VECTORS: { [string]: boolean } = { HeadOffset = true, LimbOffset = true, LimbTurn = true }
 
 -- coins d'une boîte (multipliés par sa demi-taille)
 local CORNERS: { Vector3 } = {}
@@ -159,12 +166,12 @@ function HybridBuilder.Parse(key: any): (string?, string?, Tweak?)
 			local x, y, z = string.match(value, "^([^,]+),([^,]+),([^,]+)$")
 			if x then
 				local nx, ny, nz = tonumber(x), tonumber(y), tonumber(z)
-				if nx and ny and nz and nx == nx and ny == ny and nz == nz and string.find(field, "Offset", 1, true) then
+				if nx and ny and nz and nx == nx and ny == ny and nz == nz and TWEAK_VECTORS[field] then
 					tweak[field] = Vector3.new(clamp(nx, field), clamp(ny, field), clamp(nz, field))
 				end
 			else
 				local n = tonumber(value)
-				if n and n == n and not string.find(field, "Offset", 1, true) then
+				if n and n == n and not TWEAK_VECTORS[field] then
 					tweak[field] = clamp(n, field)
 				end
 			end
@@ -330,11 +337,14 @@ function HybridBuilder.Assemble(head: Data, body: Data, key: string, tweak: Twea
 		end
 	end
 
-	-- os gardés de B : tout sauf sa tête (et ce qui pend dessous)
+	-- os gardés de B : tout sauf sa tête (et ce qui pend dessous). Des ailes greffées sur un bipède remplacent ses bras
+	-- (brief 9 : les ailes repliées les couvraient, et le modèle reste sous le budget de pièces)
+	local dropArms = limb == "Wings" and body.Family == "Biped"
 	local kept: { [string]: boolean } = {}
 	for _, bone in body.Bones do
 		local parentKept = bone.Parent == nil or kept[bone.Parent]
-		if parentKept and bGroup[bone.Name] ~= "Head" then
+		local group = bGroup[bone.Name]
+		if parentKept and group ~= "Head" and not (dropArms and group == "Arms") then
 			kept[bone.Name] = true
 		end
 	end
@@ -465,14 +475,18 @@ function HybridBuilder.Assemble(head: Data, body: Data, key: string, tweak: Twea
 	end
 
 	-- jamais sous le sol : la tête remonte si une de ses boîtes passe sous Y = 0 au repos
+	local pitch = t.HeadPitch or 0
 	local function lowest(group: string): number
 		local low = math.huge
 		local chain: { [string]: CFrame } = {}
-		-- (rotations de repos de A le long de la chaîne greffée)
+		-- (rotations de repos de A le long de la chaîne greffée, avec le HeadPitch de la recette)
 		for _, bone in head.Bones do
 			if grafted[bone.Name] == group then
 				local parent = bone.Parent and chain[bone.Parent]
 				local r = bone.Rest
+				if bone.Name == headRoot and pitch ~= 0 then
+					r = (r or Vector3.zero) + Vector3.new(pitch, 0, 0)
+				end
 				local pivot = mapPoint(graftOf[bone.Name], bone.Pivot)
 				local localCF = if r
 					then CFrame.new(pivot) * CFrame.Angles(math.rad(r.X), math.rad(r.Y), math.rad(r.Z)) * CFrame.new(-pivot)
@@ -505,7 +519,6 @@ function HybridBuilder.Assemble(head: Data, body: Data, key: string, tweak: Twea
 			table.insert(bones, bone)
 		end
 	end
-	local pitch = t.HeadPitch or 0
 	for _, bone in head.Bones do
 		local group = grafted[bone.Name]
 		if group then
@@ -521,6 +534,11 @@ function HybridBuilder.Assemble(head: Data, body: Data, key: string, tweak: Twea
 			local rest = bone.Rest or Vector3.zero
 			if group == "Head" and bone.Name == headRoot and pitch ~= 0 then
 				rest += Vector3.new(pitch, 0, 0)
+			end
+			if limbGrafts[bone.Name] and t.LimbTurn then
+				-- racine d'une aile ou nageoire greffée : rotation de repos en plus (miroir à droite)
+				local turn = t.LimbTurn :: Vector3
+				rest += if bone.Pivot.X > 0 then Vector3.new(turn.X, -turn.Y, -turn.Z) else turn
 			end
 			if group == "Wings" and walkerWings then
 				local segment, side = string.match(bone.Name, "^Wing(%d)([LR])$")
@@ -572,7 +590,15 @@ function HybridBuilder.Assemble(head: Data, body: Data, key: string, tweak: Twea
 	local groups: { [string]: { string } } = {}
 	for group, list in body.Groups do
 		if group ~= "Head" then
-			groups[group] = table.clone(list)
+			local keep: { string } = {}
+			for _, name in list do
+				if kept[name] then
+					table.insert(keep, name)
+				end
+			end
+			if #keep > 0 then
+				groups[group] = keep
+			end
 		end
 	end
 	for _, bone in head.Bones do

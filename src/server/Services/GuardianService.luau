@@ -11,7 +11,8 @@
 -- la marche), plus Guardian (nom de la zone), TargetUserId (0 sans cible) et Trapped. Le serveur ne fait que déplacer
 -- le pivot 10 fois par seconde : le client lisse et anime. Sans module DinoModels pour l'espèce, un gardien provisoire
 -- en briques est posé ici.
--- Attribut joueur « ChasedBy » : zone du gardien qui le poursuit ("" sinon). Remote GuardianAlert au joueur visé.
+-- Attribut joueur « ChasedBy » : zone du gardien qui le poursuit ("" sinon). Remote GuardianAlert au joueur visé
+-- (zone, état, et pour Lost la raison : Safe, Escaped ou Dropped).
 -- Signaux : GuardianStateChanged(zone, state), GuardianWoke(zone, player), GuardianCaught(player, zone, block)
 -- Écoute : BlockGrabbed(player, block)
 
@@ -163,9 +164,9 @@ local function setChased(player: Player, zone: string)
 	end
 end
 
-local function alert(player: Player?, zone: string, state: string)
+local function alert(player: Player?, zone: string, state: string, reason: string?)
 	if player and player.Parent == Players then
-		Remotes.Event("GuardianAlert"):FireClient(player, zone, state)
+		Remotes.Event("GuardianAlert"):FireClient(player, zone, state, reason)
 	end
 end
 
@@ -331,10 +332,25 @@ local function goHome(g: Guardian)
 	setState(g, "Return", distance / g.ReturnSpeed + GuardiansConfig.ReturnSlack)
 end
 
+-- Pourquoi le gardien lâche ce joueur : Safe (rentré dans un parc), Dropped (plus de bloc de sa zone, ou mort) ou
+-- Escaped (sorti de la laisse avec son bloc). Seuls Safe et Escaped affichent « ESCAPED! » chez le joueur.
+local function lostReason(g: Guardian, player: Player): string
+	if PlotService.IsPlayerSafe(player) then
+		return "Safe"
+	end
+	local block = CarryService.Get(player)
+	if not block or block.Zone ~= g.Zone or not rootOf(player) then
+		return "Dropped"
+	end
+	return "Escaped"
+end
+
 local function lose(g: Guardian)
 	local target = g.Target
 	setTarget(g, nil)
-	alert(target, g.Zone, "Lost")
+	if target then
+		alert(target, g.Zone, "Lost", lostReason(g, target))
+	end
 	setState(g, "Search", GuardiansConfig.SearchTime)
 end
 
@@ -435,7 +451,7 @@ local function tick(g: Guardian, dt: number, now: number)
 				return
 			end
 			if target then
-				alert(target, g.Zone, "Lost")
+				alert(target, g.Zone, "Lost", lostReason(g, target))
 			end
 			startRun(g, other)
 			target = other
