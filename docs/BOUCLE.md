@@ -36,7 +36,7 @@ Workspace.Map
     Plot1 ... Plot5      Model
       Floor        BasePart  obligatoire : sol du parc. La zone sûre est sa boîte, de 4 studs dessous à 60 au-dessus.
       Spawn        BasePart  obligatoire : apparition (au-dessus de la pièce, dans son orientation)
-      Enclosure    BasePart  obligatoire : sol de l'enclos (les dinos sont posés en grille dessus, 6 par rangée)
+      Enclosure    BasePart  obligatoire : sol de l'enclos (les dinos s'y promènent librement, Config.Park.Roam)
       Entrance     BasePart  entrée (flèche de retour du brief 12)
       Sign         BasePart  enseigne : BillboardGui "Label" > TextLabel "Text" (texte « <Nom>'s Park » écrit ici)
       Tank1..Tank6 BasePart  emplacements des 6 cuves (les 6 sont attendues ; une cuve sans pièce marche, sans visuel)
@@ -137,6 +137,14 @@ StartedAt, EndsAt } }, heures `os.time()`), `TankCount`, `Stored` (liste de { Ra
 Attributs : joueur `Plot`, `Zone`, `Carrying` ; `Workspace.DigRefillAt` ; modèles tagués `Dino` (contrat du brief 2 :
 `Species`, `Scale`, `Mutation`, `Level`, `State`, `StateAt`, plus `DinoId` et `OwnerUserId`) ; blocs tagués
 `FossilBlock` (`BlockId`, `Rarity`, `Zone`).
+
+Promenade dans l'enclos (`Config/Park.luau`, `src/shared/Roam.luau`) : chaque dino apparaît à une place libre au
+hasard, fait une pause (Idle, parfois Eat ou Happy), puis marche vers un autre point libre de l'enclos, loin du bord
+et des autres dinos, à la vitesse de son animation Walk. Un trajet = attributs `WalkFrom` (CFrame de départ), `WalkTo`
+(Vector3), `Speed` (studs/s), `State = "Walk"` et `StateAt` (heure serveur du départ), posés une fois par le serveur.
+`DinoAnimController` calcule la pose en cours avec `Roam.PoseAt` (tourne sur place pendant `TurnTime`, puis marche
+tout droit) et la pose sur la pièce Root chez le client ; le serveur ne déplace la Root qu'à l'arrivée (`PivotTo`),
+`Speed` repasse à 0. Les dinos sans modèle (placeholder) restent en grille.
 
 Remotes (`Remotes/Loop.luau`) : `RevealTank(slot)`, `BuyTank()`, `BuyEnclosure()` renvoient (ok, texte) ;
 `DinoRevealed(id, infos)` pour l'écran de révélation (brief 12) ; `LoopAnnounce(texte)` pour l'annonce dans le chat.
