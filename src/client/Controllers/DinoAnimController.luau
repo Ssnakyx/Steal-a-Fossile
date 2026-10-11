@@ -16,6 +16,8 @@
 --                            cubes lumineux qui montent, paillettes qui scintillent sur le corps, aura de cubes qui
 --                            tournent, couronne au-dessus de la tête, braises (Mythic), arc-en-ciel (Secret)
 -- Si le modèle n'a que sa pièce "Root" (DinoBuilder.CreateProxy), les briques sont construites ici, chez le client.
+-- StreamingEnabled : un modèle tagué peut arriver avant sa pièce Root, ou la perdre au loin. Le dino est construit quand
+-- la pièce arrive, défait quand elle repart, refait sur la nouvelle pièce quand elle revient.
 --
 -- Fondus de 0,2 s entre états, variantes d'Idle au hasard, cadence plus lente pour les gros, animation complète
 -- près de la caméra, cadence réduite au loin, figée hors de vue. DinoAnimController.Event : (model, nom, os) pour
@@ -100,6 +102,7 @@ type Dino = {
 }
 
 local dinos: { [Model]: Dino } = {}
+local waiting: { [Model]: RBXScriptConnection } = {} -- modèles tagués dont la pièce Root n'est pas (encore) là
 local eventBindable = Instance.new("BindableEvent")
 DinoAnimController.Event = eventBindable.Event
 
@@ -541,7 +544,49 @@ local function step(d: Dino, dt: number, full: boolean)
 	stepFx(d, dt, full)
 end
 
-local function attach(model: Model)
+local function rootOf(model: Model): BasePart?
+	local root = model:FindFirstChild("Root")
+	if root and root:IsA("BasePart") then
+		return root
+	end
+	local primary = model.PrimaryPart
+	return if primary and primary:IsDescendantOf(model) then primary else nil
+end
+
+local function stopWaiting(model: Model)
+	local conn = waiting[model]
+	if conn then
+		waiting[model] = nil
+		conn:Disconnect()
+	end
+end
+
+local attach: (Model) -> ()
+
+-- Modèle tagué et dans le jeu : (re)construit, ou attend sa pièce Root
+local function retry(model: Model)
+	if model:HasTag(DinoBuilder.Tag) and model:IsDescendantOf(game) then
+		attach(model)
+	end
+end
+
+local function detach(model: Model)
+	stopWaiting(model)
+	local d = dinos[model]
+	if not d then
+		return
+	end
+	dinos[model] = nil
+	for _, c in d.Conns do
+		c:Disconnect()
+	end
+	clearFx(d)
+	if d.Local then
+		d.Local:Destroy()
+	end
+end
+
+function attach(model: Model)
 	if dinos[model] then
 		return
 	end
@@ -550,10 +595,22 @@ local function attach(model: Model)
 		return
 	end
 	local data = DinoBuilder.Get(species)
-	local root = model.PrimaryPart or model:FindFirstChild("Root")
-	if not data or not (root and root:IsA("BasePart")) then
+	if not data then
 		return
 	end
+	local root = rootOf(model)
+	if not root then
+		-- StreamingEnabled : le modèle est arrivé avant sa pièce Root (ou l'a perdue) ; on réessaie quand elle arrive
+		if not waiting[model] and model:HasTag(DinoBuilder.Tag) then
+			waiting[model] = model.ChildAdded:Connect(function(child)
+				if child:IsA("BasePart") then
+					task.defer(retry, model)
+				end
+			end)
+		end
+		return
+	end
+	stopWaiting(model)
 	local hasBones = false
 	for _, p in model:GetChildren() do
 		if p:IsA("BasePart") and p:GetAttribute("Bone") then
@@ -619,21 +676,13 @@ local function attach(model: Model)
 	table.insert(d.Conns, model:GetAttributeChangedSignal("Rarity"):Connect(function()
 		buildFx(d)
 	end))
-end
-
-local function detach(model: Model)
-	local d = dinos[model]
-	if not d then
-		return
-	end
-	dinos[model] = nil
-	for _, c in d.Conns do
-		c:Disconnect()
-	end
-	clearFx(d)
-	if d.Local then
-		d.Local:Destroy()
-	end
+	-- la pièce Root repart (streaming out) : briques défaites, on attend la suivante
+	table.insert(d.Conns, model.ChildRemoved:Connect(function(child)
+		if child == root then
+			detach(model)
+			retry(model)
+		end
+	end))
 end
 
 local frame = 0
@@ -699,7 +748,7 @@ function DinoAnimController.Init() end
 function DinoAnimController.Start()
 	CollectionService:GetInstanceAddedSignal(DinoBuilder.Tag):Connect(function(inst)
 		if inst:IsA("Model") then
-			task.defer(attach, inst)
+			task.defer(retry, inst)
 		end
 	end)
 	CollectionService:GetInstanceRemovedSignal(DinoBuilder.Tag):Connect(function(inst)
@@ -709,7 +758,7 @@ function DinoAnimController.Start()
 	end)
 	for _, inst in CollectionService:GetTagged(DinoBuilder.Tag) do
 		if inst:IsA("Model") then
-			task.defer(attach, inst)
+			task.defer(retry, inst)
 		end
 	end
 	RunService.RenderStepped:Connect(update)
