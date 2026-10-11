@@ -429,7 +429,12 @@ T.eq(frank:GetAttribute("Protected"), true, "encore protégé à 9 min 55")
 env.advance(6)
 T.eq(frank:GetAttribute("Protected"), false, "plus protégé après 10 min")
 T.check(table.find(ended, frank) ~= nil, "signal ProtectionEnded")
-T.eq(lastNotify(frank), "Your new player protection is over. Watch out for thieves!", "message")
+-- (le cadeau de temps de jeu de 10 min arrive en même temps : on cherche le message parmi les derniers)
+local protectionMessage = false
+for _, args in env.received(frank, "Notify") do
+	protectionMessage = protectionMessage or args[1] == "Your new player protection is over. Watch out for thieves!"
+end
+T.check(protectionMessage, "message")
 T.leave(frank)
 -- un joueur qui a déjà joué 10 min (PlayTime sauvegardé) n'est plus protégé à son retour ; 4 min jouées : 6 min restent
 env.datastore.set("SAF_Players_1/global", "Player_7001", { Money = 0, PlayTime = Pvp.Protection.Time + 1 })
