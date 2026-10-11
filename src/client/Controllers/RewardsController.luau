@@ -1124,12 +1124,12 @@ function RewardsController.Init()
 		AnchorPoint = Vector2.new(0, 0),
 		-- (boutons larges en colonne, du milieu - 33 vers le bas : Shop et Index du HUD, brief 12, sont juste au-dessus,
 		-- les 5 centrés ensemble)
-		Position = UDim2.new(0, 16, 0.5, -33),
-		Size = UDim2.fromOffset(196, 3 * 64 + 2 * 10),
+		Position = UDim2.new(0, 16, 0.5, -25),
+		Size = UDim2.fromOffset(156, 3 * 50 + 2 * 8),
 		BackgroundTransparency = 1,
 		Parent = root,
 	}, {
-		new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
+		new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	local dailyPanel, dailyRefresh = buildDaily(root)
 	local spinPanel, spinRefresh = buildSpin(root)
@@ -1155,7 +1155,7 @@ function RewardsController.Init()
 			Icon = entry.Icon,
 			Color = entry.Color,
 			LayoutOrder = order,
-			Size = UDim2.fromOffset(196, 64),
+			Size = UDim2.fromOffset(156, 50),
 			Parent = buttons,
 		}, function()
 			current.Panels[name].Toggle()

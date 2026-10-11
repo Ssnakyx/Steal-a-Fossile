@@ -41,7 +41,7 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
   revenu de base ; les autres sont une silhouette noire « ??? » (« Revive one to unlock »). Les hybrides pas trouvés
   montrent un « ? » et l'indice de leur recette ; trouvés, leur portrait et leurs deux parents. En haut : « Dinos a/b
   Hybrids c/d ».
-- **Fusion Lab** (s'ouvre au labo du parc) : les dinos du joueur à gauche, 3 cases, l'aperçu (« GOLDEN COMPY / LEVEL
+- **Fusion Lab** (s'ouvre au labo du parc) : les dinos du joueur à gauche, chacun en 3D (taille, mutation, niveau) avec son nom, ses traits et son revenu en petit ; les 3 cases montrent aussi les dinos choisis en 3D ; 3 cases, l'aperçu (« GOLDEN COMPY / LEVEL
   UP », « ??? » pour un hybride jamais trouvé, le coût), **FUSE!**, **AUTO PICK 3** (3 identiques), **HYBRIDS**
   (ouvre la page des hybrides de l'Index).
 - **Écran de révélation** : à chaque dino sorti d'une cuve ou du labo. Portrait 3D qui tourne, rareté, NEW! (espèce
@@ -85,9 +85,9 @@ n'apparaissent qu'une fois leurs Ids mis, et jamais dans les pays qui interdisen
 
 | Élément | Où | ScreenGui (DisplayOrder) |
 |---|---|---|
-| Boutons Shop / Index (196 x 64, en colonne) | gauche, bas à 43 au-dessus du milieu | Hud (3) |
-| Daily / Spin / Gifts (196 x 64, en colonne) | gauche, haut à 33 au-dessus du milieu | Rewards (5) |
-| Compteurs (300 x 134) | bas à gauche, marge 16 | Hud (3) |
+| Boutons Shop / Index (156 x 50, en colonne) | gauche, bas à 33 au-dessus du milieu | Hud (3) |
+| Daily / Spin / Gifts (156 x 50, en colonne) | gauche, haut à 25 au-dessus du milieu | Rewards (5) |
+| Compteurs (252 x 112) | bas à gauche, marge 16 | Hud (3) |
 | Bandeau de zone, carte du transport (440 de large) | haut au milieu, y = 8 | Hud (3) |
 | Cuves (232 de large) | droite, milieu + 30 | Hud (3) |
 | Carte AFK, guide des premières minutes | bas au milieu | Afk (4), Tutorial (6) |

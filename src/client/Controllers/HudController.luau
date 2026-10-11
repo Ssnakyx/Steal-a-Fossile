@@ -36,10 +36,10 @@ local ECONOMY = Config.Economy
 
 -- Bloc de boutons à gauche : même taille que ceux de RewardsController (136 x 68, écart 14), juste au-dessus d'eux.
 -- RewardsController centre les siens 82 unités sous le milieu de l'écran : les 5 boutons sont centrés ensemble.
-local BUTTON = Vector2.new(196, 64) -- (boutons larges à icône, en colonne)
-local GAP = 10
-local BUTTONS_BOTTOM = -43 -- (bas des boutons du HUD, depuis le milieu de l'écran : haut des boutons Daily - GAP)
-local COUNTERS_WIDTH = 300
+local BUTTON = Vector2.new(156, 50) -- (boutons à icône, en colonne : fins et légers)
+local GAP = 8
+local BUTTONS_BOTTOM = -33 -- (bas des boutons du HUD, depuis le milieu de l'écran : haut des boutons Daily - GAP)
+local COUNTERS_WIDTH = 252
 local BANNER_TIME = 3.2
 local REFRESH = 0.1
 local POP_LIMIT = 4
@@ -232,50 +232,33 @@ local function buildButtons(root: Frame): (Frame, UIKit.Badge, UIKit.Badge)
 	return frame, UIKit.badge(shop), UIKit.badge(index)
 end
 
--- Case carrée colorée avec un petit texte (icône des compteurs)
-local function iconSquare(parent: GuiObject, name: string, color: Color3, glyph: string, size: number): Frame
-	local square = UIKit.card({
-		Name = name,
-		Color = color,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 8, 0.5, 0),
-		Size = UDim2.fromOffset(size, size),
-		ZIndex = parent.ZIndex + 2,
-		Parent = parent,
-	})
-	text({
-		Name = "Glyph",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0.78, 0.7),
-		Text = glyph,
-		ZIndex = square.ZIndex + 3,
-		Parent = square,
-	})
-	return square
-end
-
 local function buildCounters(widgets: Frame): (TextLabel, TextLabel, Frame, TextLabel, TextLabel)
 	local frame: Frame = new("Frame", {
 		Name = "Counters",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 16, 1, -16),
-		Size = UDim2.fromOffset(COUNTERS_WIDTH, 66 + 8 + 60),
+		Size = UDim2.fromOffset(COUNTERS_WIDTH, 56 + 6 + 50),
 		BackgroundTransparency = 1,
 		Parent = widgets,
 	})
 	local moneyCard = UIKit.card({
 		Name = "MoneyCard",
 		Color = Colors.Slate,
-		Size = UDim2.fromOffset(COUNTERS_WIDTH, 66),
+		Size = UDim2.fromOffset(COUNTERS_WIDTH, 56),
 		Parent = frame,
 	})
-	iconSquare(moneyCard, "Icon", Colors.Money, "$", 50)
+	UIKit.icon("coins", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 2, 0.5, 0),
+		Size = UDim2.fromOffset(56, 56),
+		ZIndex = moneyCard.ZIndex + 3,
+		Parent = moneyCard,
+	})
 	local z = moneyCard.ZIndex + 2
 	local money = text({
 		Name = "Money",
-		Position = UDim2.fromOffset(68, 4),
-		Size = UDim2.new(1, -78, 0, 36),
+		Position = UDim2.fromOffset(62, 4),
+		Size = UDim2.new(1, -70, 0, 30),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Colors.GreenText,
 		Text = "$0",
@@ -284,8 +267,8 @@ local function buildCounters(widgets: Frame): (TextLabel, TextLabel, Frame, Text
 	})
 	local income = text({
 		Name = "Income",
-		Position = UDim2.fromOffset(68, 40),
-		Size = UDim2.new(1, -78, 0, 22),
+		Position = UDim2.fromOffset(62, 34),
+		Size = UDim2.new(1, -70, 0, 18),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = "+$0/s",
 		ZIndex = z,
@@ -293,8 +276,8 @@ local function buildCounters(widgets: Frame): (TextLabel, TextLabel, Frame, Text
 	})
 	local pops: Frame = new("Frame", {
 		Name = "Pops",
-		Position = UDim2.fromOffset(68, -6),
-		Size = UDim2.fromOffset(COUNTERS_WIDTH - 78, 30),
+		Position = UDim2.fromOffset(62, -6),
+		Size = UDim2.fromOffset(COUNTERS_WIDTH - 70, 30),
 		BackgroundTransparency = 1,
 		ZIndex = z + 2,
 		Parent = moneyCard,
@@ -303,15 +286,21 @@ local function buildCounters(widgets: Frame): (TextLabel, TextLabel, Frame, Text
 	local speedCard = UIKit.card({
 		Name = "SpeedCard",
 		Color = Colors.Slate,
-		Position = UDim2.fromOffset(0, 66 + 8),
-		Size = UDim2.fromOffset(COUNTERS_WIDTH, 60),
+		Position = UDim2.fromOffset(0, 56 + 6),
+		Size = UDim2.fromOffset(COUNTERS_WIDTH, 50),
 		Parent = frame,
 	})
-	iconSquare(speedCard, "Icon", Colors.Cyan, ">>", 44)
+	UIKit.icon("speed", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 4, 0.5, 0),
+		Size = UDim2.fromOffset(50, 50),
+		ZIndex = speedCard.ZIndex + 3,
+		Parent = speedCard,
+	})
 	local speed = text({
 		Name = "Speed",
-		Position = UDim2.fromOffset(62, 4),
-		Size = UDim2.new(1, -72, 0, 30),
+		Position = UDim2.fromOffset(62, 3),
+		Size = UDim2.new(1, -70, 0, 26),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = "0 Speed",
 		ZIndex = z,
@@ -319,8 +308,8 @@ local function buildCounters(widgets: Frame): (TextLabel, TextLabel, Frame, Text
 	})
 	local zoneLine = text({
 		Name = "ZoneLine",
-		Position = UDim2.fromOffset(62, 34),
-		Size = UDim2.new(1, -72, 0, 20),
+		Position = UDim2.fromOffset(62, 29),
+		Size = UDim2.new(1, -70, 0, 17),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = "",
 		TextColor3 = Colors.Muted,
@@ -513,7 +502,7 @@ local function buildTankRow(parent: Frame, slot: number): TankRow
 		Color = Colors.Green,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -6, 0.5, 0),
-		Size = UDim2.fromOffset(92, 34),
+		Size = UDim2.fromOffset(78, 32),
 		MaxTextSize = 22,
 		Visible = false,
 		ZIndex = z + 2,
@@ -859,6 +848,11 @@ local function refreshTanks(current: Ui)
 			local ready = left <= 0
 			row.Open.Visible = ready
 			row.Time.Visible = not ready
+			-- (prête : le nom se centre à gauche du bouton OPEN, la barre pleine se cache)
+			row.Name.Position = UDim2.fromOffset(44, if ready then 10 else 4)
+			row.Name.Size = if ready then UDim2.new(1, -(44 + 90), 0, 24) else UDim2.new(0.55, -44, 0, 24)
+			local track = row.Fill.Parent :: Frame
+			track.Visible = not ready
 			row.Time.Text = Format.Clock(math.ceil(left))
 			row.Time.TextColor3 = Colors.Text
 			local span = endsAt - startedAt
@@ -876,6 +870,10 @@ local function refreshTanks(current: Ui)
 			row.Open.Visible = false
 			row.Time.Visible = true
 			row.Time.Text = ""
+			row.Name.Position = UDim2.fromOffset(44, 4)
+			row.Name.Size = UDim2.new(0.55, -44, 0, 24)
+			local track = row.Fill.Parent :: Frame
+			track.Visible = true
 			row.Fill.Size = UDim2.fromScale(0, 1)
 		end
 	end

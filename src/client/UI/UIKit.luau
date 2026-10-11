@@ -63,6 +63,9 @@ UIKit.Rarity = {
 -- Plots ronds (une tuile = un plot gris clair, téléversée pour les menus à plots des jeux de Snaky). "" = aplat sans plots.
 UIKit.StudTexture = "rbxassetid://79812142862554"
 UIKit.StudSize = 26 -- taille d'un plot des panneaux (unités) ; cartes et boutons : 20
+-- Transparence des plots sur les cartes et les boutons (0 = plots marqués) : des plots discrets donnent des faces plus
+-- nettes et plus légères, le dégradé de couleur reste
+UIKit.SoftStuds = 0.45
 
 -- Pack d'icônes de Steal a Snack (Free Icon Pack 3.0.1 et icônes du jeu, déjà téléversées sur le compte de Snaky).
 -- UIKit.icon(nom, props) les pose avec une ombre nette.
@@ -351,6 +354,8 @@ function UIKit.makeFace(outer: GuiObject, color: Color3, thickness: number?, str
 	})
 	new("UIStroke", { Name = "Stroke", Color = strokeColor or INK, Thickness = thickness or 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = face })
 	local studs = UIKit.studLayer(face, 20)
+	studs.ImageTransparency = UIKit.SoftStuds
+	studs.BackgroundTransparency = 0 -- (fond blanc teinté par le même dégradé : la face reste opaque)
 	local gradient = studs:FindFirstChild("Tint") :: UIGradient
 	local bevel = new("Frame", {
 		Name = "Bevel",
@@ -642,6 +647,8 @@ local function buttonFace(button: GuiObject): (Frame, (Color3, boolean?) -> ())
 	})
 	new("UIStroke", { Name = "Stroke", Color = INK, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = face })
 	local studs = UIKit.studLayer(face, 18)
+	studs.ImageTransparency = UIKit.SoftStuds
+	studs.BackgroundTransparency = 0 -- (fond blanc teinté par le même dégradé : la face reste opaque)
 	local gradient = studs:FindFirstChild("Tint") :: UIGradient
 	new("Frame", {
 		Name = "Lip",
@@ -837,11 +844,11 @@ function UIKit.menuButton(props: { [string]: any }, onClick: (() -> ())?): TextB
 	UIKit.label({
 		Name = "Label",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, height + 6, 0.47, 0),
-		Size = UDim2.new(1, -(height + 14), 0.62, 0),
+		Position = UDim2.new(0, height + 4, 0.47, 0),
+		Size = UDim2.new(1, -(height + 12), 0.56, 0),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = text,
-		MaxTextSize = 34,
+		MaxTextSize = 26,
 		ZIndex = button.ZIndex + 4,
 		Parent = button,
 	})

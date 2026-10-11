@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
+local DinoView = require(script.Parent.Parent.UI.DinoView)
 local UIKit = require(script.Parent.Parent.UI.UIKit)
 local FusionController = require(script.Parent.FusionController)
 local IndexController = require(script.Parent.IndexController)
@@ -28,16 +29,17 @@ local new = UIKit.new
 local Z = 23
 local PANEL = Vector2.new(1000, 600)
 local LEFT = 600
-local CARD = Vector2.new(140, 124)
+local CARD = Vector2.new(140, 150)
 local MAX_PICK = 3
 local PREVIEW_DELAY = 0.15
 
 type Dino = { Id: string, Species: string, Size: string, Mutation: string, Level: number, Income: number }
+type Slot = { Frame: Frame, Text: TextLabel, View: ViewportFrame, Shown: string }
 type Ui = {
 	Panel: UIKit.Panel,
 	Grid: ScrollingFrame,
 	Empty: TextLabel,
-	Slots: { { Frame: Frame, Text: TextLabel } },
+	Slots: { Slot },
 	ResultTitle: TextLabel,
 	ResultText: TextLabel,
 	Cost: TextLabel,
@@ -128,6 +130,16 @@ local function traits(dino: Dino): string
 	return table.concat(parts, " ")
 end
 
+-- Portrait 3D d'un dino du joueur (taille, mutation et niveau comme en jeu)
+local function showDino(view: ViewportFrame, dino: Dino): boolean
+	local level = Config.Economy.Levels[dino.Level + 1]
+	return DinoView.Show(view, dino.Species, {
+		Size = if dino.Size ~= "" then dino.Size else nil,
+		Mutation = if dino.Mutation ~= "" then dino.Mutation else nil,
+		Level = if level then level.Name else nil,
+	}, false, 0.62)
+end
+
 local function text(props: { [string]: any }): TextLabel
 	props.ZIndex = props.ZIndex or Z + 3
 	return UIKit.label(props)
@@ -147,9 +159,21 @@ local function refreshSlots(currentUi: Ui)
 	for index, slot in currentUi.Slots do
 		local dino = map[picked[index] or ""]
 		local face = slot.Frame:FindFirstChild("Face")
+		-- (portrait refait seulement quand le dino de la case change)
+		local key = if dino then dino.Id else ""
+		if slot.Shown ~= key then
+			slot.Shown = key
+			if dino then
+				slot.View.Visible = showDino(slot.View, dino)
+			else
+				DinoView.Clear(slot.View)
+				slot.View.Visible = false
+			end
+		end
 		if dino then
 			local colors = UIKit.Rarity[rarityOf(dino.Species)] or UIKit.Rarity.Common
-			slot.Text.Text = dino.Species
+			-- (le nom ne s'affiche que si l'espèce n'a pas de modèle)
+			slot.Text.Text = if slot.View.Visible then "" else dino.Species
 			if face then
 				face:SetAttribute("Tint", colors.Fill)
 				face:SetAttribute("Rainbow", colors.Rainbow == true)
@@ -353,27 +377,38 @@ local function dinoCard(currentUi: Ui, order: number, dino: Dino)
 		ZIndex = Z + 6,
 		Parent = button,
 	}, { new("UIStroke", { Color = Colors.Yellow, Thickness = 5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }) })
+	-- le dino lui-même en 3D, son nom en petit au-dessus
+	local view = DinoView.new({
+		Name = "View",
+		Position = UDim2.fromOffset(4, 20),
+		Size = UDim2.new(1, -8, 0, 82),
+		ZIndex = Z + 2,
+		Parent = card,
+	})
+	local hasModel = showDino(view, dino)
+	view.Visible = hasModel
 	text({
 		Name = "Name",
-		Position = UDim2.fromOffset(6, 6),
-		Size = UDim2.new(1, -12, 0, 42),
-		MaxTextSize = 30,
+		Position = UDim2.fromOffset(6, 4),
+		Size = if hasModel then UDim2.new(1, -12, 0, 18) else UDim2.new(1, -12, 0, 80),
+		MaxTextSize = if hasModel then 18 else 30,
 		Text = dino.Species,
+		ZIndex = Z + 3,
 		Parent = card,
 	})
 	local level = levelName(dino.Level)
 	text({
 		Name = "Traits",
-		Position = UDim2.fromOffset(6, 50),
-		Size = UDim2.new(1, -12, 0, 22),
+		Position = UDim2.fromOffset(6, 104),
+		Size = UDim2.new(1, -12, 0, 18),
 		Text = string.upper(if dino.Level > 0 then level .. " " .. traits(dino) else traits(dino)),
 		TextColor3 = if dino.Level >= 2 then Colors.Cyan elseif dino.Level == 1 then Colors.Yellow else Colors.Muted,
 		Parent = card,
 	})
 	text({
 		Name = "Income",
-		Position = UDim2.fromOffset(6, 76),
-		Size = UDim2.new(1, -12, 0, 24),
+		Position = UDim2.fromOffset(6, 124),
+		Size = UDim2.new(1, -12, 0, 20),
 		Text = Format.Rate(dino.Income),
 		TextColor3 = Colors.GreenText,
 		Parent = card,
@@ -452,7 +487,7 @@ end
 
 -- ===================================================================== cycle de vie
 
-local function buildRight(content: Frame): (Frame, { { Frame: Frame, Text: TextLabel } }, TextLabel, TextLabel, TextLabel, TextButton, TextButton)
+local function buildRight(content: Frame): (Frame, { Slot }, TextLabel, TextLabel, TextLabel, TextButton, TextButton)
 	local right: Frame = new("Frame", {
 		Name = "Right",
 		Position = UDim2.fromOffset(LEFT + 16, 0),
@@ -480,7 +515,15 @@ local function buildRight(content: Frame): (Frame, { { Frame: Frame, Text: TextL
 			Text = "+",
 			Parent = slot,
 		})
-		table.insert(slots, { Frame = slot, Text = label })
+		local view = DinoView.new({
+			Name = "View",
+			Position = UDim2.fromOffset(4, 4),
+			Size = UDim2.new(1, -8, 1, -8),
+			Visible = false,
+			ZIndex = Z + 2,
+			Parent = slot,
+		})
+		table.insert(slots, { Frame = slot, Text = label, View = view, Shown = "" })
 	end
 	local result = UIKit.card({
 		Name = "Result",
@@ -625,6 +668,20 @@ function LabController.Init()
 		Parent = content,
 	})
 	local _, slots, resultTitle, resultText, cost, fuseButton, auto = buildRight(content)
+	-- (labo fermé : les portraits 3D sont retirés, ils sont refaits à l'ouverture)
+	panel.OnClose = function()
+		for _, child in grid:GetChildren() do
+			if child:IsA("GuiObject") then
+				child:Destroy()
+			end
+		end
+		cards = {}
+		for _, slot in slots do
+			slot.Shown = ""
+			DinoView.Clear(slot.View)
+			slot.View.Visible = false
+		end
+	end
 	ui = {
 		Panel = panel,
 		Grid = grid,
