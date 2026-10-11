@@ -340,6 +340,37 @@ T.check(not buttons.Visible and not find("Widgets").Visible, "SetVisible(false) 
 Hud.SetVisible(true)
 T.check(buttons.Visible, "SetVisible(true)")
 
+T.section("réseau coupé")
+-- (InvokeServer qui plante côté client : le bouton doit remarcher ensuite)
+local down = true
+env.stubMethod("RemoteFunction", "InvokeServer", function(self: any, ...: any): ...any
+	if down then
+		error("network down")
+	end
+	return env.invokeServer(player, self.Name, ...)
+end)
+local tanksNow = Replica.Get("TankCount")
+click(buy)
+env.advance(0.5)
+T.check(shown("Try again"), "nouvelle cuve sans réseau : message")
+T.eq(Replica.Get("TankCount"), tanksNow, "pas de cuve en plus")
+ShopUi.Open("Items")
+env.advance(0.5)
+local trapsNow = data.BearTraps
+click(find("BearTraps", backdrop).Button1)
+env.advance(0.5)
+T.eq(data.BearTraps, trapsNow, "piège sans réseau : rien")
+down = false
+env.advance(4)
+click(find("BearTraps", backdrop).Button1)
+env.advance(0.6)
+T.eq(data.BearTraps, trapsNow + 1, "réseau revenu : le bouton du shop remarche")
+ShopUi.Close()
+env.advance(0.3)
+click(buy)
+env.advance(0.6)
+T.eq(Replica.Get("TankCount"), tanksNow + 1, "réseau revenu : NEW TANK remarche")
+
 T.section("événements abîmés")
 local remotes = env.game:GetService("ReplicatedStorage").Remotes
 for _, value in T.hostileValues() do

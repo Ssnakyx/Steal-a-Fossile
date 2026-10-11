@@ -192,7 +192,10 @@ local function preview()
 		if token ~= previewToken then
 			return
 		end
-		local ok, result = FusionController.Preview(ids)
+		local called, ok, result = pcall(FusionController.Preview, ids)
+		if not called then
+			ok, result = false, "Try again"
+		end
 		if token ~= previewToken or ui ~= currentUi then
 			return
 		end
@@ -296,7 +299,10 @@ local function fuse()
 	currentUi.Fuse.Text = "..."
 	local ids = table.clone(picked)
 	task.spawn(function()
-		local ok, message = FusionController.Fuse(ids)
+		local called, ok, message = pcall(FusionController.Fuse, ids)
+		if not called then
+			ok, message = false, "Try again"
+		end
 		fusing = false
 		currentUi.Fuse.Text = "FUSE!"
 		if ok == true then

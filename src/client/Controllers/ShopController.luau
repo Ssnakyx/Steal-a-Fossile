@@ -59,6 +59,7 @@ local ui: Ui? = nil
 local shop: { [string]: any }? = nil
 local spinOffers: { { [string]: any } } = {}
 local loading = false
+local missed = false
 local reloadQueued = false
 local lastLoad = -math.huge
 local busy: { [string]: boolean } = {}
@@ -93,8 +94,13 @@ local function request(key: string, remote: string, arg: any, successToast: bool
 	end
 	busy[key] = true
 	task.spawn(function()
-		local ok, message = Remotes.Function(remote):InvokeServer(arg)
+		local called, ok, message = pcall(function()
+			return Remotes.Function(remote):InvokeServer(arg)
+		end)
 		busy[key] = nil
+		if not called then
+			ok, message = false, "Try again"
+		end
 		local textOut = if type(message) == "string" then message else ""
 		if not ok then
 			NotifyController.Show(if textOut ~= "" then textOut else "Try again", "error")
@@ -108,8 +114,10 @@ local render: (() -> ())? = nil
 
 local function load()
 	if loading then
+		missed = true -- (refait à la fin du chargement en cours)
 		return
 	end
+	missed = false
 	loading = true
 	lastLoad = os.clock()
 	local ok, result = pcall(function()
@@ -130,6 +138,10 @@ local function load()
 		spinOffers = {}
 	end
 	loading = false
+	if missed then
+		load()
+		return
+	end
 	local draw = render
 	if draw and ShopController.IsOpen() then
 		draw()
@@ -548,10 +560,11 @@ local function passesPage(page: ScrollingFrame)
 			continue -- (trails Robux : onglet Trails)
 		end
 		local look = glyphs[key] or { Glyph = "", Color = Colors.Robux }
-		order += 1
-		passRow(page, order, key, look.Glyph, look.Color)
+		if passRow(page, order + 1, key, look.Glyph, look.Color) then
+			order += 1
+		end
 	end
-	if order == 0 or (not STUDIO and next(onSaleList("Passes")) == nil) then
+	if order == 0 then
 		text({
 			Name = "Empty",
 			LayoutOrder = 99,

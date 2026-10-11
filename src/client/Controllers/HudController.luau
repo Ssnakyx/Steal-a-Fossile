@@ -95,6 +95,11 @@ local lastZone = ""
 local bannerToken = 0
 local popCount = 0
 local busy: { [string]: boolean } = {} -- demandes au serveur en cours (pas deux à la fois)
+local homePlot = -1 -- (entrée du parc gardée : voir homePosition)
+local homeAt: Vector3? = nil
+local homeRetry = 0
+local tutorialBeam = false -- le guide des premières minutes montre déjà son rayon (lu toutes les REFRESH s)
+local beamFill: Color3? = nil
 
 local function serverNow(): number
 	return Workspace:GetServerTimeNow()
@@ -138,9 +143,16 @@ function HudController.Heading(from: Vector3, to: Vector3, camera: CFrame): numb
 	return math.deg(math.atan2(relative.X, -relative.Z))
 end
 
--- Entrée de son parc (sinon son point d'apparition ou son sol)
+-- Entrée de son parc (sinon son point d'apparition ou son sol). Gardée une fois trouvée : un parc ne bouge pas, et ses
+-- pièces peuvent sortir du streaming quand le joueur est loin. Cherchée au plus une fois par seconde tant qu'elle manque.
 local function homePosition(): Vector3?
 	local index = num("Plot")
+	if index == homePlot and (homeAt ~= nil or os.clock() < homeRetry) then
+		return homeAt
+	end
+	homePlot = index
+	homeAt = nil
+	homeRetry = os.clock() + 1
 	local map = Workspace:FindFirstChild("Map")
 	local plots = map and map:FindFirstChild("Plots")
 	local plot = plots and index > 0 and plots:FindFirstChild("Plot" .. index)
@@ -150,7 +162,8 @@ local function homePosition(): Vector3?
 	for _, name in { "Entrance", "Spawn", "Floor" } do
 		local part = plot:FindFirstChild(name, true)
 		if part and part:IsA("BasePart") then
-			return part.Position
+			homeAt = part.Position
+			return homeAt
 		end
 	end
 	return nil
@@ -410,8 +423,13 @@ local function revealTank(slot: number)
 	end
 	busy[key] = true
 	task.spawn(function()
-		local ok, message = Remotes.Function("RevealTank"):InvokeServer(slot)
+		local called, ok, message = pcall(function()
+			return Remotes.Function("RevealTank"):InvokeServer(slot)
+		end)
 		busy[key] = false
+		if not called then
+			ok, message = false, "Try again"
+		end
 		if not ok then
 			NotifyController.Show(if type(message) == "string" then message else "Try again", "error")
 		end
@@ -424,8 +442,13 @@ local function buyTank()
 	end
 	busy.BuyTank = true
 	task.spawn(function()
-		local ok, message = Remotes.Function("BuyTank"):InvokeServer()
+		local called, ok, message = pcall(function()
+			return Remotes.Function("BuyTank"):InvokeServer()
+		end)
 		busy.BuyTank = false
+		if not called then
+			ok, message = false, "Try again"
+		end
 		NotifyController.Show(if type(message) == "string" then message else "Try again", if ok then "success" else "error")
 	end)
 end
@@ -764,9 +787,10 @@ local function refreshCarry(current: Ui)
 			current.CarryArrow.Rotation = HudController.Heading(root.Position, home, camera.CFrame) - 90
 		end
 		current.Home.CFrame = CFrame.new(home)
-		local step = TutorialController.Step()
-		local tutorialBeam = step ~= nil and step.Target ~= nil
-		current.Beam.Color = ColorSequence.new(fill)
+		if beamFill ~= fill then
+			beamFill = fill
+			current.Beam.Color = ColorSequence.new(fill)
+		end
 		current.Beam.Enabled = not tutorialBeam and fromAttachment(current) ~= nil
 	else
 		current.CarryText.Text = "BRING IT HOME!"
@@ -894,6 +918,8 @@ local function refresh()
 	if not current then
 		return
 	end
+	local step = TutorialController.Step()
+	tutorialBeam = step ~= nil and step.Target ~= nil
 	refreshCounters(current)
 	refreshTanks(current)
 	current.ShopBadge.Set(shopBadge())
