@@ -79,7 +79,11 @@ Les zones lointaines ont de meilleures probas. La couleur du bloc fixe la raret�
 
 ## Taille et mutations (à la réanimation)
 - Taille : Small x0.8, Normal x1, Big x1.5, Huge x3 (Huge rare).
-- Mutations : Amber 8 % (x1.5), Crystal 3 % (x2), Lava 1 % (x3).
+- Mutations : Amber 8 % (x1.5), Crystal 3 % (x2), Lava 1 % (x3), Rainbow 0.05 % (x10) dans toutes les zones, plus
+  une mutation par biome qui ne sort que de ses fossiles : Pearl (Beach) et Bloom (Fern Forest) 2 % (x2), Toxic
+  (Swamp), Ruby (Canyon) et Frost (Glacier) 1.5 % (x2.5), Obsidian (Volcano) 1 % (x3), Abyssal (Ocean Trench) 0.75 %
+  (x4), Galaxy (Meteor Crater) 0.5 % (x5). Les mutations de 1 % ou moins sont annoncées à tout le serveur. Détails :
+  `docs/MUTATIONS.md`.
 - Revenu d'un dino = base de l'espèce x taille x mutation.
 
 ## Fusion (labo dans le parc)
@@ -213,7 +217,7 @@ Les zones lointaines ont de meilleures probas. La couleur du bloc fixe la raret�
 - Common : aucun. Uncommon : quelques particules vertes. Rare : lueur bleue.
 - Epic : aura et particules violettes. Legendary : rayons orange et étincelles.
 - Mythic : flammes rouges et pulsation. Secret : arc-en-ciel qui tourne, rayon vers le ciel visible de loin, son spécial.
-- Mutations sur les dinos : Amber (gouttes dorées translucides), Crystal (éclats brillants), Lava (fissures lumineuses et braises).
+- Mutations sur les dinos : Amber (gouttes dorées translucides), Crystal (éclats brillants), Lava (fissures lumineuses et braises), et les mutations des biomes et Rainbow (faites : couleurs dans `DinoBuilder`, effets animés dans `MutationController`, voir `docs/MUTATIONS.md`).
 
 **VFX de gameplay**
 - Arrachage : poussière et débris. Réveil du gardien : rugissement, onde de choc, « RUN!! » à l'écran.
