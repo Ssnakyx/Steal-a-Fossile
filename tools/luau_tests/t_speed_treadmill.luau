@@ -11,7 +11,7 @@ local Shop = Config.Shop
 local SpeedConfig = Config.Speed
 -- (échelle payante seule dans ce test : le gain gratuit sans achat est testé dans t_daily_afk)
 SpeedConfig.Treadmill.FreeMultiplier = 0
--- (produits « créés dans le Creator Hub » pour ce test : Id 9001 à 9010, prix du GDD)
+-- (produits « créés dans le Creator Hub » pour ce test : Id 9001 à 9050, prix du GDD)
 for level, entry in Shop.Treadmill.Levels do
 	entry.Id = 9000 + level
 	env.productPrices[entry.Id] = entry.Price
@@ -37,6 +37,7 @@ local market = env.game:GetService("MarketplaceService")
 local GRANTED = Enum.ProductPurchaseDecision.PurchaseGranted
 local NOT_YET = Enum.ProductPurchaseDecision.NotProcessedYet
 local BASE = SpeedConfig.Treadmill.BaseGain
+local MAX = #Shop.Treadmill.Levels
 
 local function place(player: any, position: any)
 	player.Character.HumanoidRootPart.CFrame = CFrame.new(position)
@@ -175,19 +176,24 @@ T.eq(SpeedService.Get(player) - before, BASE * Shop.Treadmill.Levels[3].Multipli
 for level = 4, #Shop.Treadmill.Levels do
 	ReceiptService.Simulate(player, "TreadmillLevel" .. level)
 end
-T.eq(T.data(player).TreadmillLevel, 10, "niveau 10")
-T.eq(TreadmillService.Rate(player), BASE * 20, "x20 au niveau 10 (GDD)")
+T.eq(T.data(player).TreadmillLevel, MAX, "niveau max")
+T.eq(TreadmillService.Rate(player), BASE * Shop.Treadmill.Levels[MAX].Multiplier, "gain du dernier niveau")
 RateLimit.Reset(player)
 ok, text = env.invokeServer(player, "BuyTreadmill")
 T.check(not ok and text == "Your treadmill is maxed out!", "niveau max")
 T.eq(env.purchase(player, 9001, { PurchaseId = "Old1" }), NOT_YET, "vieux produit du niveau 1 : pas donné")
-T.eq(T.data(player).TreadmillLevel, 10, "toujours 10")
+T.eq(T.data(player).TreadmillLevel, MAX, "toujours au max")
 
 T.section("achat avec l'argent du jeu")
 local LEVELS = Shop.Treadmill.Levels
 T.eq(LEVELS[1].Cash, 1000, "déblocage à $1K (comme Steal an Egg)")
+T.eq(MAX, 50, "50 niveaux (un modèle de tapis par niveau)")
 for level = 2, #LEVELS do
-	T.check(LEVELS[level].Cash > LEVELS[level - 1].Cash, "niveau " .. level .. " plus cher que le " .. (level - 1))
+	local at, prev = LEVELS[level], LEVELS[level - 1]
+	T.check(at.Cash > prev.Cash, "niveau " .. level .. " plus cher que le " .. (level - 1))
+	T.check(at.Multiplier > prev.Multiplier, "niveau " .. level .. " plus rapide que le " .. (level - 1))
+	T.check(at.Price >= prev.Price, "prix Robux du niveau " .. level .. " jamais plus bas")
+	T.check(at.Cash / at.Multiplier >= prev.Cash / prev.Multiplier, "niveau " .. level .. " : $ par gain jamais moins cher")
 end
 local cashy = T.join({ UserId = 203, Character = true })
 env.flush()
@@ -223,9 +229,9 @@ for k, args in env.received(cashy, "Notify") do
 end
 T.eq(unlocked, 1, "message « Treadmill unlocked! »")
 T.eq(#env.prompts, promptsBefore, "aucun achat Robux ouvert")
-T.eq(station.ActionText, "Upgrade ($15K)", "prompt : Upgrade ($15K)")
-T.eq(station.ObjectText, "Treadmill Lv 1/10", "prompt : niveau")
-T.eq(sign.Price.Text, "Upgrade: $15K", "panneau : Upgrade: $15K")
+T.eq(station.ActionText, "Upgrade (" .. Format.Money(LEVELS[2].Cash) .. ")", "prompt : Upgrade (prix du niveau 2)")
+T.eq(station.ObjectText, "Treadmill Lv 1/50", "prompt : niveau")
+T.eq(sign.Price.Text, "Upgrade: " .. Format.Money(LEVELS[2].Cash), "panneau : Upgrade (prix du niveau 2)")
 MoneyService.Add(cashy, LEVELS[2].Cash, "Test")
 RateLimit.Reset(cashy)
 ok = env.invokeServer(cashy, "BuyTreadmill", "Cash")
@@ -288,13 +294,13 @@ for _ = 1, 20 do
 end
 env.flush()
 T.check(T.data(cashy).TreadmillLevel <= 7, "prompt limité en vitesse (" .. T.data(cashy).TreadmillLevel .. ")")
-TreadmillService.SetLevel(cashy, 9)
-MoneyService.Add(cashy, LEVELS[10].Cash, "Test")
+TreadmillService.SetLevel(cashy, MAX - 1)
+MoneyService.Add(cashy, LEVELS[MAX].Cash, "Test")
 RateLimit.Reset(cashy)
 env.fire(env.signal(station, "Triggered"), cashy)
 env.flush()
-T.eq(T.data(cashy).TreadmillLevel, 10, "niveau 10 en argent")
-T.eq(TreadmillService.Rate(cashy), BASE * 20, "x20")
+T.eq(T.data(cashy).TreadmillLevel, MAX, "dernier niveau en argent")
+T.eq(TreadmillService.Rate(cashy), BASE * LEVELS[MAX].Multiplier, "gain du dernier niveau")
 T.check(not station.Enabled, "niveau max : prompt éteint")
 T.eq(sign.Price.Text, "MAX LEVEL", "panneau : MAX LEVEL")
 RateLimit.Reset(cashy)
@@ -315,7 +321,7 @@ local section = shop and shop.Treadmill
 T.check(section ~= nil, "section Treadmill dans le shop")
 if section then
 	T.eq(section.Level, 3, "niveau du joueur")
-	T.eq(section.MaxLevel, 10, "niveau max")
+	T.eq(section.MaxLevel, MAX, "niveau max")
 	T.check(section.Next and section.Next.Level == 4, "niveau suivant proposé")
 	T.eq(section.Next and section.Next.Price, 89, "prix du niveau 4 lu sur Roblox")
 	T.eq(section.Next and section.Next.Cash, Shop.Treadmill.Levels[4].Cash, "prix du niveau 4 en argent du jeu")
@@ -331,7 +337,7 @@ shop = env.invokeServer(other, "GetShop")
 T.eq(shop.Treadmill.Next.Price, 95, "prix relu après le cache")
 RateLimit.Reset(player)
 shop = env.invokeServer(player, "GetShop")
-T.check(shop.Treadmill.Next == nil and shop.Treadmill.Level == 10, "niveau max : rien à proposer")
+T.check(shop.Treadmill.Next == nil and shop.Treadmill.Level == MAX, "niveau max : rien à proposer")
 
 T.section("passe x2 Treadmill")
 local rate = TreadmillService.Rate(other)
@@ -348,7 +354,7 @@ env.studio = true
 ok = AdminService.Run(admin, "treadmill", { "5" })
 T.check(ok, "treadmill 5 dans Studio")
 T.eq(T.data(admin).TreadmillLevel, 5, "niveau fixé")
-for _, bad in { "11", "-1", "abc", "2.5", "nan" } do
+for _, bad in { "51", "-1", "abc", "2.5", "nan" } do
 	T.check(not AdminService.Run(admin, "treadmill", { bad }), "treadmill " .. bad .. " refusé")
 end
 env.studio = false

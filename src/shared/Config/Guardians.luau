@@ -5,14 +5,16 @@
 --
 -- Vitesse de course : Speed (studs/s) si elle est donnée (Beach), sinon SpeedFactor x le WalkSpeed conseillé de la zone
 -- (Config.Speed.WalkSpeedFor(vitesse conseillée)), multiplié par le malus du bloc que porte sa proie (MatchCarry : le
--- même que celui du joueur, Config.Rarity.CarrySpeed). Réveillé, il poursuit sur toute la route jusqu'à la Beach
--- (ChaseWholeRoute, SafeZones) : la course est longue, c'est donc la vitesse qui décide.
+-- même que celui du joueur, Config.Rarity.CarrySpeed). Réveillé, il poursuit sur toute la route, Beach comprise, jusqu'à
+-- la place du spawn (ChaseWholeRoute, RouteOnly : hors de toute zone, plus de poursuite) : la course est longue, c'est
+-- donc la vitesse qui décide.
 --   * à la vitesse conseillée, chargé de n'importe quel bloc, on va 1 / 0.9 = 11 % plus vite que lui : on rentre ;
---   * un nouveau joueur (WalkSpeed 16) est rattrapé partout, sauf au gisement de la Fern Forest le plus près de la Beach ;
+--   * un nouveau joueur (WalkSpeed 16) est rattrapé dans toutes les zones après la Beach, quel que soit le gisement ;
 --   * deux zones trop lent (exemple : vitesse conseillée du Volcano au Meteor Crater) : rattrapé, quel que soit le gisement ;
---   * une zone trop lent : souvent rattrapé depuis le gisement le plus loin de la Beach, rarement dans les dernières zones
---     (leurs vitesses conseillées sont proches). SpeedFactor plus haut = barrière plus dure (1 : la vitesse conseillée
---     devient un mur ; garder une marge, le joueur contourne le décor, le gardien va tout droit).
+--   * une zone trop lent : rattrapé depuis le gisement le plus loin de la place du spawn, souvent rentré depuis le plus
+--     proche (Fern Forest : toujours rattrapé ; Glacier, Ocean Trench, Meteor Crater : parfois rentré de partout, leurs
+--     vitesses conseillées sont proches de la zone d'avant). SpeedFactor plus haut = barrière plus dure (1 : la vitesse
+--     conseillée devient un mur ; garder une marge, le joueur contourne le décor, le gardien va tout droit).
 --   zone                 Beach  Fern   Swamp  Canyon  Glacier  Volcano  Trench  Crater
 --   WalkSpeed conseillé    16     26.4   36     43      49       56       63      70
 --   gardien (x0.9)         10*    23.8   32.4   38.7    44.1     50.4     56.7    63     (* Beach : fixe, tutoriel)
@@ -59,9 +61,12 @@ local Guardians = {
 	-- Poursuite
 	Leash = 40, -- studs autour de sa zone (sa pièce Area) : endormi, il se réveille pour un porteur dans ce rayon
 	ChaseWholeRoute = true, -- réveillé, il poursuit sur toute la route (toutes les zones), pas seulement dans sa laisse
-	-- Zones où les gardiens des autres zones n'entrent jamais (la poursuite s'arrête à leur bord). Le gardien d'une de
-	-- ces zones garde sa laisse (sa zone + Leash). Jamais dans un parc non plus.
-	SafeZones = { Beach = true } :: { [string]: boolean },
+	-- La limite : hors de toute zone (pièce Area), c'est-à-dire la place du spawn devant les parcs, il n'y a plus de
+	-- poursuite, laisse comprise ; le gardien ne va pas plus loin. Jamais dans un parc non plus.
+	RouteOnly = true,
+	-- Zones où les gardiens des autres zones n'entrent jamais (la poursuite s'arrête à leur bord ; le gardien d'une de
+	-- ces zones garde sa laisse). Vide : les gardiens poursuivent jusqu'à la place du spawn, Beach comprise.
+	SafeZones = {} :: { [string]: boolean },
 	CatchRange = 4, -- studs (horizontal) entre le pivot du gardien et le joueur pour l'attraper...
 	CatchReach = 0.35, -- ... + 0.35 x sa taille (taille de base de l'espèce x Scale) : la tête est devant le pivot
 	DefaultSize = 6, -- taille de base (studs) d'une espèce sans fiche Config.Species

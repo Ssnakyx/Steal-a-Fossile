@@ -34,7 +34,7 @@ Même map et même boucle que **Steal an Egg** (pas Steal a Brainrot) : bases al
 | 8 | Meteor Crater | 25 M |
 
 - **Gisements (Dig Sites)** : plusieurs par zone, chacun avec des blocs fossiles. Ils se remplissent toutes les 5 min (compte à rebours affiché). Un bloc Secret est annoncé dans le chat du serveur.
-- **Gardiens** : dans chaque zone, un dino vivant dort près des gisements. Quand on arrache un bloc, il se réveille (« RUN!! ») et poursuit le joueur sur toute la route, jusqu'au bord de la Beach. Plus la zone est loin, plus il est rapide : trop lent pour la zone, on est rattrapé avant d'être rentré. S'il attrape le joueur : ragdoll cartoon, le bloc est lâché et retourne au gisement.
+- **Gardiens** : dans chaque zone, un dino vivant dort près des gisements. Quand on arrache un bloc, il se réveille (« RUN!! ») et poursuit le joueur sur toute la route, Beach comprise, jusqu'au début de la place du spawn. Plus la zone est loin, plus il est rapide : trop lent pour la zone, on est rattrapé avant d'être rentré. S'il attrape le joueur : ragdoll cartoon, le bloc est lâché et retourne au gisement.
 
 ## Boucle principale
 1. Courir vers une zone adaptée à sa vitesse.
@@ -103,22 +103,25 @@ Les zones lointaines ont de meilleures probas. La couleur du bloc fixe la raret�
 ## Vitesse et treadmill
 - La vitesse est la stat principale : elle ouvre les zones lointaines et permet d'échapper aux gardiens et aux voleurs.
 - **Treadmill** dans le parc : courir dessus (ou rester AFK dessus) donne de la vitesse chaque seconde. Rien à regarder pendant (pas de fil de vidéos, c'est ce qui avait fait retirer Steal an Egg).
-- **Achat** : pas cher en Robux (25 R$).
-- **Améliorations en Robux** : chaque niveau augmente la vitesse gagnée par seconde, et le prix monte à chaque achat.
+- **Déblocage** : $1K d'argent du jeu (comme Steal an Egg), ou 25 R$.
+- **50 améliorations** : chaque niveau augmente la vitesse gagnée par seconde et coûte plus cher (argent du jeu, ou
+  Robux pour aller plus vite). Chaque niveau a **son propre modèle de tapis** : 10 thèmes (Beach, Fern, Swamp, Canyon,
+  Glacier, Volcano, Ocean, Meteor, Fossil Gold, Galaxy) de 5 crans chacun (jupes, néons, décor, arche, particules).
+  Table complète dans `Config/Shop.luau` (valeurs de départ, à régler en jeu) :
 
-| Niveau | Prix | Gain (valeur de départ) |
-|--------|------|-------------------------|
-| 1 (achat) | 25 R$ | x1 |
-| 2 | 39 R$ | x1.5 |
-| 3 | 59 R$ | x2 |
-| 4 | 89 R$ | x3 |
-| 5 | 129 R$ | x4 |
-| 6 | 179 R$ | x6 |
-| 7 | 249 R$ | x8 |
-| 8 | 349 R$ | x11 |
-| 9 | 499 R$ | x15 |
-| 10 | 699 R$ | x20 |
+| Niveau | Argent | Robux | Gain |
+|--------|--------|-------|------|
+| 1 (déblocage) | $1K | 25 R$ | x1 |
+| 5 | $4.4K | 129 R$ | x4 |
+| 10 | $28K | 699 R$ | x20 |
+| 20 | $1.2M | 1299 R$ | x54 |
+| 30 | $48M | 2199 R$ | x150 |
+| 40 | $2B | 2499 R$ | x400 |
+| 50 | $81B | 2499 R$ | x1100 |
 
+- **Sur le tapis**, le personnage monte dessus et court sur place (animation de course, la bande défile). De petites
+  chaussures « 👟 +N » sortent à côté de lui à chaque gain de vitesse (N = le vrai gain de la seconde). Il descend
+  dès qu'il bouge ou saute.
 - Technique : sur Roblox un produit a un prix fixe, donc un produit développeur par niveau. Le serveur ne propose que le niveau suivant du joueur et l'enregistre dans ses données.
 - **Vitesse gratuite** (pour que les joueurs qui ne paient pas avancent aussi, plus lentement) : trails achetées avec l'argent du jeu (10, de Common à Divine), récompenses des quêtes, récompense like + favori + groupe.
 

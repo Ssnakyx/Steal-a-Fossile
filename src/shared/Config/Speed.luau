@@ -63,6 +63,20 @@ local Speed = {
 		TickSeconds = 1, -- la vitesse est donnée toutes les TickSeconds
 		Height = 8, -- hauteur au-dessus de la surface où le joueur compte comme dessus (studs)
 		HintCooldown = 15, -- secondes entre deux rappels « achète le treadmill » (seulement si FreeMultiplier = 0)
+		ModelName = "TreadmillModel", -- modèle du tapis d'un parc (un par niveau, Map/Treadmills), à côté de la pièce taguée
+		StripeName = "BeltStripe", -- bandes du tapis dans ce modèle (elles défilent chez le joueur qui court)
+
+		-- Course sur place (TreadmillController, côté client) : le joueur qui reste StillSeconds immobile sur son tapis
+		-- monte dessus (posé au milieu, tourné vers la console) et court ; il descend dès qu'il bouge ou saute, et ne
+		-- remonte pas avant Cooldown secondes. De petites chaussures « 👟 +N » sortent à côté de lui à chaque gain.
+		Run = {
+			StillSeconds = 0.3,
+			Cooldown = 0.6,
+			AnimSpeed = 1.3, -- vitesse de l'animation de course
+			StripeSpeed = 9, -- studs/s des bandes du tapis
+			PopSeconds = 1.1, -- durée d'une chaussure « +N »
+			MaxPops = 6, -- chaussures à l'écran en même temps, au plus
+		},
 
 		-- AFK : Roblox expulse un joueur inactif depuis 20 min. Un joueur inactif depuis RejoinAfter secondes sur son
 		-- treadmill est reconnecté au même serveur (TeleportService, pas dans Studio) et reposé sur son tapis.

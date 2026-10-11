@@ -113,7 +113,7 @@ return {
 		end
 		local level: number = data.TreadmillLevel
 		local maxLevel = #Shop.Treadmill.Levels
-		t:Equal(maxLevel, 10, "10 treadmill levels (GDD)")
+		t:Equal(maxLevel, 50, "50 treadmill levels, one model each")
 		if level < maxLevel then
 			local ok = ReceiptService.Simulate(player, "TreadmillLevel" .. (level + 1))
 			t:Check(ok, "next level can be bought (simulated)")

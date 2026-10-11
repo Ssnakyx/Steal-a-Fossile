@@ -17,6 +17,8 @@
 --   TreadmillService.Buy(player, "Cash" | "Robux" | nil) -> (ok, texte)   achat du niveau suivant (comme le remote)
 -- Signaux : TreadmillUpgraded(player, level)   niveau acheté et sauvegardé
 -- Replica : TreadmillLevel, TreadmillRate. Attribut OnTreadmill sur le joueur (VFX, UI).
+-- Modèle du tapis du parc : un par niveau (Map/Treadmills), refait à chaque niveau acheté, remis au niveau 0 quand le
+-- propriétaire part. Course sur place et chaussures « +N » : côté client (TreadmillController).
 
 local CollectionService = game:GetService("CollectionService")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -33,6 +35,7 @@ local Net = require(script.Parent.Parent.Lib.Net)
 local Notify = require(script.Parent.Parent.Lib.Notify)
 local RateLimit = require(script.Parent.Parent.Lib.RateLimit)
 local Signals = require(script.Parent.Parent.Lib.Signals)
+local Treadmills = require(script.Parent.Parent.Map.Treadmills)
 local AdminService = require(script.Parent.AdminService)
 local DataService = require(script.Parent.DataService)
 local MoneyService = require(script.Parent.MoneyService)
@@ -58,6 +61,8 @@ local pending: { [Player]: Pending } = {}
 local lastHint: { [Player]: number } = {}
 local upsold: { [Player]: boolean } = {} -- rappel « achète le treadmill » déjà montré (gain gratuit)
 local stations: { [Player]: Station } = {}
+local dressed: { [BasePart]: number } = {} -- niveau du modèle posé autour de chaque tapis de parc
+local beltOf: { [Player]: BasePart } = {}
 
 local GREEN = Color3.fromRGB(110, 235, 120)
 local GOLD = Color3.fromRGB(255, 215, 90)
@@ -124,10 +129,33 @@ local function updateStation(player: Player)
 	station.Prompt.Enabled = entry ~= nil
 end
 
+-- Modèle du tapis au niveau donné (Map/Treadmills), à la place de l'ancien ; rien si c'est déjà le bon
+local function dress(belt: BasePart, level: number)
+	local parent = belt.Parent
+	if dressed[belt] == level or not parent then
+		return
+	end
+	dressed[belt] = level
+	local base = belt.CFrame * CFrame.new(0, -Treadmills.BeltY, 0)
+	for _, child in parent:GetChildren() do
+		if child.Name == Treadmills.ModelName and child:IsA("Model") then
+			child:Destroy()
+		end
+	end
+	Treadmills.Paint(belt, level)
+	Treadmills.Build(level, base).Parent = parent
+end
+
 local function publish(player: Player)
 	ReplicaService.Set(player, "TreadmillLevel", levelOf(player))
 	ReplicaService.Set(player, "TreadmillRate", TreadmillService.Rate(player))
 	updateStation(player)
+	local plot = PlotService.Get(player)
+	local belt = plot and plot.Treadmill
+	if belt and players[player] then
+		beltOf[player] = belt
+		dress(belt, levelOf(player))
+	end
 end
 
 function TreadmillService.SetLevel(player: Player, level: number): boolean
@@ -424,8 +452,9 @@ local function createStation(player: Player)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "TreadmillLabel"
 	gui.Size = UDim2.fromScale(7, 2.6)
-	-- (au-dessus du panneau TREADMILL du décor et de l'étiquette du guide des premières minutes, à +5)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, belt.Size.Y / 2 + 9, 0)
+	-- (au-dessus du modèle du tapis, arche et emblème compris (Treadmills.Bounds), et de l'étiquette du guide des
+	-- premières minutes, à +5)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, Treadmills.Bounds.Height - Treadmills.BeltY + 1.5, 0)
 	gui.MaxDistance = 120
 	gui.LightInfluence = 0
 	local title = label("Title", UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.42), Color3.new(1, 1, 1), gui)
@@ -478,6 +507,12 @@ function TreadmillService.OnPlayerRemoving(player: Player)
 	if station then
 		station.Prompt:Destroy()
 		station.Gui:Destroy()
+	end
+	-- (le parc se libère : tapis de départ pour le prochain propriétaire)
+	local belt = beltOf[player]
+	beltOf[player] = nil
+	if belt then
+		dress(belt, 0)
 	end
 end
 

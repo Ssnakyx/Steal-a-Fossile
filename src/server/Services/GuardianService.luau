@@ -1,12 +1,12 @@
 --!strict
 -- Gardiens des zones (brief 7 « gardiens-vol », GDD sections Carte et Animations) : un dino géant par zone dort sur le
 -- point « Guardian » de sa zone (docs/BOUCLE.md). Quand un bloc de sa zone est arraché (ou qu'un porteur d'un bloc de
--- sa zone passe à portée), il se réveille, rugit (« RUN!! ») et poursuit le porteur sur toute la route, jusqu'au bord
--- de la Beach (Config.Guardians.SafeZones) ; plus la zone est loin, plus il court vite (Config.Guardians : un peu moins
--- vite qu'un joueur à la vitesse conseillée de la zone, chargé du même bloc). S'il l'attrape : chute cartoon, le bloc
--- retourne à son gisement. Il n'entre jamais dans un parc ni dans la Beach (sauf celui de la Beach, qui garde sa
--- laisse : sa zone + Leash studs) : il cherche, puis rentre chez lui et se rendort (coincé en rentrant, il y
--- réapparaît). Un Bear Trap le bloque 3 s (PvpService).
+-- sa zone passe à portée), il se réveille, rugit (« RUN!! ») et poursuit le porteur sur toute la route, Beach
+-- comprise, jusqu'à la place du spawn (Config.Guardians.RouteOnly : hors de toute zone, plus de poursuite) ; plus la
+-- zone est loin, plus il court vite (Config.Guardians : un peu moins vite qu'un joueur à la vitesse conseillée de la
+-- zone, chargé du même bloc). S'il l'attrape : chute cartoon, le bloc retourne à son gisement. Il ne sort jamais de la
+-- route (ni place du spawn, ni parc, ni zone de Config.Guardians.SafeZones s'il y en a) : il cherche, puis rentre chez
+-- lui et se rendort (coincé en rentrant, il y réapparaît). Un Bear Trap le bloque 3 s (PvpService).
 -- États (noms identiques aux animations du brief 2) : Sleep, Wake, Roar, Run, Catch, Search, Return, BackToSleep.
 -- Modèle : contrat du brief 2 (DinoAnimController) : Model tagué « Dino » (et « Guardian ») dans Workspace.Guardians,
 -- pièce invisible « Root » au sol (PrimaryPart), attributs Species, Scale, State, StateAt, Speed (studs/s, cadence de
@@ -228,19 +228,24 @@ local function inLeash(g: Guardian, position: Vector3): boolean
 	return math.abs(relative.X) <= half.X + leash and math.abs(relative.Z) <= half.Z + leash
 end
 
--- La position est-elle dans une zone sûre qui n'est pas la sienne (la Beach pour les autres gardiens) ?
-local function inForeignSafeZone(g: Guardian, position: Vector3): boolean
+-- Le gardien peut-il aller là ? Pas hors de la route (RouteOnly : place du spawn), ni dans une zone sûre qui n'est pas
+-- la sienne (Config.Guardians.SafeZones)
+local function offLimits(g: Guardian, position: Vector3): boolean
 	local zone = ZoneService.ZoneAt(position)
-	return zone ~= nil and zone ~= g.Zone and GuardiansConfig.SafeZones[zone] == true
+	if zone == nil then
+		return GuardiansConfig.RouteOnly == true
+	end
+	return zone ~= g.Zone and GuardiansConfig.SafeZones[zone] == true
 end
 
 -- Peut-il poursuivre jusqu'ici ? Dans sa zone (+ Leash) toujours ; réveillé (`wide`), sur toute la route
--- (ChaseWholeRoute). Jamais dans une zone sûre qui n'est pas la sienne ; le gardien d'une zone sûre garde sa laisse.
+-- (ChaseWholeRoute). Jamais hors de la route (RouteOnly) ni dans une zone sûre qui n'est pas la sienne ; le gardien
+-- d'une zone sûre garde sa laisse.
 local function inChase(g: Guardian, position: Vector3, wide: boolean): boolean
-	local zone = ZoneService.ZoneAt(position)
-	if zone ~= nil and zone ~= g.Zone and GuardiansConfig.SafeZones[zone] then
+	if offLimits(g, position) then
 		return false
 	end
+	local zone = ZoneService.ZoneAt(position)
 	if inLeash(g, position) then
 		return true
 	end
@@ -248,7 +253,7 @@ local function inChase(g: Guardian, position: Vector3, wide: boolean): boolean
 end
 
 -- Le joueur est-il une proie pour ce gardien ? (porte un bloc de sa zone, sur la route, hors d'un parc ; à portée de
--- laisse s'il dort, partout sur la route jusqu'à la Beach s'il est réveillé : `wide`)
+-- laisse s'il dort, partout sur la route jusqu'à la place du spawn s'il est réveillé : `wide`)
 local function isPrey(g: Guardian, player: Player, wide: boolean): boolean
 	if player.Parent ~= Players then
 		return false
@@ -312,9 +317,9 @@ local function moveToward(g: Guardian, goal: Vector3, speed: number, dt: number,
 	local step = math.min(speed * dt, math.max(0, distance - stop))
 	local nextFlat = flat(here) + direction * step
 	local nextPosition = Vector3.new(nextFlat.X, groundY(g, nextFlat), nextFlat.Z)
-	-- (jamais dans un parc ni dans la Beach s'il n'en est pas le gardien : il s'arrête au bord)
+	-- (jamais dans un parc ni hors de la route : il s'arrête au bord)
 	local lifted = nextPosition + Vector3.new(0, 3, 0)
-	if PlotService.IsSafe(lifted) or inForeignSafeZone(g, lifted) then
+	if PlotService.IsSafe(lifted) or offLimits(g, lifted) then
 		g.Model:SetAttribute("Speed", 0)
 		return distance
 	end
@@ -365,7 +370,7 @@ local function goHome(g: Guardian)
 end
 
 -- Pourquoi le gardien lâche ce joueur : Safe (rentré dans un parc), Dropped (plus de bloc de sa zone, ou mort) ou
--- Escaped (arrivé à la Beach avec son bloc, ou hors de portée). Seuls Safe et Escaped affichent « ESCAPED! ».
+-- Escaped (arrivé sur la place du spawn avec son bloc, ou hors de portée). Seuls Safe et Escaped affichent « ESCAPED! ».
 local function lostReason(g: Guardian, player: Player): string
 	if PlotService.IsPlayerSafe(player) then
 		return "Safe"
