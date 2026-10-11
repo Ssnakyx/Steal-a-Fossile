@@ -1,11 +1,13 @@
 """Dunkleosteus : nageur de l'Ocean Trench (Epic), poisson cuirassé du Dévonien, mâchoires de cisaille.
 
 Voxels de 0,33 stud : environ 16 studs de long à la taille Normal. Tête et épaules dans une cuirasse de plaques
-bronze-gris aux joints sombres (casque un voxel plus large que le corps, rebord net derrière les épaules), petit oeil
-jaune dans une orbite cerclée, mâchoires en lames osseuses ivoire sans dents avec les crocs du « bec » à l'avant
-(deux en haut, un en bas qui s'emboîtent), corps de requin olive-gris au ventre pâle, aileron dorsal, nageoires
-pectorales en triangle, queue de requin (lobe haut plus long). Neck1 = la cuirasse des épaules, derrière l'articulation
-du crâne (la tête se lève comme chez le vrai Dunkleosteus)."""
+bronze-gris aux joints sombres (casque un voxel plus large que le corps) : joint du crâne et des épaules, joint entre
+les deux plaques d'épaule, suture du milieu du crâne, joint de la joue derrière l'oeil, rebord bronze foncé au bout de
+la cuirasse. Petit oeil jaune dans une orbite cerclée de bronze foncé, mâchoires en lames osseuses ivoire sans dents
+avec les crocs du « bec » à l'avant (deux en haut, un en bas qui s'emboîtent), corps de requin olive-gris au dos olive
+foncé et au ventre pâle, aileron dorsal, nageoires pectorales en triangle, petite nageoire anale, queue de requin
+(lobe haut plus long). Neck1 = la cuirasse des épaules, derrière l'articulation du crâne (la tête se lève comme chez
+le vrai Dunkleosteus)."""
 import math
 import os
 import sys
@@ -29,6 +31,8 @@ IRIS = (255, 196, 64)
 PUPIL = (20, 16, 14)
 
 SHOULDER_SEAM = 4              # le joint des plaques d'épaule descend jusqu'à cette rangée
+MID_SEAM = -17                 # joint du milieu du crâne (vu de dessus), à partir de ce z
+DORSAL = 0.45                  # dos olive foncé au-dessus de l'axe + 0,45 x demi-hauteur du corps
 CHEEK = (9, -16)               # joint de la joue : rangée, et z de départ (derrière l'oeil) jusqu'au joint du crâne
 
 PERSONALITY = {
@@ -190,7 +194,7 @@ def build():
     ring(-7, SHOULDER_SEAM)                              # entre les deux plaques d'épaule
     ring(-3, 4, RIM)                                     # rebord sombre au bout de la cuirasse
     # joints du crâne : ligne du milieu sur le dessus, joue séparée du toit du crâne derrière l'oeil
-    for z in range(-21, -12):
+    for z in range(MID_SEAM, -12):
         y = d.surface_y(0, z)
         if y is not None and d.vox[(0, y, z)][1] == ARMOR:
             d.set("Head", 0, y, z, SEAM)
@@ -255,6 +259,10 @@ def build():
     def paint(x, y, z, bone, c):
         if c == BODY and y <= 5:
             return BELLY
+        if c == BODY and z >= -3:
+            zz = min(max(z, body[0][0]), body[-1][0])
+            if y >= catmull(body, zz, 1) + DORSAL * catmull(body, zz, 2):
+                return FIN                                  # dos olive foncé, comme les nageoires
         if c == ARMOR and bone in ("Chest", "Neck1", "Jaw") and y <= 3:
             return ARMOR_BELLY
         return None
@@ -263,4 +271,6 @@ def build():
     d.plate("Tail5", 0, 0, [(9.0, 19.4), (12.4, 21.6), (16.4, 25.2), (15.6, 26.0), (12.0, 24.0), (9.6, 22.8),
                             (7.6, 23.0), (4.6, 24.4), (3.8, 23.6), (6.0, 21.2), (7.6, 19.4)], FIN)
     d.plate("Chest", 0, 0, [(11.0, -2.0), (14.0, 0.0), (17.4, 3.4), (17.0, 4.2), (14.6, 3.8), (12.4, 5.0), (11.0, 5.0)], FIN)
+    # petite nageoire anale sous la queue, comme chez les requins
+    d.plate("Tail1", 0, 0, [(6.6, 9.0), (3.4, 11.0), (3.8, 11.8), (6.6, 11.4)], FIN)
     return d

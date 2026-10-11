@@ -1,13 +1,15 @@
 """Abyssal Leviathan : nageur Mythic de l'Ocean Trench, dragon-anguille des grands fonds (créature fantastique).
 
-Voxels de 0,47 stud : environ 34 studs de long à la taille Normal. Long corps d'anguille noir-bleu des abysses qui
+Voxels de 0,53 stud : environ 34 studs de long à la taille Normal. Long corps d'anguille noir-bleu des abysses qui
 ondule (le cou se dresse, le dos plonge, la queue remonte puis redescend), crête dorsale en épines dentelées à pointe
 Neon cyan, grandes nageoires pectorales déchiquetées bordées de Neon, petites nageoires pelviennes, nageoire de queue
 en éventail dentelé. Tête massive à mâchoire prognathe : la mâchoire inférieure dépasse et remonte en menton, des dents
-en aiguilles (Smooth) dépassent des deux lèvres et s'entrecroisent. Grands yeux pâles lumineux (Neon) à pupille fendue.
+en aiguilles (Smooth) dépassent des deux lèvres et s'entrecroisent. Grands yeux pâles lumineux (Neon), iris cyan.
 Points et tirets bioluminescents Neon cyan le long des flancs. Leurre lumineux au-dessus du front (os Crest) : tige
-épaisse en segments empilés qui s'effilent et se courbe vers l'avant, au bout un cristal anguleux Neon en double
-pyramide (losange de face comme de profil). Neck1-2 = le long cou, Tail1-6 = la queue."""
+épaisse en segments empilés qui s'effilent et se courbe vers l'avant, au bout un cristal anguleux Neon à facettes
+(colonne à pointes, losange allongé de face comme de profil : arête avant pâle, faces cyan, dos bleu profond).
+Neck1-2 = le long cou, Tail1-6 = la queue. Le pivot du bassin est au-dessus de l'axe du corps (HIPS_UP) : le
+tonneau de Happy tourne autour du milieu de la silhouette, leurre compris."""
 import math
 import os
 import sys

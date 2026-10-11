@@ -82,6 +82,11 @@ local Species: { [string]: string } = {
 	Plesiosaurus = "Epic",
 	Megalodon = "Legendary",
 	Mosasaurus = "Mythic",
+	Ichthyosaurus = "Epic",
+	Dunkleosteus = "Epic",
+	Helicoprion = "Legendary",
+	Liopleurodon = "Legendary",
+	["Abyssal Leviathan"] = "Mythic",
 	-- Meteor Crater
 	Quetzalcoatlus = "Legendary",
 	Giganotosaurus = "Mythic",

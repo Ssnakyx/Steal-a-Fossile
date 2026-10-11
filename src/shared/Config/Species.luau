@@ -72,6 +72,11 @@ local list: { SpeciesDef } = {
 	{ Name = "Plesiosaurus", Model = "Plesiosaurus", Family = "Swimmer", Zone = "Ocean Trench", BaseSize = 18, Income = 18000 },
 	{ Name = "Megalodon", Model = "Megalodon", Family = "Swimmer", Zone = "Ocean Trench", BaseSize = 24, Income = 25000 },
 	{ Name = "Mosasaurus", Model = "Mosasaurus", Family = "Swimmer", Zone = "Ocean Trench", BaseSize = 30, Income = 35000 },
+	{ Name = "Ichthyosaurus", Model = "Ichthyosaurus", Family = "Swimmer", Zone = "Ocean Trench", BaseSize = 13, Income = 17000 },
+	{ Name = "Dunkleosteus", Model = "Dunkleosteus", Family = "Swimmer", Zone = "Ocean Trench", BaseSize = 16, Income = 20000 },
+	{ Name = "Helicoprion", Model = "Helicoprion", Family = "Swimmer", Zone = "Ocean Trench", BaseSize = 18, Income = 24000 },
+	{ Name = "Liopleurodon", Model = "Liopleurodon", Family = "Swimmer", Zone = "Ocean Trench", BaseSize = 24, Income = 28000 },
+	{ Name = "Abyssal Leviathan", Model = "AbyssalLeviathan", Family = "Swimmer", Zone = "Ocean Trench", BaseSize = 34, Income = 42000 },
 	-- 8. Meteor Crater
 	{ Name = "Quetzalcoatlus", Model = "Quetzalcoatlus", Family = "Flyer", Zone = "Meteor Crater", BaseSize = 26, Income = 90000 },
 	{ Name = "Giganotosaurus", Model = "Giganotosaurus", Family = "Biped", Zone = "Meteor Crater", BaseSize = 22, Income = 130000 },

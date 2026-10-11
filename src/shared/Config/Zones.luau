@@ -70,7 +70,7 @@ local List: { Zone } = {
 		Index = 7,
 		Speed = 5e6,
 		Weights = { Epic = 52, Legendary = 38, Mythic = 10, Secret = 0.18 },
-		Species = { "Plesiosaurus", "Megalodon", "Mosasaurus" },
+		Species = { "Plesiosaurus", "Megalodon", "Mosasaurus", "Ichthyosaurus", "Dunkleosteus", "Helicoprion", "Liopleurodon", "Abyssal Leviathan" },
 		Color = Color3.fromRGB(40, 85, 135),
 	},
 	{

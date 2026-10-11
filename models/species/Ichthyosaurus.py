@@ -1,10 +1,11 @@
 """Ichthyosaurus : nageur de l'Ocean Trench (Epic), reptile-dauphin vif et curieux.
 
-Voxels de 0,28 stud : environ 13 studs de long à la taille Normal (nageoire de queue comprise), 4 de haut avec l'aileron.
-Corps en fuseau de dauphin, museau long et fin bordé de petites dents, très grand oeil cerclé d'un anneau osseux pâle,
-aileron dorsal triangulaire, grandes nageoires avant en pagaie, petites nageoires arrière, queue en croissant vertical
-(plaque). Dos bleu acier, bande gris foncé sur le flanc de l'oeil à la queue, ventre blanc.
-Neck1 = la nuque, entre le crâne et le torse."""
+Voxels de 0,28 stud : environ 13 studs de long à la taille Normal (nageoire de queue comprise), 4,5 de haut avec
+l'aileron. Corps en fuseau de dauphin, front bombé, museau long et fin bordé de petites dents qui s'emboîtent, très
+grand oeil sombre (3 x 3 voxels, reflet blanc) cerclé d'un anneau osseux pâle (anneau sclérotique), aileron dorsal
+triangulaire, grandes nageoires avant en pagaie, petites nageoires arrière, queue en croissant vertical (plaque).
+Trois tons nets : dos bleu acier, bande gris foncé sur le flanc de l'oeil à la queue, ventre blanc ; bouts des
+nageoires, de l'aileron et de la queue gris foncé comme la bande. Neck1 = la nuque, entre le crâne et le torse."""
 import math
 import os
 import sys
