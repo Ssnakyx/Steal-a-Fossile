@@ -8,11 +8,14 @@
 --   ShopService.Price("Product" | "GamePass", id)       prix Robux lu sur Roblox (nil si inconnu), gardé 10 min
 --   ShopService.RegisterSection(nom, fn)                ajoute une section au contenu du shop (GetShop)
 --   ShopService.BuyPass(player, clé)                    propose l'achat d'un passe -> (ok, texte) (remote BuyPass)
+--   ShopService.GrantPass(player, clé)                  donne un passe pour de bon (cadeau, pack : OfferService) -> bool
+--   ShopService.AddServerLuck(secondes)                 Server Luck x2 pour tout le serveur (prolongé si déjà en cours)
 -- Produits : chaque produit de Config.Shop.Products est donné par le service de son champ Owner, qui l'enregistre avec
 -- ReceiptService.Register ; ShopService enregistre ServerLuck. Un produit pas enregistré ou à Id = 0 reste caché.
 -- Passes : Roblox est la source. À chaque arrivée, chaque passe en vente est redemandé (UserOwnsGamePassAsync) ; la
 -- sauvegarde (data.Passes) ne sert que quand Roblox ne répond pas. Un passe que Roblox dit ne plus avoir (remboursé)
--- est retiré, sauf s'il vient d'être acheté sur ce serveur (Roblox peut répondre en retard).
+-- est retiré, sauf s'il vient d'être acheté sur ce serveur (Roblox peut répondre en retard) ou s'il a été donné par un
+-- cadeau ou un pack (data.Offers.Granted, jamais retiré).
 -- Signaux : PassOwned(player, clé)                    passe trouvé au chargement ou acheté en jeu
 --           PassLost(player, clé)                     passe retiré (Roblox dit que le joueur ne l'a plus)
 --           ServerLuckChanged(multiplier, endsAt)     Server Luck commencé, prolongé ou fini (endsAt = os.time())
@@ -106,6 +109,11 @@ local function revokePass(player: Player, key: string)
 	if not set or not data or (here and here[key]) then
 		return
 	end
+	local offers = data.Offers
+	if type(offers) == "table" and type(offers.Granted) == "table" and offers.Granted[key] then
+		data.Passes[key] = nil
+		return -- (donné par un cadeau ou un pack : le joueur le garde)
+	end
 	data.Passes[key] = nil
 	if not set[key] then
 		return
@@ -113,6 +121,19 @@ local function revokePass(player: Player, key: string)
 	set[key] = nil
 	publishPasses(player)
 	Signals.Fire("PassLost", player, key)
+end
+
+-- Donne un passe pour de bon (cadeau, pack) : noté dans data.Offers.Granted, jamais retiré. false si le joueur n'est
+-- pas chargé ou si la clé est inconnue.
+function ShopService.GrantPass(player: Player, key: string): boolean
+	local set = owned[player]
+	local data = DataService.Get(player)
+	if not set or not data or not Shop.Passes[key] then
+		return false
+	end
+	data.Offers.Granted[key] = true
+	grantPass(player, key, false)
+	return true
 end
 
 -- Demande à Roblox chaque passe en vente (achetés hors du jeu, remboursés). Peut attendre.
@@ -157,6 +178,14 @@ local function publishLuck()
 	Workspace:SetAttribute("ServerLuck", ShopService.ServerLuck())
 	Workspace:SetAttribute("ServerLuckEndsAt", ShopService.ServerLuckEndsAt())
 	Signals.Fire("ServerLuckChanged", ShopService.ServerLuck(), ShopService.ServerLuckEndsAt())
+end
+
+function ShopService.AddServerLuck(seconds: number)
+	if type(seconds) ~= "number" or seconds ~= seconds or seconds <= 0 or seconds == math.huge then
+		return
+	end
+	luckEndsAt = math.max(os.time(), luckEndsAt) + math.floor(seconds)
+	publishLuck()
 end
 
 -- ===== prix =====
@@ -325,8 +354,7 @@ function ShopService.Init()
 	-- Server Luck x2 : tout le serveur, Duration secondes (prolongé si déjà en cours)
 	local luck = Shop.Products.ServerLuck
 	ReceiptService.Register("ServerLuck", luck.Id, function()
-		luckEndsAt = math.max(os.time(), luckEndsAt) + Shop.ServerLuck.Duration
-		publishLuck()
+		ShopService.AddServerLuck(Shop.ServerLuck.Duration)
 		return true
 	end)
 	Signals.Connect("PurchaseGranted", function(player: Player, key: string)
@@ -407,6 +435,9 @@ end
 function ShopService.OnPlayerReady(player: Player, data: { [string]: any })
 	local set: { [string]: boolean } = {}
 	for key in data.Passes do
+		set[key] = true
+	end
+	for key in data.Offers.Granted do
 		set[key] = true
 	end
 	owned[player] = set

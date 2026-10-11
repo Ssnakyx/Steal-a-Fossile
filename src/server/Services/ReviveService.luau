@@ -432,6 +432,27 @@ function ReviveService.FinishAll(player: Player): number
 	return count
 end
 
+-- Instant Revive donnés par un pack (OfferService) : le premier finit les cuves en cours s'il y en a, les autres sont
+-- gardés pour les prochaines cuves (au plus Config.Economy.MaxInstantCredits). Renvoie le nombre donné.
+function ReviveService.GiveInstant(player: Player, count: number): number
+	local data = DataService.Get(player)
+	if not data or type(count) ~= "number" or count ~= count or count < 1 then
+		return 0
+	end
+	count = math.floor(math.min(count, 1000))
+	local given = 0
+	if ReviveService.FinishAll(player) > 0 then
+		given = 1
+	end
+	local room = math.max(0, Economy.MaxInstantCredits - data.InstantCredits)
+	local saved = math.min(room, count - given)
+	if saved > 0 then
+		data.InstantCredits += saved
+		publish(player)
+	end
+	return given + saved
+end
+
 -- Cuves en train de réanimer (pas encore prêtes)
 function ReviveService.Running(player: Player): number
 	local data = DataService.Get(player)

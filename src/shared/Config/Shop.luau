@@ -9,6 +9,30 @@
 export type Level = { Cash: number, Id: number, Price: number, Multiplier: number }
 export type Pass = { Id: number, Name: string, Description: string, Price: number, Order: number, Multiplier: number?, LuckBonus: number?, Trail: string? }
 export type Product = { Id: number, Name: string, Description: string, Price: number, Order: number, Owner: string }
+-- Contenu d'un pack ou d'un pack d'argent. Money, Speed, BearTraps : même format que les récompenses de Config.Daily
+-- (Amount = minimum, IncomeMinutes = minutes du revenu actuel, SpeedPercent = % de la vitesse gagnée). Revives :
+-- Instant Revive (Amount). Pass : un passe donné pour de bon (Key). ServerLuck : Server Luck x2 pour tout le serveur
+-- (Minutes). Jamais de dino, de bloc ni de tour de roue (achat au hasard) dans un pack.
+export type Item = {
+	Kind: string, -- "Money" | "Speed" | "BearTraps" | "Revives" | "Pass" | "ServerLuck"
+	Amount: number?,
+	IncomeMinutes: number?,
+	SpeedPercent: number?,
+	Key: string?,
+	Minutes: number?,
+}
+export type CashPack = { Id: number, Name: string, Price: number, Order: number, Icon: string, Reward: Item }
+export type Pack = {
+	Id: number,
+	Name: string,
+	Kind: string, -- "Starter" | "Limited" | "Deal"
+	Price: number, -- prix à mettre dans le Creator Hub
+	Worth: number, -- valeur du contenu en Robux (prix barré, « -75% »)
+	Order: number,
+	Icon: string,
+	Items: { Item },
+}
+export type Gift = { Id: number, Price: number }
 
 local Shop = {
 	-- Treadmill : niveau 1 = le déblocage, puis un niveau à la fois. Chaque niveau s'achète avec l'argent du jeu
@@ -111,7 +135,122 @@ local Shop = {
 	},
 
 	PriceCacheSeconds = 600, -- les prix lus sur Roblox sont gardés 10 min
+
+	-- ===== Offres (OfferService, demande de Snaky du 2026-10-11 : shop beaucoup plus complet) =====
+	-- Comme le reste : Id = 0 tant que le produit n'est pas créé dans le Creator Hub (caché en jeu, gris « Id = 0 »
+	-- dans Studio). Price = prix à mettre dans le Creator Hub. Valeurs de départ, à régler en jeu.
+
+	-- MONEY : argent du jeu contre Robux. Montant = IncomeMinutes minutes du revenu actuel du joueur, au moins Amount
+	-- (le pack reste utile à tout moment du jeu). Les gros packs donnent plus par Robux : le shop affiche « +N% MORE »
+	-- par rapport au plus petit et « BEST VALUE » sur le meilleur.
+	Cash = {
+		CashSmall = { Id = 0, Name = "Pile of Cash", Price = 49, Order = 1, Icon = "coin", Reward = { Kind = "Money", IncomeMinutes = 10, Amount = 5_000 } },
+		CashMedium = { Id = 0, Name = "Bag of Cash", Price = 149, Order = 2, Icon = "coins", Reward = { Kind = "Money", IncomeMinutes = 40, Amount = 20_000 } },
+		CashLarge = { Id = 0, Name = "Chest of Cash", Price = 399, Order = 3, Icon = "chest", Reward = { Kind = "Money", IncomeMinutes = 150, Amount = 80_000 } },
+		CashHuge = { Id = 0, Name = "Vault of Cash", Price = 999, Order = 4, Icon = "crate", Reward = { Kind = "Money", IncomeMinutes = 480, Amount = 300_000 } },
+	} :: { [string]: CashPack },
+
+	-- Packs : un produit développeur par pack, contenu en plusieurs morceaux, prix barré (Worth) et réduction.
+	--   Starter : proposé StarterHours heures après la première connexion, une seule fois par joueur.
+	--   Limited : un seul à la fois pour tout le monde, il change tous les LimitedDays jours (ordre de Rotation.Limited).
+	--   Deal    : l'offre du jour, une par jour (00:00 UTC, ordre de Rotation.Deals), achetable plusieurs fois.
+	-- Un pack qui contient un passe déjà possédé n'est pas proposé à ce joueur.
+	Packs = {
+		Starter = {
+			Id = 0, Name = "Starter Pack", Kind = "Starter", Price = 99, Worth = 399, Order = 1, Icon = "gift",
+			Items = {
+				{ Kind = "Pass", Key = "NeonTrail" },
+				{ Kind = "Money", IncomeMinutes = 30, Amount = 15_000 },
+				{ Kind = "BearTraps", Amount = 10 },
+				{ Kind = "Revives", Amount = 3 },
+			},
+		},
+		SpeedRush = {
+			Id = 0, Name = "Speed Rush Pack", Kind = "Limited", Price = 299, Worth = 699, Order = 2, Icon = "speed",
+			Items = {
+				{ Kind = "Pass", Key = "DoubleTreadmill" },
+				{ Kind = "Speed", SpeedPercent = 25, Amount = 5_000 },
+				{ Kind = "Money", IncomeMinutes = 60, Amount = 30_000 },
+			},
+		},
+		FossilHunter = {
+			Id = 0, Name = "Fossil Hunter Pack", Kind = "Limited", Price = 399, Worth = 899, Order = 3, Icon = "hammer",
+			Items = {
+				{ Kind = "Pass", Key = "FastRevive" },
+				{ Kind = "Revives", Amount = 5 },
+				{ Kind = "BearTraps", Amount = 15 },
+				{ Kind = "Money", IncomeMinutes = 90, Amount = 50_000 },
+			},
+		},
+		DinoTycoon = {
+			Id = 0, Name = "Dino Tycoon Pack", Kind = "Limited", Price = 699, Worth = 1_499, Order = 4, Icon = "crown",
+			Items = {
+				{ Kind = "Pass", Key = "DoubleMoney" },
+				{ Kind = "Pass", Key = "VIP" },
+				{ Kind = "Money", IncomeMinutes = 240, Amount = 150_000 },
+				{ Kind = "Revives", Amount = 5 },
+			},
+		},
+		CashDeal = {
+			Id = 0, Name = "Mega Cash Deal", Kind = "Deal", Price = 249, Worth = 499, Order = 5, Icon = "coins",
+			Items = { { Kind = "Money", IncomeMinutes = 240, Amount = 150_000 } },
+		},
+		TrapCrate = {
+			Id = 0, Name = "Trap Crate", Kind = "Deal", Price = 79, Worth = 196, Order = 6, Icon = "shield",
+			Items = { { Kind = "BearTraps", Amount = 20 } },
+		},
+		ReviveBundle = {
+			Id = 0, Name = "Revive Bundle", Kind = "Deal", Price = 99, Worth = 203, Order = 7, Icon = "egg_gold",
+			Items = { { Kind = "Revives", Amount = 7 } },
+		},
+		LuckParty = {
+			Id = 0, Name = "Luck Party", Kind = "Deal", Price = 149, Worth = 297, Order = 8, Icon = "star",
+			Items = { { Kind = "ServerLuck", Minutes = 45 } },
+		},
+		SpeedBoost = {
+			Id = 0, Name = "Speed Boost", Kind = "Deal", Price = 99, Worth = 199, Order = 9, Icon = "muscle",
+			Items = { { Kind = "Speed", SpeedPercent = 15, Amount = 3_000 } },
+		},
+	} :: { [string]: Pack },
+
+	StarterHours = 72, -- le Starter Pack reste proposé 3 jours après la première connexion
+	Rotation = {
+		LimitedDays = 3,
+		Limited = { "SpeedRush", "FossilHunter", "DinoTycoon" },
+		Deals = { "CashDeal", "TrapCrate", "ReviveBundle", "LuckParty", "SpeedBoost" },
+	},
+	-- Contenu donné à la place d'un passe déjà possédé au moment du reçu (rare : le pack n'est pas proposé dans ce cas)
+	PassRefund = { Kind = "Money", IncomeMinutes = 60, Amount = 20_000 } :: Item,
+
+	-- Cadeaux : offrir un passe à un autre joueur du serveur. Roblox ne permet pas d'acheter un game pass pour quelqu'un
+	-- d'autre : chaque passe offrable a son produit développeur « cadeau » (même prix que le passe). Le passe offert est
+	-- gardé dans la sauvegarde du joueur qui le reçoit (data.Offers.Granted, jamais retiré). Si le joueur choisi est parti
+	-- ou a déjà le passe quand Roblox confirme l'achat, le cadeau est gardé (« gift ready ») et s'envoie plus tard.
+	Gifts = {
+		DoubleMoney = { Id = 0, Price = 299 },
+		DoubleTreadmill = { Id = 0, Price = 199 },
+		FastRevive = { Id = 0, Price = 249 },
+		VIP = { Id = 0, Price = 149 },
+		NeonTrail = { Id = 0, Price = 99 },
+		GalaxyTrail = { Id = 0, Price = 249 },
+		GoldenTrail = { Id = 0, Price = 499 },
+	} :: { [string]: Gift },
+	GiftHoldSeconds = 180, -- temps pendant lequel le joueur choisi reste réservé, fenêtre d'achat de Roblox ouverte
 }
+
+-- Offres du moment, Shop.Current(os.time()) (même calcul chez le serveur et le client) : Limited et Deal en cours, et leur heure de fin (os.time())
+function Shop.Current(now: number): { Limited: string, LimitedEnds: number, Deal: string, DealEnds: number }
+	local rotation = Shop.Rotation
+	local period = rotation.LimitedDays * 86400
+	local slot = math.floor(now) // period
+	local day = math.floor(now) // 86400
+	return {
+		Limited = rotation.Limited[slot % #rotation.Limited + 1] or "",
+		LimitedEnds = (slot + 1) * period,
+		Deal = rotation.Deals[day % #rotation.Deals + 1] or "",
+		DealEnds = (day + 1) * 86400,
+	}
+end
 
 export type Shop = typeof(Shop)
 
