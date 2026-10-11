@@ -8,6 +8,8 @@ local Boot = T.bootServer()
 local PlotService = Boot.Services.PlotService
 local ZoneService = Boot.Services.ZoneService
 local Zones = T.module("src/shared/Config/Zones")
+local MapConfig = T.module("src/shared/Config/Map")
+local COUNT = MapConfig.Plots.Count
 local Workspace = env.game:GetService("Workspace")
 local CollectionService = env.game:GetService("CollectionService")
 local Vector3 = env.Vector3
@@ -16,8 +18,11 @@ T.section("géométrie provisoire")
 local map = Workspace:FindFirstChild("Map")
 T.check(map ~= nil, "Workspace.Map construit")
 T.check(map:FindFirstChild("SpawnGround") ~= nil, "sol du spawn")
-T.eq(#PlotService.List(), 8, "8 parcs")
-for index = 1, 8 do
+T.eq(COUNT, 5, "serveurs de 5 joueurs : 5 parcs")
+T.eq(PlotService.Count, COUNT, "PlotService suit Config.Map.Plots.Count")
+T.eq(#PlotService.List(), COUNT, "5 parcs")
+T.eq(map.Plots:FindFirstChild("Plot" .. (COUNT + 1)), nil, "pas de parc en trop")
+for index = 1, COUNT do
 	local model = map.Plots:FindFirstChild("Plot" .. index)
 	T.check(model ~= nil, "Plot" .. index)
 	for _, name in { "Floor", "Spawn", "Entrance", "Sign", "Enclosure", "Treadmill", "Lab" } do
@@ -101,14 +106,14 @@ T.leave(a)
 T.eq(PlotService.ByIndex(1).Model:GetAttribute("OwnerUserId"), 0, "parc 1 rendu")
 T.eq(PlotService.ByIndex(1).Sign.Label.Text.Text, "Empty park", "enseigne remise")
 local others = {}
-for index = 1, 8 do
+for index = 1, COUNT do
 	table.insert(others, T.join({ Name = "P" .. index }))
 end
 T.eq(others[1]:GetAttribute("Plot"), 1, "le parc libéré est repris")
-T.eq(others[8]:GetAttribute("Plot"), 0, "9e joueur : pas de parc")
-T.check(PlotService.Get(others[8]) == nil, "Get = nil sans parc")
+T.eq(others[COUNT]:GetAttribute("Plot"), 0, "6e joueur : pas de parc")
+T.check(PlotService.Get(others[COUNT]) == nil, "Get = nil sans parc")
 local notified = false
-for _, sent in env.received(others[8], "Notify") do
+for _, sent in env.received(others[COUNT], "Notify") do
 	if sent[1] == "All parks are taken!" then
 		notified = true
 	end

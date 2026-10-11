@@ -9,7 +9,7 @@ escalier), toujours identique (graine `Config.Map.Seed`). Rien n'est enregistré
 src/shared/Config/Map.luau        mesures (parcs, place, route, longueur des zones), gisements, budgets
 src/server/Services/MapService.luau  construit Workspace.Map (Priority -30, avant PlotService et ZoneService)
 src/server/Map/
-  MapBuilder.luau                 assemble tout : parcs, place, 8 zones, murs invisibles, falaise de fin, lumière
+  MapBuilder.luau                 assemble tout : 5 parcs, place, 8 zones, murs invisibles, falaise de fin, lumière
   Kit.luau                        briques : pièces, décor inerte, disques/dômes/cônes en escalier, raycast, grille, lumières
   Props.luau                      décor : palmiers, fougères, sapins, rochers, coraux, cristaux, outils, lampes...
   Plots.luau                      un parc (palissade, portail et enseigne, cuves, enclos, treadmill, labo)
@@ -25,7 +25,9 @@ la garde telle quelle.
 
 ## Disposition
 
-- Sol à `Y = 1`. Les 8 parcs sont côte à côte sur X (Plot1 à gauche), entrée au bord `Z = 0`, fond à `Z = -120`.
+- Sol à `Y = 1`. Les 5 parcs (serveurs de 5 joueurs, `Config.Map.Plots.Count`) sont côte à côte sur X (Plot1 à
+  gauche), entrée au bord `Z = 0`, fond à `Z = -120`. Le parc du milieu (Plot3) est en face de la route. La place fait
+  la largeur des parcs + 26 studs de chaque côté.
 - La place du spawn va de `Z = 0` à `Z = 70`. La route part du milieu de la place vers +Z.
 - Zones bout à bout : Beach 220, Fern Forest 240, Swamp 250, Canyon 260, Glacier 270, Volcano 280, Ocean Trench 290,
   Meteor Crater 300 studs (`Config.Map.Zones`). Fin de la route à `Z = 2180`, falaise de fin derrière.

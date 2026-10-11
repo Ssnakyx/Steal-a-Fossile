@@ -1,14 +1,17 @@
 --!strict
--- Parcs des joueurs (brief 3 « boucle ») : 8 parcs alignés au spawn face à la route, un par joueur, attribué à
--- l'arrivée et rendu au départ. Le parc est une zone sûre : rien n'y est jamais volable (IsSafe, PlotAt).
--- Géométrie : Workspace.Map.Plots.Plot1 à Plot8, points d'ancrage nommés (docs/BOUCLE.md). S'ils manquent au
+-- Parcs des joueurs (brief 3 « boucle ») : Config.Map.Plots.Count parcs (5 : serveurs de 5 joueurs) alignés au spawn
+-- face à la route, un par joueur, attribué à l'arrivée et rendu au départ. Le parc est une zone sûre : rien n'y est
+-- jamais volable (IsSafe, PlotAt).
+-- Géométrie : Workspace.Map.Plots.Plot1 à Plot5, points d'ancrage nommés (docs/BOUCLE.md). S'ils manquent au
 -- démarrage, une géométrie provisoire est construite ici (la vraie map est faite par le brief 10, avec les mêmes noms).
--- Attributs : joueur « Plot » (1 à 8, 0 sans parc) ; Model du parc « Index » et « OwnerUserId » (0 = libre).
+-- Attributs : joueur « Plot » (1 à 5, 0 sans parc) ; Model du parc « Index » et « OwnerUserId » (0 = libre).
 -- Clé replica « Plot ». Le personnage apparaît sur le point « Spawn » de son parc.
 -- Signaux : PlotAssigned(player, index), PlotReleased(player, index)
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local MapConfig = require(ReplicatedStorage.Shared.Config.Map)
 local Signals = require(script.Parent.Parent.Lib.Signals)
 local Notify = require(script.Parent.Parent.Lib.Notify)
 local ReplicaService = require(script.Parent.ReplicaService)
@@ -30,7 +33,7 @@ export type Plot = {
 local PlotService = {}
 PlotService.Priority = -20 -- avant les autres services de la boucle (ils posent leurs objets dans les parcs)
 
-PlotService.Count = 8
+PlotService.Count = MapConfig.Plots.Count -- un parc par joueur : nombre de joueurs max du serveur
 PlotService.GroundTop = 1 -- hauteur du sol provisoire (au-dessus d'une Baseplate éventuelle)
 
 local SAFE_BELOW = 4 -- studs sous le sol encore comptés dans le parc
@@ -203,7 +206,7 @@ function PlotService.Get(player: Player): Plot?
 	return byPlayer[player]
 end
 
--- Parc numéro `index` (1 à 8)
+-- Parc numéro `index` (1 à Count)
 function PlotService.ByIndex(index: number): Plot?
 	return byIndex[index]
 end

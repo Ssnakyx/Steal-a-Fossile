@@ -43,7 +43,7 @@ local function speedText(speed: number): string
 	return if speed <= 0 then "No speed needed" else Format.Number(speed) .. " speed"
 end
 
--- Tableau « THE ROUTE » : les 8 zones et leur vitesse conseillée
+-- Tableau « THE ROUTE » : les zones et leur vitesse conseillée
 local function routeBoard(parent: Instance, cframe: CFrame)
 	local m = Kit.group("RouteBoard")
 	local wood = rgb(120, 80, 48)

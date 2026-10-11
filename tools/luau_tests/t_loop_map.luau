@@ -1,5 +1,5 @@
 -- Boucle (brief 3) : une map déjà construite dans Workspace.Map (comme celle du brief 10) est lue par ses points
--- d'ancrage nommés au lieu d'être reconstruite. Parcs incomplets ignorés avec un warn, zone sans Area ignorée,
+-- d'ancrage nommés au lieu d'être reconstruite. Parcs incomplets ou absents ignorés avec un warn, zone sans Area ignorée,
 -- emplacements de blocs donnés par des Attachments Slot1..., gisements triés Site2 avant Site10, zones manquantes
 -- complétées par la géométrie provisoire.
 local T = require("./testkit")
@@ -27,13 +27,13 @@ map.Parent = Workspace
 local plotsFolder = Instance.new("Folder")
 plotsFolder.Name = "Plots"
 plotsFolder.Parent = map
-for index = 1, 7 do
+for index = 1, 4 do
 	local model = Instance.new("Model")
 	model.Name = "Plot" .. index
 	local x = (index - 4) * 100
 	part("Floor", Vector3.new(60, 1, 70), CFrame.new(x, 0.5, -500), model)
-	if index ~= 5 then
-		-- (le parc 5 n'a pas de Spawn : ignoré)
+	if index ~= 3 then
+		-- (le parc 3 n'a pas de Spawn : ignoré)
 		part("Spawn", Vector3.new(6, 1, 6), CFrame.new(x, 1.5, -520), model)
 	end
 	part("Entrance", Vector3.new(16, 1, 4), CFrame.new(x, 1.1, -466), model)
@@ -53,7 +53,7 @@ for index = 1, 7 do
 	end
 	model.Parent = plotsFolder
 end
--- (pas de Plot8 du tout)
+-- (pas de Plot5 du tout : les serveurs ont 5 parcs)
 
 local zonesFolder = Instance.new("Folder")
 zonesFolder.Name = "Zones"
@@ -100,18 +100,18 @@ end
 
 T.section("parcs")
 T.eq(map:FindFirstChild("SpawnGround"), nil, "pas de sol provisoire sur une map faite à la main")
-T.eq(#plotsFolder:GetChildren(), 7, "aucun parc ajouté")
-T.eq(#PlotService.List(), 6, "6 parcs utilisables (5 incomplet, 8 absent)")
-T.eq(PlotService.ByIndex(5), nil, "parc 5 ignoré")
+T.eq(#plotsFolder:GetChildren(), 4, "aucun parc ajouté")
+T.eq(#PlotService.List(), 3, "3 parcs utilisables (3 incomplet, 5 absent)")
+T.eq(PlotService.ByIndex(3), nil, "parc 3 ignoré")
+T.check(warned("Plot3"), "warn pour le parc 3")
 T.check(warned("Plot5"), "warn pour le parc 5")
-T.check(warned("Plot8"), "warn pour le parc 8")
 local plot1 = PlotService.ByIndex(1)
 T.eq(#plot1.Tanks, 2, "parc 1 : 2 cuves trouvées dans un sous-dossier")
 T.eq(plot1.Treadmill and plot1.Treadmill.Parent.Name, "Decor", "treadmill trouvé dans un sous-modèle")
 T.eq(plot1.Sign, nil, "pas de panneau : rien d'obligatoire")
 T.eq(plot1.Lab, nil, "pas de labo")
 T.eq(PlotService.PlotAt(plot1.Floor.Position + Vector3.new(0, 3, 0)), 1, "PlotAt sur le sol fait à la main")
-T.eq(PlotService.PlotAt(Vector3.new(100, 3, -500)), nil, "le parc 5 n'est pas une zone sûre")
+T.eq(PlotService.PlotAt(Vector3.new(-100, 3, -500)), nil, "le parc 3 n'est pas une zone sûre")
 
 T.section("zones")
 T.eq(#ZoneService.List(), 7, "7 zones (Swamp sans Area ignorée)")
@@ -149,17 +149,17 @@ T.eq(#siteByAnchor[ZoneService.Get("Canyon").Sites[1]].Slots, Zones.Dig.BlocksPe
 
 T.section("joueurs")
 local players = {}
-for k = 1, 7 do
+for k = 1, 4 do
 	players[k] = T.join({ Name = "P" .. k })
 end
 local given = {}
-for k = 1, 6 do
+for k = 1, 3 do
 	local index = players[k]:GetAttribute("Plot")
-	T.check(index ~= 5 and index ~= 8 and PlotService.ByIndex(index) ~= nil, "P" .. k .. " reçoit un parc utilisable (" .. tostring(index) .. ")")
+	T.check(index ~= 3 and index ~= 5 and PlotService.ByIndex(index) ~= nil, "P" .. k .. " reçoit un parc utilisable (" .. tostring(index) .. ")")
 	T.check(not given[index], "parc " .. tostring(index) .. " donné une seule fois")
 	given[index] = true
 end
-T.eq(players[7]:GetAttribute("Plot"), 0, "7e joueur : plus de parc")
+T.eq(players[4]:GetAttribute("Plot"), 0, "4e joueur : plus de parc")
 local p1 = players[1]
 T.eq(p1:GetAttribute("Plot"), 1, "P1 : parc 1 (2 cuves)")
 local data = T.data(p1)

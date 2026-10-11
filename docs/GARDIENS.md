@@ -97,13 +97,35 @@ Remotes (`Remotes/Pvp.luau`) :
 - `Bonk(cible?)`, `PlaceTrap()` : envoyés par `PvpController` quand on clique avec la pelle ou le piège en main.
 - `BuyTraps(nombre)` -> (ok, texte) : pour le shop du brief 12.
 - `Knocked(secondes, raison)` : au joueur touché ; `PvpController` le fait tomber (sauf pour un piège).
-- `GuardianAlert(zone, état)` : au joueur poursuivi (`Roar`, `Run`, `Lost`, `Catch`) : alerte du HUD, « RUN!! ».
+- `GuardianAlert(zone, état, raison?)` : au joueur poursuivi (`Roar`, `Run`, `Lost`, `Catch`) : alerte du HUD, « RUN!! ».
+  `Lost` porte une raison : `Safe` (rentré dans un parc), `Escaped` (sorti de la laisse avec son bloc) ou `Dropped`
+  (plus de bloc de la zone : bonk, piège, mort).
 - `PvpEffect(genre, position)` : à tous (`Bonk`, `Catch`, `Trap`) : étoiles, piège qui se ferme, sons.
 
 Attributs : joueur `ChasedBy` (zone du gardien qui le poursuit, "" sinon), `Protected`, `ProtectedUntil` (heure
 serveur) ; gardiens (ci-dessus) ; pièges tagués `BearTrap` (`OwnerUserId`, `Armed`, `PlacedAt`, `ArmsAt`, `SprungAt`) dans
 `Workspace.BearTraps` ; blocs au sol tagués `DroppedFossil` (`BlockId`, `Rarity`, `Zone`, `DroppedBy`, `LockedUntil`,
 `ReturnAt`) dans `Workspace.DroppedFossils`, avec une étiquette « Returns in 0:27 ». Clé replica `BearTraps`.
+
+## Course stressante (côté client)
+
+`StressController` (valeurs dans `Config/Stress.luau`) rend le trajet du retour stressant, chez le joueur seulement :
+
+- **Bloc sur le dos** (attribut `Carrying`) : battement de cœur discret, vignette sombre légère, couleurs un peu
+  ternies ; plus la rareté est haute, plus c'est fort.
+- **Poursuivi** (attribut `ChasedBy`) : cœur plus fort et plus rapide quand le gardien se rapproche, vignette rouge
+  qui bat avec le cœur, couleurs ternies et teintées de rouge, champ de vision élargi, secousse continue de la caméra
+  près du gardien, et chacun de ses pas (modèle tagué `Guardian`, `State = Run`, au rythme de `Speed`) fait un « boum »
+  qui secoue la caméra, de plus en plus fort.
+- **GuardianAlert** : `Roar` = rugissement + coup d'orchestre + éclair rouge + coup de zoom + « RUN!! » ; `Catch` =
+  choc + grosse secousse + « CAUGHT! » ; `Lost` = « ESCAPED! » (raison `Safe` ou `Escaped` seulement). **Knocked**
+  `Bonk` / `Trap` : secousse ; **PvpEffect** à moins de 30 studs (pas sur soi, ni juste après son propre coup) :
+  petite secousse.
+- La secousse est posée juste après la caméra de Roblox et retirée au début de l'image suivante, avant les commandes
+  et la caméra (pas de dérive, déplacements non faussés) ; rien quand la caméra est
+  `Scriptable` (cinématiques) ; réduite avec « Reduce Motion » des réglages Roblox.
+- Sons : audio public du Creator Store (APM Music, Pro Sound Effects), choisis sans écoute : `Config.Stress.Sounds`
+  (le brief 16 peut les remplacer). Les gros textes peuvent être repris par le HUD du brief 12 (`Config.Stress.Texts`).
 
 ## Commandes admin et FossilDebug
 
