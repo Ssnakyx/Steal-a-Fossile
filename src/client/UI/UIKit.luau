@@ -64,6 +64,42 @@ UIKit.Rarity = {
 UIKit.StudTexture = "rbxassetid://79812142862554"
 UIKit.StudSize = 26 -- taille d'un plot des panneaux (unités) ; cartes et boutons : 20
 
+-- Pack d'icônes de Steal a Snack (Free Icon Pack 3.0.1 et icônes du jeu, déjà téléversées sur le compte de Snaky).
+-- UIKit.icon(nom, props) les pose avec une ombre nette.
+UIKit.Icons = {
+	shop = "rbxassetid://97493315422791",
+	book = "rbxassetid://138787751104353",
+	wheel = "rbxassetid://138297996642417",
+	coins = "rbxassetid://126698472806052",
+	muscle = "rbxassetid://87652362787600",
+	gift = "rbxassetid://117729978447512",
+	paw = "rbxassetid://116617031858872",
+	star = "rbxassetid://94000396318036",
+	upgrade = "rbxassetid://122983677793091",
+	bag = "rbxassetid://117734677962483",
+	cart = "rbxassetid://138393172367188",
+	chest = "rbxassetid://79070392212018",
+	crown = "rbxassetid://120098129570043",
+	trophy = "rbxassetid://114620958791367",
+	egg = "rbxassetid://75929189166185",
+	egg_gold = "rbxassetid://81132328909441",
+	clock = "rbxassetid://117669978258159",
+	hammer = "rbxassetid://97308359332508",
+	magnet = "rbxassetid://79367111690008",
+	shield = "rbxassetid://90984276027454",
+	speed = "rbxassetid://111749047569690",
+	lock = "rbxassetid://95395220609866",
+	crate = "rbxassetid://135476803643444",
+	key = "rbxassetid://101279989333529",
+	calendar = "rbxassetid://132670079602648",
+	coin = "rbxassetid://118808117081323",
+	gem = "rbxassetid://86611632937531",
+	ticket = "rbxassetid://93392430331107",
+	check = "rbxassetid://81028595063433",
+	plus = "rbxassetid://126668120643038",
+	info = "rbxassetid://116086284335525",
+} :: { [string]: string }
+
 UIKit.TitleFont = Font.fromEnum(Enum.Font.FredokaOne)
 UIKit.LabelFont = UIKit.TitleFont
 UIKit.BodyFont = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
@@ -234,6 +270,35 @@ end
 
 -- ===== Texte =====
 
+-- Taille de texte maximale en unités d'interface : un UITextSizeConstraint compte en pixels de l'écran, sans le UIScale
+-- de UIKit.Root ; il est donc remis à l'échelle à chaque changement de taille de l'écran (sinon le texte reste petit
+-- sur un grand écran ; jamais réduit sur un petit écran, où le texte suit déjà sa case).
+UIKit.Scale = 1
+-- (table forte : une table faible perdrait les entrées dont le proxy Lua est ramassé alors que l'instance vit encore)
+local sizeLimits: { [UITextSizeConstraint]: number } = {}
+
+function UIKit.sizeLimit(label: TextLabel, maxSize: number): UITextSizeConstraint
+	local constraint: UITextSizeConstraint = new("UITextSizeConstraint", {
+		MaxTextSize = math.floor(maxSize * math.max(1, UIKit.Scale)),
+		Parent = label,
+	})
+	sizeLimits[constraint] = maxSize
+	constraint.Destroying:Connect(function()
+		sizeLimits[constraint] = nil
+	end)
+	return constraint
+end
+
+local function setScale(scale: number)
+	if math.abs(scale - UIKit.Scale) < 0.001 then
+		return
+	end
+	UIKit.Scale = scale
+	for constraint, maxSize in sizeLimits do
+		constraint.MaxTextSize = math.floor(maxSize * math.max(1, scale))
+	end
+end
+
 -- Texte du kit : Fredoka One blanc cerné de noir. Options en plus des propriétés de TextLabel :
 -- Body = true (texte courant Builder Sans, sans contour), StrokeThickness (0 = sans contour), MaxTextSize.
 function UIKit.label(props: { [string]: any }): TextLabel
@@ -256,7 +321,7 @@ function UIKit.label(props: { [string]: any }): TextLabel
 	end
 	local label = new("TextLabel", props)
 	if maxSize and label.TextScaled then
-		new("UITextSizeConstraint", { MaxTextSize = maxSize, Parent = label })
+		UIKit.sizeLimit(label, maxSize)
 	end
 	new("UIStroke", {
 		Thickness = math.min(if strokeThickness == nil then (if body then 0 else 3) else strokeThickness, 3),
@@ -341,6 +406,137 @@ function UIKit.card(props: { [string]: any }): Frame
 	end
 	outer.Parent = parent
 	return outer
+end
+
+-- ===== Icônes =====
+
+-- Icône du pack (UIKit.Icons[nom]) avec une ombre nette décalée en bas à droite. props = propriétés du cadre (Size,
+-- Position, AnchorPoint, ZIndex...). L'image est dans icon.Image (ImageLabel « Image »). Nom inconnu : cadre vide.
+function UIKit.icon(name: string, props: { [string]: any }): Frame
+	local parent = props.Parent
+	props.Parent = nil
+	props.Name = props.Name or "Icon"
+	props.BackgroundTransparency = 1
+	props.BorderSizePixel = 0
+	local holder: Frame = new("Frame", props)
+	local image = UIKit.Icons[name] or ""
+	local z = holder.ZIndex
+	new("ImageLabel", {
+		Name = "Shadow",
+		Position = UDim2.fromScale(0.05, 0.06),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Image = image,
+		ImageColor3 = BLACK,
+		ImageTransparency = 0.55,
+		ScaleType = Enum.ScaleType.Fit,
+		ZIndex = z,
+		Parent = holder,
+	})
+	new("ImageLabel", {
+		Name = "Image",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Image = image,
+		ScaleType = Enum.ScaleType.Fit,
+		ZIndex = z + 1,
+		Parent = holder,
+	})
+	holder.Parent = parent
+	return holder
+end
+
+-- Logo Robux dessiné (hexagone arrondi évidé et carré plein), blanc cerné de noir, dans un carré de `size` unités
+function UIKit.robuxGlyph(props: { [string]: any }): Frame
+	local parent = props.Parent
+	props.Parent = nil
+	props.Name = props.Name or "Robux"
+	props.BackgroundTransparency = 1
+	local holder: Frame = new("Frame", props)
+	local z = holder.ZIndex
+	local size = holder.Size.Y.Offset
+	local ring: Frame = new("Frame", {
+		Name = "Ring",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.78, 0.78),
+		BackgroundTransparency = 1,
+		ZIndex = z,
+		Parent = holder,
+	}, {
+		new("UICorner", { CornerRadius = UDim.new(0.3, 0) }),
+		new("UIStroke", { Color = WHITE, Thickness = math.max(2, size * 0.14), ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+	})
+	-- (contour noir autour de l'anneau blanc)
+	new("Frame", {
+		Name = "Outline",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, size * 0.3, 1, size * 0.3),
+		BackgroundTransparency = 1,
+		ZIndex = z,
+		Parent = ring,
+	}, {
+		new("UICorner", { CornerRadius = UDim.new(0.34, 0) }),
+		new("UIStroke", { Color = INK, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+	})
+	new("Frame", {
+		Name = "Core",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.3, 0.3),
+		BackgroundColor3 = WHITE,
+		BorderSizePixel = 0,
+		ZIndex = z + 1,
+		Parent = holder,
+	}, { new("UIStroke", { Color = INK, Thickness = 1.5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }) })
+	holder.Parent = parent
+	return holder
+end
+
+-- Titre de section « -- FEATURED -- » : texte jaune en dégradé entre deux traits, sur toute la largeur de `width`
+function UIKit.sectionTitle(props: { [string]: any }): Frame
+	local title = props.Text or ""
+	local width = props.Width or 600
+	props.Text = nil
+	props.Width = nil
+	props.BackgroundTransparency = 1
+	props.Size = props.Size or UDim2.fromOffset(width, 44)
+	local parent = props.Parent
+	props.Parent = nil
+	local frame: Frame = new("Frame", props)
+	local z = frame.ZIndex
+	local label = UIKit.label({
+		Name = "Text",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(0, math.max(150, #title * 25 + 36), 1, -8),
+		Text = title,
+		ZIndex = z + 1,
+		Parent = frame,
+	})
+	new("UIGradient", {
+		Rotation = 90,
+		Color = ColorSequence.new(C(255, 246, 150), C(255, 178, 20)),
+		Parent = label,
+	})
+	local lineWidth = (width - label.Size.X.Offset) / 2 - 22
+	for side = 0, 1 do
+		new("Frame", {
+			Name = if side == 0 then "LineLeft" else "LineRight",
+			AnchorPoint = Vector2.new(side, 0.5),
+			Position = UDim2.new(side, if side == 0 then 8 else -8, 0.5, 0),
+			Size = UDim2.fromOffset(math.max(0, lineWidth), 6),
+			BackgroundColor3 = Colors.Yellow,
+			BorderSizePixel = 0,
+			ZIndex = z,
+			Parent = frame,
+		}, {
+			new("UIStroke", { Color = INK, Thickness = 2.5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+		})
+	end
+	frame.Parent = parent
+	return frame
 end
 
 -- ===== Boutons =====
@@ -457,12 +653,52 @@ function UIKit.button(props: { [string]: any }, onClick: (() -> ())?): TextButto
 		ZIndex = button.ZIndex + 2,
 		Parent = face,
 	})
-	button:GetPropertyChangedSignal("Text"):Connect(function()
+	-- Prix Robux : un texte « R$ 99 » s'affiche « [logo Robux] 99 » (button.Text garde « R$ 99 »)
+	local height = if button.Size.Y.Offset > 0 then button.Size.Y.Offset else 56
+	local price: Frame = new("Frame", {
+		Name = "Price",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.47),
+		Size = UDim2.fromScale(0.92, 0.62),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = button.ZIndex + 2,
+		Parent = face,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, math.floor(height * 0.1)),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	local glyphSize = math.floor(math.min(height * 0.56, 36))
+	UIKit.robuxGlyph({ LayoutOrder = 1, Size = UDim2.fromOffset(glyphSize, glyphSize), ZIndex = button.ZIndex + 2, Parent = price })
+	local amount = UIKit.label({
+		Name = "Amount",
+		LayoutOrder = 2,
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.fromScale(0, 1),
+		TextScaled = false,
+		TextSize = math.floor(math.min(height * 0.56, (maxTextSize or 40))),
+		Text = "",
+		ZIndex = button.ZIndex + 2,
+		Parent = price,
+	})
+	local function showText()
+		local value = string.match(button.Text, "^R%$%s*(.+)$")
+		price.Visible = value ~= nil
+		label.Visible = value == nil
+		amount.Text = value or ""
 		label.Text = button.Text
-	end)
+	end
+	showText()
+	button:GetPropertyChangedSignal("Text"):Connect(showText)
 	local function repaint()
 		local off = button:GetAttribute("Disabled") == true
 		label.TextTransparency = if off then 0.35 else 0
+		amount.TextTransparency = label.TextTransparency
 		paint(if off then Colors.Disabled else color, rainbow and not off)
 	end
 	button:GetAttributeChangedSignal("Disabled"):Connect(repaint)
@@ -508,6 +744,52 @@ function UIKit.closeButton(props: { [string]: any }, onClick: () -> ()): TextBut
 	button.Activated:Connect(function()
 		playSound("Click")
 		onClick()
+	end)
+	button.Parent = parent
+	return button
+end
+
+-- Bouton carré des colonnes du HUD : case à plots de la couleur `props.Color`, grande icône du pack (`props.Icon`) et
+-- nom en bas qui déborde du bord. Les autres props sont celles du TextButton (Size carrée conseillée).
+function UIKit.menuButton(props: { [string]: any }, onClick: (() -> ())?): TextButton
+	local color: Color3 = props.Color or Colors.Green
+	local iconName: string = props.Icon or ""
+	local text: string = props.Text or ""
+	local parent = props.Parent
+	props.Color = nil
+	props.Icon = nil
+	props.Text = nil
+	props.Parent = nil
+	props.BackgroundTransparency = 1
+	props.BorderSizePixel = 0
+	props.AutoButtonColor = false
+	local button: TextButton = new("TextButton", props)
+	button.Text = ""
+	local _, paint = buttonFace(button)
+	paint(color)
+	UIKit.icon(iconName, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.42),
+		Size = UDim2.fromScale(0.72, 0.72),
+		ZIndex = button.ZIndex + 2,
+		Parent = button,
+	})
+	UIKit.label({
+		Name = "Label",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.9),
+		Size = UDim2.fromScale(1.1, 0.34),
+		Text = text,
+		ZIndex = button.ZIndex + 4,
+		Parent = button,
+	})
+	button:SetAttribute("HoverScale", 1.08)
+	UIKit.packHover(button)
+	button.Activated:Connect(function()
+		playSound("Click")
+		if onClick then
+			onClick()
+		end
 	end)
 	button.Parent = parent
 	return button
@@ -596,7 +878,7 @@ export type Tabs = {
 -- Rangée d'onglets dans `parent` : entries = { { Name, Text?, Color? } } ; l'onglet choisi prend sa couleur, les autres
 -- restent gris. props.Vertical = colonne ; props.ButtonSize (UDim2) ; les autres props sont celles du cadre.
 -- onSelect(nom) est appelé à chaque choix (aussi par Select).
-function UIKit.tabs(parent: GuiObject, entries: { { Name: string, Text: string?, Color: Color3? } }, onSelect: (string) -> (), props: { [string]: any }?): Tabs
+function UIKit.tabs(parent: GuiObject, entries: { { Name: string, Text: string?, Color: Color3?, Icon: string? } }, onSelect: (string) -> (), props: { [string]: any }?): Tabs
 	local options: { [string]: any } = props or {}
 	local vertical = options.Vertical == true
 	local buttonSize: UDim2 = options.ButtonSize or UDim2.fromOffset(150, 52)
@@ -729,6 +1011,7 @@ function UIKit.Root(name: string, displayOrder: number?): (ScreenGui, Frame)
 		local s = math.min(viewport.X / UIKit.DesignSize.X, viewport.Y / UIKit.DesignSize.Y)
 		scale.Scale = s
 		root.Size = UDim2.fromOffset(viewport.X / s, viewport.Y / s)
+		setScale(s)
 	end
 	fit()
 	local camera = Workspace.CurrentCamera

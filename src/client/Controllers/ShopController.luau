@@ -1,5 +1,6 @@
 --!strict
--- Shop (brief 12 « ui-ux », GDD : Monétisation, Vitesse et treadmill). Bouton Shop du HUD, quatre onglets :
+-- Shop (brief 12 « ui-ux », GDD : Monétisation, Vitesse et treadmill ; refait en grandes cartes illustrées par
+-- sections, style des Steal a ... du moment). Bouton Shop du HUD, quatre onglets :
 --   * Speed   : treadmill (niveau, gain actuel, niveau suivant avec son gain et son prix réel lu sur Roblox), passe
 --               x2 Treadmill, et un raccourci vers les trails ;
 --   * Trails  : trails Robux (Neon, Galaxy, Golden : passes) puis trails en argent du jeu (acheter, porter) ;
@@ -29,22 +30,29 @@ ShopController.Tabs = { "Speed", "Trails", "Passes", "Items" }
 local Colors = UIKit.Colors
 local new = UIKit.new
 local Z = 23
-local PANEL = Vector2.new(1000, 600)
-local SIDE = 170 -- largeur des onglets
-local ROW_W = 772
-local ROW_H = 96
+local PANEL = Vector2.new(1040, 620)
+local SIDE = 196 -- largeur des onglets
+local PAGE_W = PANEL.X - 32 - (SIDE + 14) - 14 -- (largeur des cartes : page moins la barre de défilement)
+local COLUMNS = 3
+local GAP = 12
+local CARD_W = math.floor((PAGE_W - (COLUMNS - 1) * GAP) / COLUMNS)
+local CARD_H = 300
+local TAB_H = 72
+local WIDE_H = 210
 local RELOAD_DELAY = 1.2 -- secondes entre deux GetShop (limite du serveur : 1 par seconde)
 local STUDIO = RunService:IsStudio()
 
 type ButtonSpec = { Text: string, Color: Color3, Disabled: boolean?, OnClick: (() -> ())? }
-type RowSpec = {
+type CardSpec = {
 	Name: string,
 	Title: string,
 	Subtitle: string,
 	Color: Color3,
 	Rainbow: boolean?,
-	Glyph: string?,
-	Height: number?,
+	Icon: string?, -- icône du pack (UIKit.Icons)
+	Glyph: string?, -- gros texte sur l'image (« x2 »)
+	Ribbon: { Color3 }?, -- bande aux couleurs d'une trail derrière l'icône
+	Pips: Vector2?, -- carte large : niveaux (X faits sur Y)
 	Buttons: { ButtonSpec },
 }
 
@@ -162,97 +170,259 @@ local function reload()
 	end)
 end
 
--- ===================================================================== lignes
+-- ===================================================================== cartes
 
 local function text(props: { [string]: any }): TextLabel
 	props.ZIndex = props.ZIndex or Z + 2
 	return UIKit.label(props)
 end
 
--- Ligne du shop : case de couleur, titre, sous-titre, un ou deux boutons à droite. Renvoie la ligne et ses boutons.
-local function row(page: ScrollingFrame, order: number, spec: RowSpec): (Frame, { TextButton }, TextLabel)
-	local height = spec.Height or ROW_H
-	local card = UIKit.card({
-		Name = spec.Name,
-		Color = Colors.SlateDark,
-		LayoutOrder = order,
-		Size = UDim2.fromOffset(ROW_W, height),
+-- Section de la page : titre « -- SPEED -- » puis une grille de cartes (3 par ligne, ou cartes larges) dont la hauteur
+-- suit le nombre de cartes.
+type Section = { Grid: Frame, Count: number, Wide: boolean }
+
+local sectionOrder = 0
+
+local function resize(sec: Section)
+	if sec.Wide then
+		sec.Grid.Size = UDim2.fromOffset(PAGE_W, sec.Count * WIDE_H + math.max(0, sec.Count - 1) * GAP)
+	else
+		local rows = math.max(1, math.ceil(sec.Count / COLUMNS))
+		sec.Grid.Size = UDim2.fromOffset(PAGE_W, rows * CARD_H + (rows - 1) * GAP)
+	end
+end
+
+local function section(page: ScrollingFrame, title: string, wide: boolean?): Section
+	sectionOrder += 1
+	UIKit.sectionTitle({
+		Name = "Section" .. sectionOrder,
+		Text = title,
+		Width = PAGE_W,
+		LayoutOrder = sectionOrder * 10,
 		ZIndex = Z,
 		Parent = page,
 	})
-	local swatch = UIKit.card({
+	local cell = if wide then Vector2.new(PAGE_W, WIDE_H) else Vector2.new(CARD_W, CARD_H)
+	local grid: Frame = new("Frame", {
+		Name = "Grid" .. sectionOrder,
+		LayoutOrder = sectionOrder * 10 + 1,
+		Size = UDim2.fromOffset(PAGE_W, cell.Y),
+		BackgroundTransparency = 1,
+		ZIndex = Z,
+		Parent = page,
+	}, {
+		new("UIGridLayout", {
+			CellSize = UDim2.fromOffset(cell.X, cell.Y),
+			CellPadding = UDim2.fromOffset(GAP, GAP),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	return { Grid = grid, Count = 0, Wide = wide == true }
+end
+
+-- Image d'une carte : icône du pack sur un halo clair, bande aux couleurs d'une trail derrière, gros texte « x2 » en
+-- bas à droite. Le cadre s'appelle « Swatch » et son texte « Glyph » (les tests les lisent).
+local function swatch(parent: GuiObject, spec: CardSpec, size: number, position: UDim2, anchor: Vector2): Frame
+	local holder: Frame = new("Frame", {
 		Name = "Swatch",
+		AnchorPoint = anchor,
+		Position = position,
+		Size = UDim2.fromOffset(size, size),
+		BackgroundTransparency = 1,
+		ZIndex = Z + 1,
+		Parent = parent,
+	})
+	new("Frame", {
+		Name = "Halo",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.92, 0.92),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.72,
+		BorderSizePixel = 0,
+		ZIndex = Z + 1,
+		Parent = holder,
+	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
+	local colors = spec.Ribbon
+	if colors and #colors > 0 then
+		local ribbon: Frame = new("Frame", {
+			Name = "Ribbon",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.42, 0.56),
+			Size = UDim2.fromScale(0.86, 0.24),
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			BorderSizePixel = 0,
+			ZIndex = Z + 2,
+			Parent = holder,
+		}, { new("UIStroke", { Color = Colors.Ink, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }) })
+		local keys = {}
+		for index, color in colors do
+			table.insert(keys, ColorSequenceKeypoint.new((index - 1) / math.max(1, #colors - 1), color))
+		end
+		if #keys == 1 then
+			table.insert(keys, ColorSequenceKeypoint.new(1, colors[1]))
+		end
+		new("UIGradient", { Color = if spec.Rainbow then UIKit.RainbowSequence else ColorSequence.new(keys), Parent = ribbon })
+	end
+	-- (trail : la fusée au bout de la bande de couleurs, comme si elle la laissait derrière elle)
+	local hasRibbon = colors ~= nil and #colors > 0
+	UIKit.icon(spec.Icon or "", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = if hasRibbon then UDim2.fromScale(0.74, 0.46) else UDim2.fromScale(0.5, 0.47),
+		Size = if hasRibbon then UDim2.fromScale(0.62, 0.62) else UDim2.fromScale(0.8, 0.8),
+		ZIndex = Z + 3,
+		Parent = holder,
+	})
+	text({
+		Name = "Glyph",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.fromScale(1.02, 1),
+		Size = UDim2.fromScale(0.56, 0.28),
+		Text = spec.Glyph or "",
+		Visible = (spec.Glyph or "") ~= "",
+		ZIndex = Z + 6,
+		Parent = holder,
+	})
+	return holder
+end
+
+local function buttonsOf(frame: Frame, specs: { ButtonSpec }, wide: boolean): { TextButton }
+	local buttons = {}
+	local count = #specs
+	for index, buttonSpec in specs do
+		local props: { [string]: any } = {
+			Name = "Button" .. index,
+			Text = buttonSpec.Text,
+			Color = buttonSpec.Color,
+			MaxTextSize = 28,
+			ZIndex = Z + 3,
+			Parent = frame,
+		}
+		if wide then
+			-- (carte large : boutons empilés à droite)
+			local height = 62
+			local total = count * height + (count - 1) * 10
+			props.AnchorPoint = Vector2.new(1, 0.5)
+			props.Position = UDim2.new(1, -20, 0.5, -total / 2 + (index - 1) * (height + 10) + height / 2)
+			props.Size = UDim2.fromOffset(232, height)
+		else
+			local width = math.floor((CARD_W - 28 - (count - 1) * 8) / count)
+			props.AnchorPoint = Vector2.new(0, 1)
+			props.Position = UDim2.new(0, 14 + (index - 1) * (width + 8), 1, -14)
+			props.Size = UDim2.fromOffset(width, 56)
+			props.MaxTextSize = if count > 1 then 22 else 28
+		end
+		local button = UIKit.button(props, buttonSpec.OnClick)
+		button:SetAttribute("Disabled", buttonSpec.Disabled == true)
+		table.insert(buttons, button)
+	end
+	return buttons
+end
+
+-- Carte du shop (grille) : grande image, titre, description, un ou deux boutons en bas. Renvoie la carte, ses boutons
+-- (Button1, Button2) et sa description (« Subtitle »).
+local function card(sec: Section, spec: CardSpec): (Frame, { TextButton }, TextLabel)
+	sec.Count += 1
+	resize(sec)
+	local frame = UIKit.card({
+		Name = spec.Name,
 		Color = spec.Color,
 		Rainbow = spec.Rainbow,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 12, 0.5, 0),
-		Size = UDim2.fromOffset(70, 70),
-		ZIndex = Z + 1,
-		Parent = card,
+		LayoutOrder = sec.Count,
+		ZIndex = Z,
+		Parent = sec.Grid,
 	})
-	if spec.Glyph and spec.Glyph ~= "" then
-		text({
-			Name = "Glyph",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(0.82, 0.6),
-			Text = spec.Glyph,
-			ZIndex = Z + 5,
-			Parent = swatch,
-		})
-	end
-	local buttonsWidth = #spec.Buttons * 170 + math.max(0, #spec.Buttons - 1) * 10
+	swatch(frame, spec, 128, UDim2.new(0.5, 0, 0, 10), Vector2.new(0.5, 0))
 	text({
 		Name = "Title",
-		Position = UDim2.fromOffset(98, 10),
-		Size = UDim2.new(1, -(98 + buttonsWidth + 24), 0, 34),
-		TextXAlignment = Enum.TextXAlignment.Left,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 142),
+		Size = UDim2.new(1, -20, 0, 34),
 		Text = spec.Title,
-		Parent = card,
+		Parent = frame,
 	})
 	local subtitle = text({
 		Name = "Subtitle",
-		Position = UDim2.fromOffset(98, 46),
-		Size = UDim2.new(1, -(98 + buttonsWidth + 24), 1, -54),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 178),
+		Size = UDim2.new(1, -24, 0, 46),
+		TextWrapped = true,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Body = true,
+		MaxTextSize = 18,
+		StrokeThickness = 2,
+		Text = spec.Subtitle,
+		Parent = frame,
+	})
+	return frame, buttonsOf(frame, spec.Buttons, false), subtitle
+end
+
+-- Carte large (« FEATURED ») : image à gauche, titre, description, niveaux en pastilles, boutons empilés à droite
+local function wideCard(sec: Section, spec: CardSpec): (Frame, { TextButton }, TextLabel)
+	sec.Count += 1
+	resize(sec)
+	local frame = UIKit.card({
+		Name = spec.Name,
+		Color = spec.Color,
+		Rainbow = spec.Rainbow,
+		LayoutOrder = sec.Count,
+		ZIndex = Z,
+		Parent = sec.Grid,
+	})
+	swatch(frame, spec, 166, UDim2.new(0, 22, 0.5, 0), Vector2.new(0, 0.5))
+	local left = 210
+	local right = 272
+	text({
+		Name = "Title",
+		Position = UDim2.fromOffset(left, 18),
+		Size = UDim2.new(1, -(left + right), 0, 44),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = spec.Title,
+		Parent = frame,
+	})
+	local subtitle = text({
+		Name = "Subtitle",
+		Position = UDim2.fromOffset(left, 68),
+		Size = UDim2.new(1, -(left + right), 0, 66),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		TextWrapped = true,
 		Body = true,
 		MaxTextSize = 20,
-		TextColor3 = Colors.Muted,
+		StrokeThickness = 2,
 		Text = spec.Subtitle,
-		Parent = card,
+		Parent = frame,
 	})
-	local buttons = {}
-	for index, buttonSpec in spec.Buttons do
-		local button = UIKit.button({
-			Name = "Button" .. index,
-			Text = buttonSpec.Text,
-			Color = buttonSpec.Color,
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -12 - (#spec.Buttons - index) * 180, 0.5, 0),
-			Size = UDim2.fromOffset(170, 64),
-			MaxTextSize = 28,
-			ZIndex = Z + 1,
-			Parent = card,
-		}, buttonSpec.OnClick)
-		button:SetAttribute("Disabled", buttonSpec.Disabled == true)
-		table.insert(buttons, button)
+	local pipsSpec = spec.Pips
+	if pipsSpec then
+		local pips: Frame = new("Frame", {
+			Name = "Pips",
+			Position = UDim2.new(0, left, 1, -52),
+			Size = UDim2.new(1, -(left + right), 0, 30),
+			BackgroundTransparency = 1,
+			ZIndex = Z + 2,
+			Parent = frame,
+		}, {
+			new("UIListLayout", {
+				FillDirection = Enum.FillDirection.Horizontal,
+				Padding = UDim.new(0, 6),
+				SortOrder = Enum.SortOrder.LayoutOrder,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+			}),
+		})
+		for index = 1, pipsSpec.Y do
+			new("Frame", {
+				Name = "Pip" .. index,
+				LayoutOrder = index,
+				Size = UDim2.fromOffset(24, 24),
+				BackgroundColor3 = if index <= pipsSpec.X then Colors.Yellow else Colors.SlateDark,
+				BorderSizePixel = 0,
+				ZIndex = Z + 2,
+				Parent = pips,
+			}, { new("UIStroke", { Color = Colors.Ink, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }) })
+		end
 	end
-	return card, buttons, subtitle
-end
-
--- Petit titre de section dans la page
-local function section(page: ScrollingFrame, order: number, title: string)
-	text({
-		Name = "Section" .. order,
-		LayoutOrder = order,
-		Size = UDim2.fromOffset(ROW_W, 34),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Colors.Yellow,
-		Text = title,
-		Parent = page,
-	})
+	return frame, buttonsOf(frame, spec.Buttons, true), subtitle
 end
 
 local function studioPlaceholder(): ButtonSpec
@@ -292,7 +462,24 @@ end
 
 -- ===================================================================== pages
 
-local function passRow(page: ScrollingFrame, order: number, key: string, glyph: string, color: Color3): boolean
+type Look = { Icon: string, Glyph: string, Color: Color3 }
+
+-- Allure des passes et produits : icône du pack, gros texte, couleur de la carte
+local LOOKS: { [string]: Look } = {
+	DoubleMoney = { Icon = "coins", Glyph = "x2", Color = Colors.Money },
+	DoubleTreadmill = { Icon = "speed", Glyph = "x2", Color = Colors.Cyan },
+	FastRevive = { Icon = "clock", Glyph = "x2", Color = Colors.Purple },
+	VIP = { Icon = "crown", Glyph = "VIP", Color = Colors.Yellow },
+	BearTraps5 = { Icon = "shield", Glyph = "x5", Color = Colors.Orange },
+	InstantRevive = { Icon = "egg_gold", Glyph = "", Color = Colors.Pink },
+	ServerLuck = { Icon = "star", Glyph = "x2", Color = Colors.Blue },
+}
+
+local function look(key: string): Look
+	return LOOKS[key] or { Icon = "star", Glyph = "", Color = Colors.Robux }
+end
+
+local function passCard(sec: Section, key: string): boolean
 	local pass = Config.Shop.Passes[key]
 	local entry = onSaleList("Passes")[key]
 	if not pass or (not entry and not STUDIO) then
@@ -305,7 +492,7 @@ local function passRow(page: ScrollingFrame, order: number, key: string, glyph: 
 	local button: ButtonSpec = if entry
 		then {
 			Text = robux(entry.Price),
-			Color = Colors.Robux,
+			Color = Colors.Green,
 			OnClick = function()
 				if not owned() then
 					request("Pass" .. key, "BuyPass", key)
@@ -313,12 +500,14 @@ local function passRow(page: ScrollingFrame, order: number, key: string, glyph: 
 			end,
 		}
 		else studioPlaceholder()
-	local _, buttons = row(page, order, {
+	local style = look(key)
+	local _, buttons = card(sec, {
 		Name = key,
 		Title = pass.Name,
 		Subtitle = pass.Description,
-		Color = color,
-		Glyph = glyph,
+		Color = style.Color,
+		Icon = style.Icon,
+		Glyph = style.Glyph,
 		Buttons = { button },
 	})
 	if entry then
@@ -332,7 +521,7 @@ local function passRow(page: ScrollingFrame, order: number, key: string, glyph: 
 	return true
 end
 
-local function productRow(page: ScrollingFrame, order: number, key: string, glyph: string, color: Color3, extra: (() -> string)?): boolean
+local function productCard(sec: Section, key: string, extra: (() -> string)?): boolean
 	local product = Config.Shop.Products[key]
 	local entry = onSaleList("Products")[key]
 	if not product or (not entry and not STUDIO) then
@@ -341,18 +530,20 @@ local function productRow(page: ScrollingFrame, order: number, key: string, glyp
 	local button: ButtonSpec = if entry
 		then {
 			Text = robux(entry.Price),
-			Color = Colors.Robux,
+			Color = Colors.Green,
 			OnClick = function()
 				request("Product" .. key, "BuyProduct", key)
 			end,
 		}
 		else studioPlaceholder()
-	local _, _, subtitle = row(page, order, {
+	local style = look(key)
+	local _, _, subtitle = card(sec, {
 		Name = key,
 		Title = product.Name,
 		Subtitle = product.Description,
-		Color = color,
-		Glyph = glyph,
+		Color = style.Color,
+		Icon = style.Icon,
+		Glyph = style.Glyph,
 		Buttons = { button },
 	})
 	if extra then
@@ -372,19 +563,32 @@ local function treadmillPage(page: ScrollingFrame)
 	local maxLevel = #levels
 	local nextInfo = if type(info) == "table" and type(info.Next) == "table" then info.Next else nil
 	local nextLevel = level + 1
-	local button: ButtonSpec
+	local buttons: { ButtonSpec } = {}
+	-- (prix en argent du jeu du niveau suivant, quand le serveur en donne un)
+	local cash = if nextInfo and type(nextInfo.Cash) == "number" then nextInfo.Cash else nil
 	local subtitle: string
 	if level >= maxLevel then
-		button = { Text = "MAX", Color = Colors.Disabled, Disabled = true }
+		table.insert(buttons, { Text = "MAX", Color = Colors.Disabled, Disabled = true })
 		subtitle = "Your treadmill is maxed out!"
 	elseif nextInfo then
-		button = {
-			Text = robux(nextInfo.Price),
-			Color = Colors.Robux,
-			OnClick = function()
-				request("Treadmill", "BuyTreadmill")
-			end,
-		}
+		if cash then
+			table.insert(buttons, {
+				Text = Format.Money(cash),
+				Color = Colors.Green,
+				OnClick = function()
+					request("Treadmill", "BuyTreadmill", "Cash")
+				end,
+			})
+		end
+		if type(nextInfo.Price) == "number" or not cash then
+			table.insert(buttons, {
+				Text = robux(nextInfo.Price),
+				Color = Colors.Green,
+				OnClick = function()
+					request("Treadmill", "BuyTreadmill", if cash then "Robux" else nil)
+				end,
+			})
+		end
 		subtitle = string.format(
 			"Level %d: +%s Speed/s (%s).",
 			nextLevel,
@@ -392,7 +596,7 @@ local function treadmillPage(page: ScrollingFrame)
 			times(nextInfo.Multiplier)
 		)
 	elseif STUDIO then
-		button = studioPlaceholder()
+		table.insert(buttons, studioPlaceholder())
 		local multiplier = levels[nextLevel].Multiplier
 		subtitle = string.format(
 			"Level %d: +%s Speed/s (%s).",
@@ -401,34 +605,40 @@ local function treadmillPage(page: ScrollingFrame)
 			times(multiplier)
 		)
 	else
-		button = { Text = "SOON", Color = Colors.Disabled, Disabled = true }
+		table.insert(buttons, { Text = "SOON", Color = Colors.Disabled, Disabled = true })
 		subtitle = "More levels are coming soon!"
 	end
-	local title = if level <= 0 then "Treadmill (free)" else string.format("Treadmill  Level %d/%d", level, maxLevel)
-	local _, _, sub = row(page, 1, {
+	local featured = section(page, "FEATURED", true)
+	local _, wideButtons, sub = wideCard(featured, {
 		Name = "Treadmill",
-		Title = title,
+		Title = if level <= 0 then "Treadmill" else string.format("Treadmill  Level %d", level),
 		Subtitle = "",
 		Color = Colors.Cyan,
-		Glyph = if level > 0 then tostring(level) else "AFK",
-		Height = 132,
-		Buttons = { button },
+		Icon = "speed",
+		Glyph = if level > 0 then "LV" .. level else "AFK",
+		Pips = Vector2.new(level, maxLevel),
+		Buttons = buttons,
 	})
 	table.insert(updaters, function()
 		local rate = num("TreadmillRate")
 		sub.Text = string.format("Now: +%s Speed/s on your treadmill, even AFK!\nNext %s", Format.Number(rate), subtitle)
+		if cash and level < maxLevel then
+			wideButtons[1]:SetAttribute("Disabled", num("Money") < cash)
+		end
 	end)
-	passRow(page, 2, "DoubleTreadmill", "x2", Colors.Cyan)
-	local _, _ = row(page, 3, {
+	local boosts = section(page, "SPEED")
+	passCard(boosts, "DoubleTreadmill")
+	card(boosts, {
 		Name = "TrailsHint",
 		Title = "Trails",
-		Subtitle = "Trails add speed while you wear them. Cheap ones are bought with cash!",
+		Subtitle = "Trails add speed while you wear them. Cheap ones cost cash!",
 		Color = Colors.Orange,
-		Glyph = ">>",
+		Icon = "star",
+		Ribbon = { Colors.Yellow, Colors.Orange, Colors.Pink },
 		Buttons = {
 			{
 				Text = "SEE TRAILS",
-				Color = Colors.Orange,
+				Color = Colors.Blue,
 				OnClick = function()
 					ShopController.Select("Trails")
 				end,
@@ -446,8 +656,7 @@ end
 
 local function trailsPage(page: ScrollingFrame)
 	local passes = onSaleList("Passes")
-	local order = 0
-	local robuxShown = false
+	local robuxSection: Section? = nil
 	for _, id in ordered(Config.Speed.RobuxTrails) do
 		local trail = Config.Speed.RobuxTrails[id]
 		local pass = Config.Shop.Passes[trail.Pass]
@@ -455,16 +664,12 @@ local function trailsPage(page: ScrollingFrame)
 		if not pass or (not entry and not STUDIO) then
 			continue
 		end
-		if not robuxShown then
-			robuxShown = true
-			order += 1
-			section(page, order, "SUPER TRAILS")
-		end
-		order += 1
+		local sec = robuxSection or section(page, "SUPER TRAILS")
+		robuxSection = sec
 		local button: ButtonSpec = if entry
 			then {
 				Text = robux(entry.Price),
-				Color = Colors.Robux,
+				Color = Colors.Green,
 				OnClick = function()
 					local owned, equipped = trailState()
 					if owned[id] then
@@ -477,12 +682,14 @@ local function trailsPage(page: ScrollingFrame)
 				end,
 			}
 			else studioPlaceholder()
-		local _, buttons = row(page, order, {
+		local _, buttons = card(sec, {
 			Name = id,
 			Title = trail.Name,
 			Subtitle = string.format("%s Speed while you wear it, on top of your best cash trail.", times(pass.Multiplier)),
 			Color = trail.Colors[1],
 			Rainbow = id == "Galaxy",
+			Icon = "speed",
+			Ribbon = trail.Colors,
 			Glyph = times(pass.Multiplier),
 			Buttons = { button },
 		})
@@ -496,22 +703,22 @@ local function trailsPage(page: ScrollingFrame)
 					buy:SetAttribute("Disabled", equipped == id)
 				else
 					buy.Text = robux(entry.Price)
-					buy:SetAttribute("Tint", Colors.Robux)
+					buy:SetAttribute("Tint", Colors.Green)
 					buy:SetAttribute("Disabled", false)
 				end
 			end)
 		end
 	end
-	order += 1
-	section(page, order, "CASH TRAILS")
+	local cashSection = section(page, "CASH TRAILS")
 	for _, id in ordered(Config.Speed.Trails) do
 		local trail = Config.Speed.Trails[id]
-		order += 1
-		local _, buttons = row(page, order, {
+		local _, buttons = card(cashSection, {
 			Name = id,
 			Title = trail.Name,
-			Subtitle = string.format("%s  -  +%s Speed while you wear it.", trail.Tier, Format.Number(trail.Speed)),
+			Subtitle = string.format("%s trail: +%s Speed while you wear it.", trail.Tier, Format.Number(trail.Speed)),
 			Color = trail.Colors[1],
+			Icon = "speed",
+			Ribbon = trail.Colors,
 			Glyph = "+" .. Format.Number(trail.Speed),
 			Buttons = {
 				{
@@ -547,28 +754,19 @@ local function trailsPage(page: ScrollingFrame)
 end
 
 local function passesPage(page: ScrollingFrame)
-	local order = 0
-	local glyphs: { [string]: { Glyph: string, Color: Color3 } } = {
-		DoubleMoney = { Glyph = "x2", Color = Colors.Money },
-		DoubleTreadmill = { Glyph = "x2", Color = Colors.Cyan },
-		FastRevive = { Glyph = ">>", Color = Colors.Purple },
-		VIP = { Glyph = "VIP", Color = Colors.Yellow },
-	}
+	local sec = section(page, "PASSES")
 	for _, key in ordered(Config.Shop.Passes) do
-		local pass = Config.Shop.Passes[key]
-		if pass.Trail then
+		if Config.Shop.Passes[key].Trail then
 			continue -- (trails Robux : onglet Trails)
 		end
-		local look = glyphs[key] or { Glyph = "", Color = Colors.Robux }
-		if passRow(page, order + 1, key, look.Glyph, look.Color) then
-			order += 1
-		end
+		passCard(sec, key)
 	end
-	if order == 0 then
+	if sec.Count == 0 then
+		sec.Grid.Visible = false
 		text({
 			Name = "Empty",
-			LayoutOrder = 99,
-			Size = UDim2.fromOffset(ROW_W, 60),
+			LayoutOrder = 9999,
+			Size = UDim2.fromOffset(PAGE_W, 60),
 			Text = "Passes are coming soon!",
 			TextColor3 = Colors.Muted,
 			Parent = page,
@@ -578,12 +776,13 @@ end
 
 local function itemsPage(page: ScrollingFrame)
 	local trap = Config.Pvp.Trap
-	local _, buttons, trapSub = row(page, 1, {
+	local items = section(page, "ITEMS")
+	local _, buttons, trapSub = card(items, {
 		Name = "BearTraps",
 		Title = "Bear Traps",
 		Subtitle = "",
 		Color = Colors.Orange,
-		Glyph = "TRAP",
+		Icon = "shield",
 		Buttons = {
 			{
 				Text = "x1 " .. Format.Money(trap.Price),
@@ -606,17 +805,16 @@ local function itemsPage(page: ScrollingFrame)
 		buttons[1]:SetAttribute("Disabled", num("Money") < trap.Price)
 		buttons[2]:SetAttribute("Disabled", num("Money") < trap.Price * 5)
 	end)
-	productRow(page, 2, "BearTraps5", "x5", Colors.Orange)
-	productRow(page, 3, "InstantRevive", "GO", Colors.Purple, function(): string
+	productCard(items, "BearTraps5")
+	productCard(items, "InstantRevive", function(): string
 		local credits = math.floor(num("InstantCredits"))
 		return if credits > 0 then string.format("(%d saved)", credits) else ""
 	end)
-	productRow(page, 4, "ServerLuck", "x2", Colors.Yellow, function(): string
+	productCard(items, "ServerLuck", function(): string
 		local endsAt = Workspace:GetAttribute("ServerLuckEndsAt")
 		local left = if type(endsAt) == "number" then endsAt - Workspace:GetServerTimeNow() else 0
 		return if left > 0 then "Active: " .. Format.Clock(left) .. " left!" else ""
 	end)
-	local order = 4
 	local offers: { [string]: { [string]: any } } = {}
 	for _, offer in spinOffers do
 		if type(offer) == "table" and type(offer.Key) == "string" then
@@ -625,24 +823,27 @@ local function itemsPage(page: ScrollingFrame)
 	end
 	local spins = ReplicaController.Get("Spins")
 	local canBuy = type(spins) == "table" and spins.CanBuy == true
+	local spinSection: Section? = nil
 	for _, key in ordered(Config.Daily.Spins.Products) do
 		local product = Config.Daily.Spins.Products[key]
 		local offer = offers[key]
 		if not offer and not (STUDIO and canBuy) then
 			continue
 		end
-		order += 1
-		row(page, order, {
+		local sec = spinSection or section(page, "SPINS")
+		spinSection = sec
+		card(sec, {
 			Name = key,
 			Title = product.Name,
 			Subtitle = "Spins for the Lucky Wheel. The chances are shown on the wheel.",
-			Color = Colors.Purple,
-			Glyph = tostring(product.Count),
+			Color = Colors.Pink,
+			Icon = "wheel",
+			Glyph = "x" .. tostring(product.Count),
 			Buttons = {
 				if offer
 					then {
 						Text = robux(offer.Price),
-						Color = Colors.Robux,
+						Color = Colors.Green,
 						OnClick = function()
 							request("Spins" .. key, "BuySpins", key)
 						end,
@@ -683,6 +884,7 @@ local function draw()
 		end
 	end
 	updaters = {}
+	sectionOrder = 0
 	local build: (ScrollingFrame) -> () = PAGES[current] or treadmillPage
 	build(page)
 	page.CanvasPosition = Vector2.zero
@@ -747,10 +949,10 @@ function ShopController.Init()
 		Parent = panel.HeaderRight,
 	})
 	local entries = {
-		{ Name = "Speed", Color = Colors.Cyan },
-		{ Name = "Trails", Color = Colors.Orange },
-		{ Name = "Passes", Color = Colors.Robux },
-		{ Name = "Items", Color = Colors.Pink },
+		{ Name = "Speed", Color = Colors.Cyan, Icon = "speed" },
+		{ Name = "Trails", Color = Colors.Orange, Icon = "star" },
+		{ Name = "Passes", Color = Colors.Robux, Icon = "crown" },
+		{ Name = "Items", Color = Colors.Pink, Icon = "bag" },
 	}
 	local page = UIKit.scroll({
 		Name = "Page",
@@ -765,10 +967,27 @@ function ShopController.Init()
 		draw()
 	end, {
 		Vertical = true,
-		ButtonSize = UDim2.fromOffset(SIDE, 62),
-		Size = UDim2.fromOffset(SIDE, 4 * 62 + 3 * 8),
+		ButtonSize = UDim2.fromOffset(SIDE, TAB_H),
+		Size = UDim2.fromOffset(SIDE, 4 * TAB_H + 3 * 8),
 		ZIndex = Z,
 	})
+	-- (icône du pack à gauche de chaque onglet, nom à droite)
+	for _, entry in entries do
+		local button = tabs.Buttons[entry.Name]
+		UIKit.icon(entry.Icon, {
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 8, 0.5, -2),
+			Size = UDim2.fromOffset(TAB_H - 24, TAB_H - 24),
+			ZIndex = button.ZIndex + 3,
+			Parent = button,
+		})
+		local label = button:FindFirstChild("Label", true)
+		if label and label:IsA("TextLabel") then
+			label.AnchorPoint = Vector2.new(0, 0.5)
+			label.Position = UDim2.new(0, TAB_H - 10, 0.47, 0)
+			label.Size = UDim2.new(1, -(TAB_H - 4), 0.56, 0)
+		end
+	end
 	ui = { Panel = panel, Tabs = tabs, Page = page, Money = money }
 
 	for _, key in { "Money", "Trails", "BearTraps", "InstantCredits", "TreadmillRate" } do

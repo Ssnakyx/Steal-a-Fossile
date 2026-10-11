@@ -36,9 +36,9 @@ local ECONOMY = Config.Economy
 
 -- Bloc de boutons à gauche : même taille que ceux de RewardsController (136 x 68, écart 14), juste au-dessus d'eux.
 -- RewardsController centre les siens 82 unités sous le milieu de l'écran : les 5 boutons sont centrés ensemble.
-local BUTTON = Vector2.new(136, 68)
-local GAP = 14
-local BUTTONS_BOTTOM = -48 -- (bas des boutons du HUD, depuis le milieu de l'écran : haut des boutons Daily - GAP)
+local BUTTON = Vector2.new(84, 84) -- (boutons carrés à icône, deux par ligne)
+local GAP = 10
+local BUTTONS_BOTTOM = -52 -- (bas des boutons du HUD, depuis le milieu de l'écran : haut des boutons Daily - GAP)
 local COUNTERS_WIDTH = 300
 local BANNER_TIME = 3.2
 local REFRESH = 0.1
@@ -201,30 +201,30 @@ local function buildButtons(root: Frame): (Frame, UIKit.Badge, UIKit.Badge)
 		Name = "HudButtons",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 16, 0.5, BUTTONS_BOTTOM),
-		Size = UDim2.fromOffset(BUTTON.X, 2 * BUTTON.Y + GAP),
+		Size = UDim2.fromOffset(2 * BUTTON.X + GAP, BUTTON.Y),
 		BackgroundTransparency = 1,
 		Parent = root,
 	}, {
-		new("UIListLayout", { Padding = UDim.new(0, GAP), SortOrder = Enum.SortOrder.LayoutOrder }),
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, GAP), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
-	local shop = UIKit.button({
+	local shop = UIKit.menuButton({
 		Name = "Shop",
 		Text = "Shop",
+		Icon = "shop",
 		Color = Colors.Green,
 		LayoutOrder = 1,
 		Size = UDim2.fromOffset(BUTTON.X, BUTTON.Y),
-		MaxTextSize = 30,
 		Parent = frame,
 	}, function()
 		ShopController.Toggle()
 	end)
-	local index = UIKit.button({
+	local index = UIKit.menuButton({
 		Name = "Index",
 		Text = "Index",
+		Icon = "book",
 		Color = Colors.Orange,
 		LayoutOrder = 2,
 		Size = UDim2.fromOffset(BUTTON.X, BUTTON.Y),
-		MaxTextSize = 30,
 		Parent = frame,
 	}, function()
 		IndexController.Toggle()
