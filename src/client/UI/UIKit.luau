@@ -427,9 +427,9 @@ UIKit.buttonFace = buttonFace
 
 -- Bouton à plots : props.Color = couleur (Colors.Green pour acheter), props.Text, props.Rainbow, props.MaxTextSize.
 -- Les autres props sont celles du TextButton. Changer button.Text met à jour le texte ; l'attribut « Disabled » le grise
--- (le clic reste possible pour que le serveur explique pourquoi).
+-- (le clic reste possible pour que le serveur explique pourquoi) ; l'attribut « Tint » (Color3) le repeint (onglets).
 function UIKit.button(props: { [string]: any }, onClick: (() -> ())?): TextButton
-	local color = props.Color or Colors.Disabled
+	local color: Color3 = props.Color or Colors.Disabled
 	local text = props.Text or ""
 	local rainbow = props.Rainbow
 	local maxTextSize = props.MaxTextSize
@@ -460,10 +460,18 @@ function UIKit.button(props: { [string]: any }, onClick: (() -> ())?): TextButto
 	button:GetPropertyChangedSignal("Text"):Connect(function()
 		label.Text = button.Text
 	end)
-	button:GetAttributeChangedSignal("Disabled"):Connect(function()
+	local function repaint()
 		local off = button:GetAttribute("Disabled") == true
 		label.TextTransparency = if off then 0.35 else 0
 		paint(if off then Colors.Disabled else color, rainbow and not off)
+	end
+	button:GetAttributeChangedSignal("Disabled"):Connect(repaint)
+	button:GetAttributeChangedSignal("Tint"):Connect(function()
+		local tint = button:GetAttribute("Tint")
+		if typeof(tint) == "Color3" then
+			color = tint
+			repaint()
+		end
 	end)
 	UIKit.packHover(button)
 	button.Activated:Connect(function()
@@ -562,6 +570,127 @@ function UIKit.rarityTag(rarity: string, props: { [string]: any }): Frame
 		Parent = tag,
 	})
 	return tag
+end
+
+-- Liste qui défile (verticale) : fond transparent, barre jaune. La taille du contenu suit ses enfants
+-- (AutomaticCanvasSize) ; props = propriétés du ScrollingFrame.
+function UIKit.scroll(props: { [string]: any }): ScrollingFrame
+	props.BackgroundTransparency = props.BackgroundTransparency or 1
+	props.BorderSizePixel = 0
+	props.ScrollBarThickness = props.ScrollBarThickness or 10
+	props.ScrollBarImageColor3 = props.ScrollBarImageColor3 or Colors.Yellow
+	props.ScrollingDirection = props.ScrollingDirection or Enum.ScrollingDirection.Y
+	props.CanvasSize = props.CanvasSize or UDim2.new()
+	props.AutomaticCanvasSize = props.AutomaticCanvasSize or Enum.AutomaticSize.Y
+	props.ElasticBehavior = Enum.ElasticBehavior.Never
+	return new("ScrollingFrame", props)
+end
+
+export type Tabs = {
+	Frame: Frame,
+	Buttons: { [string]: TextButton },
+	Select: (name: string) -> (),
+	Selected: () -> string,
+}
+
+-- Rangée d'onglets dans `parent` : entries = { { Name, Text?, Color? } } ; l'onglet choisi prend sa couleur, les autres
+-- restent gris. props.Vertical = colonne ; props.ButtonSize (UDim2) ; les autres props sont celles du cadre.
+-- onSelect(nom) est appelé à chaque choix (aussi par Select).
+function UIKit.tabs(parent: GuiObject, entries: { { Name: string, Text: string?, Color: Color3? } }, onSelect: (string) -> (), props: { [string]: any }?): Tabs
+	local options: { [string]: any } = props or {}
+	local vertical = options.Vertical == true
+	local buttonSize: UDim2 = options.ButtonSize or UDim2.fromOffset(150, 52)
+	local maxText = options.MaxTextSize or 26
+	options.Vertical = nil
+	options.ButtonSize = nil
+	options.MaxTextSize = nil
+	options.BackgroundTransparency = 1
+	options.Name = options.Name or "Tabs"
+	options.Parent = parent
+	local frame: Frame = new("Frame", options, {
+		new("UIListLayout", {
+			FillDirection = if vertical then Enum.FillDirection.Vertical else Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+		}),
+	})
+	local buttons: { [string]: TextButton } = {}
+	local colors: { [string]: Color3 } = {}
+	local selected = ""
+	local function choose(name: string)
+		if not buttons[name] then
+			return
+		end
+		selected = name
+		for key, button in buttons do
+			button:SetAttribute("Tint", if key == name then colors[key] else SLATE)
+		end
+		onSelect(name)
+	end
+	for order, entry in entries do
+		local name = entry.Name
+		colors[name] = entry.Color or Colors.Yellow
+		buttons[name] = UIKit.button({
+			Name = name,
+			Text = entry.Text or name,
+			Color = SLATE,
+			LayoutOrder = order,
+			Size = buttonSize,
+			MaxTextSize = maxText,
+			ZIndex = frame.ZIndex,
+			Parent = frame,
+		}, function()
+			choose(name)
+		end)
+	end
+	return {
+		Frame = frame,
+		Buttons = buttons,
+		Select = choose,
+		Selected = function(): string
+			return selected
+		end,
+	}
+end
+
+export type Badge = { Frame: Frame, Label: TextLabel, Set: (count: number | string | nil) -> () }
+
+-- Pastille rouge en haut à droite d'un bouton. badge.Set(nombre ou texte) : 0, "" ou nil la cache.
+function UIKit.badge(button: GuiObject): Badge
+	local frame: Frame = new("Frame", {
+		Name = "Badge",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -6, 0, 6),
+		Size = UDim2.fromOffset(32, 32),
+		BackgroundColor3 = Colors.Tomato,
+		BorderSizePixel = 0,
+		Visible = false,
+		ZIndex = button.ZIndex + 6,
+		Parent = button,
+	}, {
+		new("UICorner", { CornerRadius = UDim.new(1, 0) }),
+		new("UIStroke", { Color = INK, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+	})
+	local label = UIKit.label({
+		Name = "Count",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.8, 0.7),
+		Text = "",
+		StrokeThickness = 0,
+		ZIndex = frame.ZIndex + 1,
+		Parent = frame,
+	})
+	return {
+		Frame = frame,
+		Label = label,
+		Set = function(count: number | string | nil)
+			local text = if type(count) == "number" then (if count > 99 then "99+" elseif count > 0 then tostring(count) else "") else (count or "")
+			frame.Visible = text ~= ""
+			label.Text = text
+		end,
+	}
 end
 
 -- ===== Écran =====
@@ -855,6 +984,8 @@ local TOAST_COLORS: { [string]: Color3 } = {
 	money = Colors.Money,
 }
 local MAX_TOASTS = 4
+local TOAST_TOP = 70
+local toastTop = TOAST_TOP
 local toastList: Frame? = nil
 
 local function getToastList(): Frame
@@ -866,7 +997,7 @@ local function getToastList(): Frame
 	local created: Frame = new("Frame", {
 		Name = "Toasts",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 70),
+		Position = UDim2.new(0.5, 0, 0, toastTop),
 		Size = UDim2.fromOffset(520, 300),
 		BackgroundTransparency = 1,
 		Parent = root,
@@ -882,6 +1013,20 @@ local function getToastList(): Frame
 end
 
 local toastOrder = 0
+
+-- Hauteur (unités) où commencent les messages courts : le HUD la baisse quand une carte occupe le haut de l'écran
+-- (bandeau de zone, transport d'un bloc). nil : place normale.
+function UIKit.SetToastTop(y: number?)
+	local top = y or TOAST_TOP
+	if top == toastTop then
+		return
+	end
+	toastTop = top
+	local list = toastList
+	if list and list.Parent then
+		UIKit.tween(list, 0.15, { Position = UDim2.new(0.5, 0, 0, top) })
+	end
+end
 
 -- Message court en haut de l'écran pendant `duration` secondes (3 par défaut). kind : info, success, error, money.
 function UIKit.toast(text: string, kind: string?, duration: number?): Frame

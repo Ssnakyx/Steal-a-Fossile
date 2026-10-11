@@ -80,7 +80,9 @@ local prompt = PlotService.Get(player).Lab:FindFirstChild("LabPrompt")
 env.fire(env.signal(prompt, "Triggered"), player)
 env.advance(0.2)
 T.eq(opened, 1, "LabOpened au déclenchement du labo")
-T.check(shown("Fusion Lab: 2 different dinos make a hybrid"), "aide provisoire affichée (menu du brief 12 pas encore là)")
+T.check(not shown("Fusion Lab: 2 different dinos make a hybrid"), "pas d'aide provisoire : le menu du brief 12 est là")
+local labMenu = player.PlayerGui:FindFirstChild("Fusion LabBackdrop", true)
+T.check(labMenu ~= nil and labMenu.Visible, "menu du labo ouvert (brief 12)")
 
 T.section("fusion par le client")
 local raptor = EnclosureService.AddDino(player, { Species = "Velociraptor" }) :: string
