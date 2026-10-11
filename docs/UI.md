@@ -27,8 +27,9 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
   icône du pack de Steal a Snack, gros « x2 », nom, description, bouton vert. Prix Robux : logo Robux dessiné et prix
   (le texte du bouton reste « R$ 99 »).
   - *Speed* : FEATURED = carte large du Treadmill (gain actuel par seconde, même AFK ; niveau suivant ; pastilles des
-    10 niveaux ; bouton en argent du jeu toujours là, grisé tant qu'il est trop cher (`Next.Cash`, déblocage $1K) ;
-    bouton Robux seulement quand le produit est en vente (`Next.Price`) ; MAX au niveau 10). SPEED = passe x2
+    niveaux par paliers de 10 (50 niveaux) ; bouton en argent du jeu toujours là, grisé tant qu'il est trop cher
+    (`Next.Cash`, déblocage $1K) ; bouton Robux seulement quand le produit est en vente (`Next.Price`) ; MAX au
+    niveau 50). SPEED = passe x2
     Treadmill et raccourci vers les trails.
   - *Trails* : SUPER TRAILS (Neon x1.5, Galaxy x2, Golden x3, passes Robux, EQUIP / EQUIPPED une fois achetées) puis
     CASH TRAILS (10 trails en argent, grisées tant qu'elles sont trop chères). L'image : la fusée au bout d'une bande

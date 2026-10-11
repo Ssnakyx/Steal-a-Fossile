@@ -327,7 +327,8 @@ env.advance(0.3)
 T.check(not CarryService.IsCarrying(fast), "bloc rapporté")
 
 T.section("jamais dans un parc")
-Guardians.Leash = 1000 -- (laisse très longue : seule la règle du parc l'arrête)
+Guardians.Leash = 1000 -- (laisse très longue, et la place du spawn ouverte : seule la règle du parc l'arrête)
+Guardians.RouteOnly = false
 -- (serveurs de 5 joueurs : Newbie et Slow s'en vont, pour qu'il reste un parc libre)
 T.leave(newbie)
 T.leave(slow)
@@ -355,6 +356,7 @@ T.check(CarryService.IsCarrying(runner), "pas attrapé dans le parc")
 T.check(beach.State == "Search" or beach.State == "Return" or beach.State == "BackToSleep" or beach.State == "Sleep", "il abandonne (" .. beach.State .. ")")
 T.check(lostWith(runner, "Safe"), "alerte Lost avec la raison Safe (dans un parc)")
 Guardians.Leash = 40
+Guardians.RouteOnly = true
 CarryService.ReturnToSite(runner)
 waitFor(function()
 	return beach.State == "Sleep"
@@ -391,7 +393,11 @@ end, 5), "et le poursuit")
 env.advance(1)
 
 T.section("bloqué en rentrant : il réapparaît chez lui")
-finder.Character:PivotTo(CFrame.new(canyon.Position + Vector3.new(0, canyon.Size.Y / 2 + 3, 0)))
+-- (sur la place du spawn : hors de la route, plus de poursuite)
+local beachArea = ZoneService.Get("Beach").Area
+local plazaSpot = Vector3.new(0, beachArea.Position.Y + 3, beachArea.Position.Z - beachArea.Size.Z / 2 - 20)
+T.eq(ZoneService.ZoneAt(plazaSpot), nil, "place du spawn : hors de toute zone")
+finder.Character:PivotTo(CFrame.new(plazaSpot))
 T.check(waitFor(function()
 	return beach.State == "Return"
 end, 10), "Finder hors de portée : recherche puis retour")

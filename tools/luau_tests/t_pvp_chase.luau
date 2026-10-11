@@ -1,5 +1,5 @@
--- Poursuite sur toute la route (Config.Guardians : ChaseWholeRoute, SafeZones, MatchCarry). Réveillé, le gardien suit
--- le porteur de zone en zone jusqu'au bord de la Beach, jamais dedans. Sa course = 0.9 x le WalkSpeed conseillé de sa
+-- Poursuite sur toute la route (Config.Guardians : ChaseWholeRoute, RouteOnly, MatchCarry). Réveillé, le gardien suit
+-- le porteur de zone en zone, Beach comprise, jusqu'à la place du spawn, jamais dessus. Sa course = 0.9 x le WalkSpeed conseillé de sa
 -- zone x le malus du bloc porté : un nouveau joueur ne peut pas voler au fond de la route, un joueur un peu trop lent est
 -- rattrapé loin de la zone, un joueur à la vitesse conseillée rentre. Endormi, il ne se réveille que dans sa laisse.
 -- Loin de chez lui, il rentre à sa vitesse de course.
@@ -134,7 +134,7 @@ local crater = GuardianService.Get(CRATER)
 
 T.section("réglages : la vitesse décide")
 T.check(Guardians.ChaseWholeRoute == true, "poursuite sur toute la route")
-T.check(Guardians.SafeZones.Beach == true, "la Beach est la limite")
+T.check(Guardians.RouteOnly == true and next(Guardians.SafeZones) == nil, "la limite : la place du spawn (aucune zone sûre)")
 for _, zone in Zones.List do
 	local g = GuardianService.Get(zone.Name)
 	local fixed = Guardians.Zones[zone.Name].Speed ~= nil
@@ -193,7 +193,7 @@ T.check(#caught == 2 and last.Player == runner and last.Zone == CRATER, "rattrap
 T.check(states.Run == true and states.Search == nil, "poursuivi sans jamais être perdu")
 local beyond = outsideArea(CRATER, last.At)
 T.check(beyond > Guardians.Leash, "attrapé loin de sa zone (" .. math.floor(beyond) .. " studs, laisse : " .. Guardians.Leash .. ")")
-T.check(ZoneService.ZoneAt(last.At) ~= CRATER and ZoneService.ZoneAt(last.At) ~= "Beach", "dans une autre zone de la route (" .. tostring(ZoneService.ZoneAt(last.At)) .. ")")
+T.check(ZoneService.ZoneAt(last.At) ~= CRATER and ZoneService.ZoneAt(last.At) ~= nil, "dans une autre zone de la route (" .. tostring(ZoneService.ZoneAt(last.At)) .. ")")
 local away = (flat(crater.CFrame.Position) - flat(crater.Home.Position)).Magnitude
 local startedAt = env.now()
 T.check(waitFor(function()
@@ -207,7 +207,7 @@ waitFor(function()
 end, 10)
 T.leave(runner)
 
-T.section("à la vitesse conseillée : il rentre, le gardien s'arrête à la Beach")
+T.section("à la vitesse conseillée : il rentre, le gardien s'arrête au bord de la place du spawn")
 local pro = T.join({ Name = "Pro", Character = true })
 env.flush()
 SpeedService.Set(pro, Zones.ByName[CRATER].Speed)
@@ -216,7 +216,7 @@ grab(pro, slot)
 T.check(CarryService.IsCarrying(pro), "bloc du Meteor Crater sur le dos")
 T.check(pro.Character.Humanoid.WalkSpeed > GuardianService.ChaseSpeed(CRATER, pro), "chargé, plus rapide que le gardien")
 states = {}
-local inBeach, inPark = false, false
+local inPlaza, inPark = false, false
 local farthest = 0 -- distance max du gardien à sa zone
 local lostIn = nil -- zone de Pro quand le gardien l'a perdu
 local proPlot = PlotService.Get(pro)
@@ -227,8 +227,8 @@ walkHome(pro, 300, function()
 	if lostIn == nil and crater.State == "Search" then
 		lostIn = ZoneService.ZoneAt(rootOf(pro).Position) or ""
 	end
-	if ZoneService.ZoneAt(position + Vector3.new(0, 3, 0)) == "Beach" then
-		inBeach = true
+	if ZoneService.ZoneAt(position + Vector3.new(0, 3, 0)) == nil then
+		inPlaza = true
 	end
 	if PlotService.IsSafe(position + Vector3.new(0, 3, 0)) then
 		inPark = true
@@ -237,12 +237,12 @@ walkHome(pro, 300, function()
 end)
 T.eq(#caught, 2, "jamais rattrapé")
 T.check(states.Run == true and states.Search == true, "poursuivi puis perdu")
-T.check(not inBeach and not inPark, "le gardien n'est jamais entré dans la Beach ni dans un parc")
-T.eq(lostIn, "Beach", "il ne l'a lâché qu'à son arrivée dans la Beach")
+T.check(not inPlaza and not inPark, "le gardien n'est jamais allé sur la place du spawn ni dans un parc")
+T.eq(lostIn, "", "il ne l'a lâché qu'à son arrivée sur la place du spawn")
 T.check(farthest > 1000, string.format("il l'a suivi loin de sa zone (%.0f studs)", farthest))
 local fern = ZoneService.Get("Fern Forest").Area
 local beachEdge = fern.Position.Z - fern.Size.Z / 2
-T.check(lostWith(pro, "Escaped"), "alerte Lost avec la raison Escaped (arrivé à la Beach)")
+T.check(lostWith(pro, "Escaped"), "alerte Lost avec la raison Escaped (arrivé sur la place du spawn)")
 T.eq(pro:GetAttribute("ChasedBy"), "", "plus poursuivi")
 walkTo(pro, proPlot.Entrance.Position + Vector3.new(0, 3, -4), 10)
 env.advance(0.3)
@@ -262,7 +262,7 @@ env.advance(2)
 T.eq(crater.State, "Sleep", "loin de sa zone, le gardien du Meteor Crater dort toujours")
 CarryService.ReturnToSite(pro)
 
-T.section("réveillé : un porteur dans la Beach n'est pas une proie")
+T.section("réveillé : poursuivi dans la Beach, pas sur la place du spawn")
 local fernGuardian = GuardianService.Get("Fern Forest")
 local camper = T.join({ Name = "Camper", Character = true })
 env.flush()
@@ -271,16 +271,27 @@ slot = nearestSlot("Fern Forest")
 local slotPosition = slot.Part.Position
 grab(camper, slot)
 T.check(CarryService.IsCarrying(camper), "bloc de la Fern Forest")
-local inside = Vector3.new(slotPosition.X, slotPosition.Y + 1.5, beachEdge - 10)
-camper.Character:PivotTo(CFrame.new(inside))
-T.eq(ZoneService.ZoneAt(inside), "Beach", "Camper est dans la Beach")
-env.advance(Guardians.WakeTime + Guardians.RoarTime + 0.5)
-T.check(fernGuardian.State == "Search" or fernGuardian.State == "Return", "le gardien de la Fern Forest le lâche (" .. fernGuardian.State .. ")")
+local beachArea = ZoneService.Get("Beach").Area
+local plazaEdge = beachArea.Position.Z - beachArea.Size.Z / 2
+local inBeachSpot = Vector3.new(0, slotPosition.Y + 1.5, beachEdge - 30)
+camper.Character:PivotTo(CFrame.new(inBeachSpot))
+T.eq(ZoneService.ZoneAt(inBeachSpot), "Beach", "Camper est dans la Beach")
+env.advance(Guardians.WakeTime + Guardians.RoarTime + 1)
+T.eq(fernGuardian.State, "Run", "le gardien de la Fern Forest le poursuit dans la Beach")
+T.eq(camper:GetAttribute("ChasedBy"), "Fern Forest", "toujours poursuivi")
+local onPlaza = Vector3.new(0, slotPosition.Y + 1.5, plazaEdge - 10)
+camper.Character:PivotTo(CFrame.new(onPlaza))
+T.eq(ZoneService.ZoneAt(onPlaza), nil, "Camper est sur la place du spawn (hors de toute zone)")
+T.check(not PlotService.IsSafe(onPlaza), "pas dans un parc")
+env.advance(0.5)
+T.check(fernGuardian.State == "Search" or fernGuardian.State == "Return", "le gardien le lâche sur la place (" .. fernGuardian.State .. ")")
 T.check(lostWith(camper, "Escaped"), "alerte Lost avec la raison Escaped")
-camper.Character:PivotTo(CFrame.new(Vector3.new(inside.X, inside.Y, beachEdge + 20)))
+local beachGuardian = GuardianService.Get("Beach")
+T.check(ZoneService.ZoneAt(beachGuardian.CFrame.Position + Vector3.new(0, 3, 0)) == "Beach", "le gardien de la Beach reste sur la route")
+camper.Character:PivotTo(CFrame.new(Vector3.new(0, slotPosition.Y + 1.5, plazaEdge + 20)))
 T.check(waitFor(function()
 	return fernGuardian.State == "Roar" or fernGuardian.State == "Run"
-end, 2), "il ressort de la Beach : le gardien, encore réveillé, reprend la poursuite")
+end, 2), "il revient sur la route : le gardien, encore réveillé, reprend la poursuite")
 CarryService.ReturnToSite(camper)
 T.check(waitFor(function()
 	return fernGuardian.State == "Sleep"

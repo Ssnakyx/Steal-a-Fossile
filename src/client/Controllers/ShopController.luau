@@ -620,6 +620,8 @@ local function treadmillPage(page: ScrollingFrame)
 			times(entry.Multiplier)
 		)
 	end
+	-- pastilles par paliers de 10 niveaux (50 niveaux ne tiennent pas sur une ligne)
+	local tier = (math.max(level, 1) - 1) // 10
 	local featured = section(page, "FEATURED", true)
 	local _, wideButtons, sub = wideCard(featured, {
 		Name = "Treadmill",
@@ -628,7 +630,7 @@ local function treadmillPage(page: ScrollingFrame)
 		Color = Colors.Cyan,
 		Icon = "speed",
 		Glyph = if level > 0 then "LV" .. level else "AFK",
-		Pips = Vector2.new(level, maxLevel),
+		Pips = Vector2.new(level - tier * 10, math.min(10, maxLevel - tier * 10)),
 		Buttons = buttons,
 	})
 	table.insert(updaters, function()
