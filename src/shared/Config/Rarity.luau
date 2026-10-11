@@ -59,6 +59,11 @@ local Species: { [string]: string } = {
 	Ankylosaurus = "Rare",
 	Therizinosaurus = "Epic",
 	Cryolophosaurus = "Legendary",
+	Troodon = "Rare",
+	Smilodon = "Rare",
+	Yutyrannus = "Epic",
+	["Woolly Mammoth"] = "Epic",
+	["Frost Wyvern"] = "Legendary",
 	-- Volcano
 	Carnotaurus = "Epic",
 	Brachiosaurus = "Legendary",

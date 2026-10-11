@@ -54,7 +54,7 @@ local List: { Zone } = {
 		Index = 5,
 		Speed = 2e5,
 		Weights = { Rare = 50, Epic = 38, Legendary = 12, Secret = 0.08 },
-		Species = { "Ankylosaurus", "Therizinosaurus", "Cryolophosaurus" },
+		Species = { "Ankylosaurus", "Therizinosaurus", "Cryolophosaurus", "Troodon", "Smilodon", "Yutyrannus", "Woolly Mammoth", "Frost Wyvern" },
 		Color = Color3.fromRGB(200, 230, 245),
 	},
 	{

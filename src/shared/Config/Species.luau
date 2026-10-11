@@ -49,6 +49,11 @@ local list: { SpeciesDef } = {
 	{ Name = "Ankylosaurus", Model = "Ankylosaurus", Family = "Quadruped", Zone = "Glacier", BaseSize = 15, Income = 750 },
 	{ Name = "Therizinosaurus", Model = "Therizinosaurus", Family = "Biped", Zone = "Glacier", BaseSize = 16, Income = 1000 },
 	{ Name = "Cryolophosaurus", Model = "Cryolophosaurus", Family = "Biped", Zone = "Glacier", BaseSize = 15, Income = 1400 },
+	{ Name = "Troodon", Model = "Troodon", Family = "Biped", Zone = "Glacier", BaseSize = 6, Income = 700 },
+	{ Name = "Smilodon", Model = "Smilodon", Family = "Quadruped", Zone = "Glacier", BaseSize = 10, Income = 800 },
+	{ Name = "Yutyrannus", Model = "Yutyrannus", Family = "Biped", Zone = "Glacier", BaseSize = 18, Income = 1100 },
+	{ Name = "Woolly Mammoth", Model = "WoollyMammoth", Family = "Quadruped", Zone = "Glacier", BaseSize = 17, Income = 1200 },
+	{ Name = "Frost Wyvern", Model = "FrostWyvern", Family = "Flyer", Zone = "Glacier", BaseSize = 22, Income = 1700 },
 	-- 6. Volcano
 	{ Name = "Carnotaurus", Model = "Carnotaurus", Family = "Biped", Zone = "Volcano", BaseSize = 16, Income = 3600 },
 	{ Name = "Brachiosaurus", Model = "Brachiosaurus", Family = "Quadruped", Zone = "Volcano", BaseSize = 32, Income = 5000 },
