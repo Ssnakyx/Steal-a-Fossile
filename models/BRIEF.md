@@ -97,7 +97,7 @@ et s'anime ensuite comme une espèce (`DinoBuilder.Build(cle, ...)`, `DinoAnimCo
 - **Ce que chaque espèce doit garantir pour que ça marche** : les noms d'os standard ci-dessus, un `Neck1` présent (même
   court) placé à l'avant et en haut du `Chest`, tout ce qui bouge avec la tête sous `Neck1`, la queue sous `Hips`.
   `models/tests/run.py` vérifie que chaque os appartient à un seul groupe.
-- **Taille** (proposée, à confirmer à l'équilibrage) : la chimère prend la BaseSize de B (le corps donne la silhouette) ;
+- **Taille** (validée par Snaky le 2026-10-11) : la chimère prend la BaseSize de B (le corps donne la silhouette) ;
   à la fusion elle garde la meilleure taille tirée des deux parents (Small, Normal, Big, Huge) et la meilleure mutation,
   comme la fusion Upgrade.
 - **Animations** : pour chaque état, les os du corps jouent l'animation de B (famille de B), ceux de la tête et des
