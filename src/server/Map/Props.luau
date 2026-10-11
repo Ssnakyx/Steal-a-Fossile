@@ -1,7 +1,9 @@
 --!strict
 -- Décor de la map en studs (brief 10) : arbres, plantes, rochers, objets du camp et des gisements. Chaque fonction
 -- construit un modèle de décor (non collidable) posé sur `cf` (pied du modèle, -Z = avant), à l'échelle `s`, et le
--- range dans `parent`. `pal` remplace les couleurs par défaut (Trunk, Leaf, Rock, Snow...).
+-- range dans `parent`. `pal` remplace les couleurs par défaut (Trunk, Leaf, Rock, Snow...). Les objets lumineux sont en
+-- Neon translucide (ils brillent avec le bloom, sans PointLight) ; les objets flottants portent le tag de
+-- Config.Ambience.Float (montés, descendus et tournés chez les joueurs par AmbienceController).
 
 local Kit = require(script.Parent.Kit)
 
@@ -292,6 +294,578 @@ function Props.lavaRock(parent: Instance, cf: CFrame, s: number, rng: Random, pa
 	prop(m, Vector3.new(w * 0.55, h * 0.7, w * 0.5), base * CFrame.new(-w * 0.15, h * 1.25, 0), shade(stone, -0.12))
 	local crack = prop(m, Vector3.new(w * 0.8, 0.2, 0.4 * s), base * CFrame.new(0, h + 0.05, w * 0.15), glow, Enum.Material.Neon)
 	crack.Transparency = 0.1
+	return finish(m, parent)
+end
+
+-- ===================================================================== lumineux et flottants
+
+local TAU = math.pi * 2
+
+-- Pièce de décor lumineuse (Neon translucide)
+local function neon(parent: Instance, size: Vector3, cframe: CFrame, c: Color3, transparency: number): Part
+	local part = prop(parent, size, cframe, c, Enum.Material.Neon)
+	part.Transparency = transparency
+	return part
+end
+
+-- Couleurs de cristal de la palette : Crystal, Crystal2, Crystal3, Crystal4 (au moins une)
+local function crystalColors(pal: Palette?, default: Color3): { Color3 }
+	local list = { color(pal, "Crystal", default) }
+	for _, key in { "Crystal2", "Crystal3", "Crystal4" } do
+		local value = pal and pal[key]
+		if value then
+			table.insert(list, value)
+		end
+	end
+	return list
+end
+
+-- Pointe de cristal lumineuse posée sur `foot` (bas de la pointe) : prisme tourné d'un huitième de tour et pointe
+-- plus claire en deux étages
+local function shard(m: Model, foot: CFrame, w: number, h: number, c: Color3)
+	local f = foot * CFrame.Angles(0, math.pi / 4, 0)
+	neon(m, Vector3.new(w, h, w), f * CFrame.new(0, h / 2, 0), c, 0.3)
+	neon(m, Vector3.new(w * 0.64, w * 0.9, w * 0.64), f * CFrame.new(0, h + w * 0.45, 0), shade(c, -0.3), 0.15)
+	neon(m, Vector3.new(w * 0.3, w * 0.7, w * 0.3), f * CFrame.new(0, h + w * 1.25, 0), shade(c, -0.55), 0.05)
+end
+
+-- Grappe de cristaux lumineux : 3 à 5 pointes penchées vers l'extérieur, de 1 à 4 couleurs (pal.Crystal, Crystal2,
+-- Crystal3, Crystal4), sur un socle de roche (pal.Rock)
+function Props.glowCrystal(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("GlowCrystal")
+	local colors = crystalColors(pal, rgb(170, 100, 255))
+	local rock = color(pal, "Rock", rgb(70, 64, 80))
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	prop(m, Vector3.new(3.6, 0.8, 3) * s, base * CFrame.new(0, 0.4 * s, 0), rock)
+	prop(m, Vector3.new(1.8, 0.6, 1.6) * s, base * CFrame.new(1.5 * s, 0.3 * s, 1.1 * s), shade(rock, -0.12))
+	local first = rng:NextInteger(1, #colors)
+	for k = 0, rng:NextInteger(3, 5) - 1 do
+		local c = colors[(first + k - 1) % #colors + 1]
+		local main = k == 0
+		local h = (if main then Kit.range(rng, 4.6, 6.2) else Kit.range(rng, 2.2, 4)) * s
+		local w = (if main then 1.4 else Kit.range(rng, 0.8, 1.1)) * s
+		local a = k * 2.3 + rng:NextNumber() * 0.5
+		local r = if main then 0 else Kit.range(rng, 0.9, 1.4) * s
+		local tilt = if main then rad(Kit.range(rng, -4, 4)) else rad(Kit.range(rng, 15, 30))
+		local foot = base * CFrame.new(math.cos(a) * r, 0.5 * s, math.sin(a) * r) * CFrame.fromAxisAngle(Vector3.new(-math.sin(a), 0, math.cos(a)), -tilt)
+		shard(m, foot, w, h, c)
+	end
+	return finish(m, parent)
+end
+
+-- Champignons lumineux : chapeau Neon (pal.Cap) en croix, pied pâle, un point clair
+function Props.glowShroom(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("GlowShroom")
+	local cap = color(pal, "Cap", rgb(80, 230, 255))
+	for k = 1, rng:NextInteger(2, 3) do
+		local scale = s * (if k == 1 then 1 else Kit.range(rng, 0.45, 0.7))
+		local a = k * 2.1 + rng:NextNumber()
+		local r = if k == 1 then 0 else 1.7 * s
+		local foot = cf * CFrame.new(math.cos(a) * r, 0, math.sin(a) * r) * CFrame.Angles(rad(Kit.range(rng, -8, 8)), 0, rad(Kit.range(rng, -8, 8)))
+		local h = 2.6 * scale
+		prop(m, Vector3.new(0.8 * scale, h, 0.8 * scale), foot * CFrame.new(0, h / 2, 0), rgb(236, 230, 214))
+		neon(m, Vector3.new(3 * scale, 0.8 * scale, 1.9 * scale), foot * CFrame.new(0, h + 0.3 * scale, 0), cap, 0.15)
+		neon(m, Vector3.new(1.9 * scale, 0.8 * scale, 3 * scale), foot * CFrame.new(0, h + 0.3 * scale, 0), shade(cap, 0.08), 0.15)
+		neon(m, Vector3.new(1.6 * scale, 0.5 * scale, 1.6 * scale), foot * CFrame.new(0, h + 0.95 * scale, 0), shade(cap, -0.2), 0.1)
+		neon(m, Vector3.new(0.45, 0.2, 0.45) * scale, foot * CFrame.new(0.5 * scale, h + 1.25 * scale, 0.3 * scale), rgb(255, 255, 255), 0)
+	end
+	return finish(m, parent)
+end
+
+-- Géode : rocher fendu en deux moitiés penchées, l'intérieur sombre tapissé de cristaux lumineux
+function Props.geode(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Geode")
+	local rock = color(pal, "Rock", rgb(150, 92, 62))
+	local colors = crystalColors(pal, rgb(255, 170, 50))
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	for _, side in { -1, 1 } do
+		local half = base * CFrame.new(side * 1.9 * s, 0, 0) * CFrame.Angles(0, 0, -side * rad(10))
+		local stone = if side < 0 then rock else shade(rock, 0.08)
+		prop(m, Vector3.new(2.8, 1.6, 4.4) * s, half * CFrame.new(side * 0.2 * s, 0.8 * s, 0), stone)
+		prop(m, Vector3.new(2.4, 1.4, 3.8) * s, half * CFrame.new(side * 0.4 * s, 2.3 * s, 0), shade(stone, -0.06))
+		prop(m, Vector3.new(1.6, 1.2, 2.6) * s, half * CFrame.new(side * 0.6 * s, 3.6 * s, 0), shade(stone, 0.05))
+		prop(m, Vector3.new(0.3, 3.2, 3.4) * s, half * CFrame.new(-side * 1.15 * s, 1.9 * s, 0), shade(rock, 0.5))
+		for k = 1, 3 do
+			local c = colors[(k + (if side < 0 then 0 else 1) - 1) % #colors + 1]
+			local spot = half * CFrame.new(-side * 1.3 * s, (0.8 + k * 0.8) * s, (k - 2) * 1.1 * s)
+			neon(m, Vector3.new(0.6, 1.5, 0.6) * s, spot * CFrame.Angles(0, 0, side * rad(Kit.range(rng, 60, 80))) * CFrame.new(0, 0.5 * s, 0), c, 0.15)
+		end
+	end
+	return finish(m, parent)
+end
+
+-- Feu follet : lueur qui flotte au-dessus du sol (pal.Glow)
+function Props.wisp(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Wisp")
+	local c = color(pal, "Glow", rgb(170, 255, 120))
+	local center = cf * CFrame.new(0, Kit.range(rng, 3, 5.5) * s, 0)
+	local shell = neon(m, Vector3.new(1.6, 1.6, 1.6) * s, center, c, 0.6)
+	neon(m, Vector3.new(0.9, 0.9, 0.9) * s, center * CFrame.Angles(math.pi / 4, math.pi / 4, 0), shade(c, -0.4), 0)
+	neon(m, Vector3.new(0.4, 0.4, 0.4) * s, center * CFrame.new(0.9 * s, -0.8 * s, 0.3 * s), c, 0.2)
+	Kit.float(m, shell, Kit.range(rng, 0.8, 1.4), Kit.range(rng, 0.9, 1.5), Kit.range(rng, 0.6, 1.2))
+	return finish(m, parent)
+end
+
+-- Méduse lumineuse qui flotte entre deux eaux (pal.Glow)
+function Props.jellyfish(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Jellyfish")
+	local c = color(pal, "Glow", rgb(255, 130, 220))
+	local center = cf * CFrame.new(0, Kit.range(rng, 7, 13) * s, 0)
+	local bell = neon(m, Vector3.new(3.2, 1.2, 3.2) * s, center, c, 0.35)
+	neon(m, Vector3.new(2.2, 0.8, 2.2) * s, center * CFrame.new(0, 0.95 * s, 0), shade(c, -0.25), 0.3)
+	neon(m, Vector3.new(3.6, 0.3, 3.6) * s, center * CFrame.new(0, -0.6 * s, 0), shade(c, 0.1), 0.45)
+	for k = 0, 3 do
+		local a = k * math.pi / 2 + math.pi / 4
+		local h = Kit.range(rng, 2.4, 4) * s
+		neon(m, Vector3.new(0.3 * s, h, 0.3 * s), center * CFrame.new(math.cos(a) * 0.9 * s, -0.6 * s - h / 2, math.sin(a) * 0.9 * s), shade(c, -0.15), 0.4)
+	end
+	Kit.float(m, bell, Kit.range(rng, 1.2, 2), Kit.range(rng, 0.6, 1), Kit.range(rng, 0.1, 0.25))
+	return finish(m, parent)
+end
+
+-- Anémone de mer lumineuse : pied (pal.Coral), tentacules Neon (pal.Glow)
+function Props.anemone(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Anemone")
+	local c = color(pal, "Glow", rgb(90, 240, 255))
+	local foot = color(pal, "Coral", rgb(120, 60, 140))
+	prop(m, Vector3.new(2.4, 1.2, 2.4) * s, cf * CFrame.new(0, 0.6 * s, 0), foot)
+	prop(m, Vector3.new(1.8, 0.6, 1.8) * s, cf * CFrame.new(0, 1.5 * s, 0) * CFrame.Angles(0, math.pi / 4, 0), shade(foot, -0.1))
+	for k = 0, 6 do
+		local a = k * TAU / 7 + rng:NextNumber() * 0.3
+		local h = Kit.range(rng, 1.4, 2.4) * s
+		local root = cf * CFrame.new(math.cos(a) * 0.7 * s, 1.6 * s, math.sin(a) * 0.7 * s) * CFrame.fromAxisAngle(Vector3.new(-math.sin(a), 0, math.cos(a)), -rad(25))
+		neon(m, Vector3.new(0.3 * s, h, 0.3 * s), root * CFrame.new(0, h / 2, 0), if k % 2 == 0 then c else shade(c, 0.15), 0.2)
+	end
+	return finish(m, parent)
+end
+
+-- Éclat de cristal qui flotte et tourne lentement (losange en 5 blocs, pal.Crystal)
+function Props.floatShard(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("FloatShard")
+	local c = color(pal, "Crystal", rgb(170, 100, 255))
+	local center = cf * CFrame.new(0, Kit.range(rng, 8, 15) * s, 0)
+	local turn = CFrame.Angles(0, math.pi / 4, 0)
+	local core = neon(m, Vector3.new(1.6, 2.6, 1.6) * s, center * turn, c, 0.25)
+	for _, side in { -1, 1 } do
+		neon(m, Vector3.new(1.1, 1.4, 1.1) * s, center * CFrame.new(0, side * 2 * s, 0) * turn, shade(c, if side > 0 then -0.25 else -0.1), 0.15)
+		neon(m, Vector3.new(0.5, 1, 0.5) * s, center * CFrame.new(0, side * 3.1 * s, 0) * turn, shade(c, if side > 0 then -0.5 else -0.3), 0.05)
+	end
+	Kit.float(m, core, Kit.range(rng, 1, 2), Kit.range(rng, 0.6, 1.1), Kit.range(rng, 0.3, 0.7) * (if rng:NextNumber() < 0.5 then -1 else 1))
+	return finish(m, parent)
+end
+
+-- Squelette fossile à demi enterré (pal.Bone) : colonne de vertèbres à épines, côtes en arcs de 3 blocs de chaque côté,
+-- plus hautes au milieu ; le crâne est à part (Props.skull)
+function Props.ribcage(parent: Instance, cf: CFrame, s: number, _rng: Random, pal: Palette?): Model
+	local m = Kit.group("Ribcage")
+	local bone = color(pal, "Bone", rgb(236, 226, 198))
+	local count = 6
+	local spacing = 3 * s
+	local sink = cf * CFrame.new(0, -1.2 * s, 0)
+	for k = 0, count - 1 do
+		local z = (k - (count - 1) / 2) * spacing
+		local middle = 1 - math.abs(k - (count - 1) / 2) / count
+		local height = (6 + middle * 3) * s
+		local width = (4.2 + middle * 1.6) * s
+		local tone = if k % 2 == 0 then bone else shade(bone, 0.08)
+		prop(m, Vector3.new(1.4 * s, 1.2 * s, spacing * 0.8), sink * CFrame.new(0, height, z), tone)
+		prop(m, Vector3.new(0.6 * s, 1.3 * s, 0.6 * s), sink * CFrame.new(0, height + 1.2 * s, z), shade(bone, 0.12))
+		for _, side in { -1, 1 } do
+			local points = {
+				Vector3.new(side * 0.6 * s, height, z),
+				Vector3.new(side * width * 0.72, height * 0.86, z),
+				Vector3.new(side * width, height * 0.48, z),
+				Vector3.new(side * width * 0.92, 0, z),
+			}
+			for index = 1, 3 do
+				local a, b = points[index], points[index + 1]
+				local length = (b - a).Magnitude + 0.6 * s
+				prop(m, Vector3.new(0.9 * s, 0.9 * s, length), sink * CFrame.lookAt((a + b) / 2, b), tone)
+			end
+		end
+	end
+	return finish(m, parent)
+end
+
+-- Crâne fossile en blocs (pal.Bone), à demi enterré, tourné vers -Z : boîte crânienne, museau, orbites, mâchoire, dents
+function Props.skull(parent: Instance, cf: CFrame, s: number, _rng: Random, pal: Palette?): Model
+	local m = Kit.group("Skull")
+	local bone = color(pal, "Bone", rgb(236, 226, 198))
+	local dark = rgb(60, 50, 44)
+	local base = cf * CFrame.new(0, -0.6 * s, 0)
+	prop(m, Vector3.new(4.4, 3.4, 4.4) * s, base * CFrame.new(0, 2.4 * s, 1 * s), bone)
+	prop(m, Vector3.new(3.2, 2.2, 4.6) * s, base * CFrame.new(0, 1.9 * s, -3.2 * s), shade(bone, 0.06))
+	prop(m, Vector3.new(2.4, 1, 2.4) * s, base * CFrame.new(0, 3.5 * s, -2.6 * s), shade(bone, -0.06))
+	prop(m, Vector3.new(3, 0.8, 5.4) * s, base * CFrame.new(0, 0.5 * s, -1.6 * s), shade(bone, 0.12))
+	for _, side in { -1, 1 } do
+		prop(m, Vector3.new(0.3, 1.3, 1.5) * s, base * CFrame.new(side * 2.25 * s, 2.9 * s, 0.4 * s), dark)
+		prop(m, Vector3.new(0.3, 0.6, 0.9) * s, base * CFrame.new(side * 1.65 * s, 1.5 * s, -4.4 * s), dark)
+		for k = 0, 1 do
+			prop(m, Vector3.new(0.4, 0.8, 0.4) * s, base * CFrame.new(side * 1.3 * s, 1.1 * s, (-4.6 + k * 1.3) * s), rgb(250, 246, 236))
+		end
+	end
+	return finish(m, parent)
+end
+
+-- Mare de lave : disque Neon, rebord de basalte, deux pierres
+function Props.lavaPool(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("LavaPool")
+	local stone = color(pal, "Rock", rgb(46, 40, 42))
+	local lava = color(pal, "Glow", rgb(255, 112, 32))
+	for _, part in Kit.disc(m, cf * CFrame.new(0, 0.05, 0), 3.6 * s, 0.25, lava, Enum.Material.Neon) do
+		part.Transparency = 0.05
+	end
+	for k = 0, 7 do
+		local ring = cf * CFrame.Angles(0, k * math.pi / 4, 0)
+		prop(m, Vector3.new(3.2 * s, Kit.range(rng, 0.6, 1.1), 1.4), ring * CFrame.new(0, 0.35, -3.9 * s), if k % 2 == 0 then stone else shade(stone, -0.1))
+	end
+	for k = 0, 1 do
+		prop(m, Vector3.new(1.6, 0.6, 1.4) * s, cf * CFrame.new((k * 2 - 1) * 1.2 * s, 0.35, (k - 0.5) * 1.6 * s) * CFrame.Angles(0, rng:NextNumber(), 0), shade(stone, 0.1))
+	end
+	return finish(m, parent)
+end
+
+-- ===================================================================== objets propres à chaque zone
+
+-- Nid d'œufs de dino : lit de sable, couronne de brindilles, 3 gros œufs pastel tachetés (arrondis en escalier), dont
+-- un qui éclot avec un bébé dino qui sort la tête (pal.Sand, pal.Trunk, pal.Egg, pal.Spot, pal.Baby)
+function Props.eggNest(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("EggNest")
+	local sand = color(pal, "Sand", rgb(226, 204, 150))
+	local twig = color(pal, "Trunk", rgb(140, 104, 66))
+	local egg = color(pal, "Egg", rgb(246, 240, 222))
+	local spot = color(pal, "Spot", rgb(122, 150, 112))
+	local baby = color(pal, "Baby", rgb(120, 196, 112))
+	local tints = { egg, egg:Lerp(rgb(176, 226, 204), 0.55), egg:Lerp(rgb(178, 206, 246), 0.55) }
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	Kit.disc(m, base, 2.6 * s, 0.4 * s, sand)
+	for k = 0, 5 do
+		local ring = base * CFrame.Angles(0, k * TAU / 6 + 0.2, 0)
+		prop(m, Vector3.new(2.8, 0.6, 0.6) * s, ring * CFrame.new(0, 0.5 * s, -2.5 * s) * CFrame.Angles(0, 0, rad(Kit.range(rng, -8, 8))), if k % 2 == 0 then twig else shade(twig, 0.15))
+	end
+	for k = 0, 2 do
+		local a = k * TAU / 3 + rng:NextNumber() * 0.4
+		local foot = base * CFrame.new(math.cos(a) * 1 * s, 0.4 * s, math.sin(a) * 1 * s) * CFrame.Angles(rad(Kit.range(rng, -8, 8)), a, rad(Kit.range(rng, -8, 8)))
+		local shell = tints[k + 1]
+		-- œuf plus large en bas qu'en haut
+		prop(m, Vector3.new(1, 0.4, 1) * s, foot * CFrame.new(0, 0.2 * s, 0), shell)
+		prop(m, Vector3.new(1.5, 1.2, 1.5) * s, foot * CFrame.new(0, 1 * s, 0), shell)
+		if k == 0 then
+			-- il éclot : le haut de la coquille est tombé à côté, le bébé sort la tête
+			prop(m, Vector3.new(1.3, 0.1, 1.3) * s, foot * CFrame.new(0, 1.62 * s, 0), shade(shell, -0.3))
+			prop(m, Vector3.new(1, 0.5, 1) * s, foot * CFrame.new(1.3 * s, 0.25 * s, 0.4 * s) * CFrame.Angles(0, 0, rad(70)), shell)
+			local head = foot * CFrame.new(0, 2 * s, 0)
+			prop(m, Vector3.new(0.8, 0.7, 0.8) * s, head, baby)
+			prop(m, Vector3.new(0.55, 0.4, 0.5) * s, head * CFrame.new(0, -0.1 * s, -0.6 * s), shade(baby, 0.1))
+			for _, x in { -0.25, 0.25 } do
+				prop(m, Vector3.new(0.14, 0.14, 0.05) * s, head * CFrame.new(x * s, 0.15 * s, -0.41 * s), rgb(30, 30, 34))
+			end
+			-- bord cassé de la coquille, en dents
+			for t = 0, 3 do
+				prop(m, Vector3.new(0.6, 0.35, 0.12) * s, foot * CFrame.Angles(0, t * TAU / 4 + 0.4, 0) * CFrame.new(0, 1.75 * s, -0.69 * s), shell)
+			end
+		else
+			prop(m, Vector3.new(1.15, 0.6, 1.15) * s, foot * CFrame.new(0, 1.9 * s, 0), shell)
+			prop(m, Vector3.new(0.7, 0.3, 0.7) * s, foot * CFrame.new(0, 2.35 * s, 0), shell)
+			prop(m, Vector3.new(0.3, 0.3, 0.05) * s, foot * CFrame.new(-0.2 * s, 1.95 * s, -0.6 * s), spot)
+		end
+		-- taches sur trois faces
+		prop(m, Vector3.new(0.38, 0.38, 0.05) * s, foot * CFrame.new(0.3 * s, 1.2 * s, -0.77 * s), spot)
+		prop(m, Vector3.new(0.05, 0.3, 0.3) * s, foot * CFrame.new(0.77 * s, 0.8 * s, 0.25 * s), spot)
+		prop(m, Vector3.new(0.26, 0.26, 0.05) * s, foot * CFrame.new(-0.35 * s, 0.75 * s, 0.77 * s), shade(spot, 0.1))
+	end
+	return finish(m, parent)
+end
+
+-- Barque échouée, penchée sur le flanc, avec sa rame (pal.Wood, pal.Stripe)
+function Props.rowboat(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Rowboat")
+	local wood = color(pal, "Wood", rgb(150, 100, 62))
+	local stripe = color(pal, "Stripe", rgb(60, 120, 170))
+	local turn = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	local base = turn * CFrame.Angles(0, 0, rad(14)) * CFrame.new(0, 0.2 * s, 0)
+	prop(m, Vector3.new(2.6, 0.4, 7.6) * s, base * CFrame.new(0, 0.2 * s, 0), shade(wood, 0.15))
+	for _, side in { -1, 1 } do
+		local wall = base * CFrame.new(side * 1.5 * s, 0.9 * s, 0) * CFrame.Angles(0, 0, -side * rad(16))
+		prop(m, Vector3.new(0.35, 1.4, 7.2) * s, wall, wood)
+		prop(m, Vector3.new(0.4, 0.3, 7.3) * s, wall * CFrame.new(0, 0.55 * s, 0), stripe)
+	end
+	-- proue en pointe, poupe plate, deux bancs
+	prop(m, Vector3.new(1.8, 1.4, 1.8) * s, base * CFrame.new(0, 0.9 * s, -3.9 * s) * CFrame.Angles(0, math.pi / 4, 0), wood)
+	prop(m, Vector3.new(3.2, 1.4, 0.35) * s, base * CFrame.new(0, 0.9 * s, 3.7 * s), shade(wood, 0.1))
+	for _, z in { -1.4, 1.4 } do
+		prop(m, Vector3.new(2.9, 0.3, 0.8) * s, base * CFrame.new(0, 1.2 * s, z * s), shade(wood, -0.1))
+	end
+	local oar = turn * CFrame.new(2.8 * s, 0.15 * s, 1 * s) * CFrame.Angles(0, rad(Kit.range(rng, 10, 40)), 0)
+	prop(m, Vector3.new(0.3, 0.25, 5) * s, oar, shade(wood, -0.15))
+	prop(m, Vector3.new(0.9, 0.15, 1.4) * s, oar * CFrame.new(0, 0, -2.9 * s), shade(wood, -0.1))
+	return finish(m, parent)
+end
+
+-- Flaque de marée qui luit entre des rochers, avec une étoile de mer (pal.Glow, pal.Rock)
+function Props.tidePool(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("TidePool")
+	local rock = color(pal, "Rock", rgb(150, 140, 130))
+	local glow = color(pal, "Glow", rgb(80, 230, 220))
+	for _, part in Kit.disc(m, cf * CFrame.new(0, 0.05, 0), 2.6 * s, 0.25, glow, Enum.Material.Neon) do
+		part.Transparency = 0.35
+	end
+	for k = 0, 6 do
+		local ring = cf * CFrame.Angles(0, k * TAU / 7 + rng:NextNumber() * 0.3, 0)
+		local h = Kit.range(rng, 0.6, 1.4) * s
+		prop(m, Vector3.new(Kit.range(rng, 1.6, 2.4) * s, h, 1.4 * s), ring * CFrame.new(0, h / 2, -2.9 * s), if k % 2 == 0 then rock else shade(rock, 0.12))
+	end
+	local star = cf * CFrame.new(0.8 * s, 0.33, 0.4 * s) * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	prop(m, Vector3.new(1.6, 0.15, 0.45) * s, star, rgb(255, 140, 80))
+	prop(m, Vector3.new(0.45, 0.15, 1.6) * s, star * CFrame.Angles(0, rad(36), 0), rgb(255, 140, 80))
+	return finish(m, parent)
+end
+
+-- Fleur géante qui luit : tige, deux feuilles, cinq pétales Neon ouverts vers le ciel autour d'un cœur clair
+-- (pal.Petal, pal.Heart, pal.Leaf)
+function Props.glowFlower(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("GlowFlower")
+	local petal = color(pal, "Petal", rgb(255, 120, 200))
+	local leaf = color(pal, "Leaf", rgb(60, 140, 60))
+	local h = Kit.range(rng, 3.5, 5.5) * s
+	local lean = cf * CFrame.Angles(rad(Kit.range(rng, -8, 8)), rng:NextNumber() * TAU, rad(Kit.range(rng, -8, 8)))
+	prop(m, Vector3.new(0.4 * s, h, 0.4 * s), lean * CFrame.new(0, h / 2, 0), leaf)
+	for _, side in { -1, 1 } do
+		prop(m, Vector3.new(1.8, 0.2, 0.8) * s, lean * CFrame.new(side * 0.9 * s, h * 0.35, 0) * CFrame.Angles(0, 0, side * rad(25)), shade(leaf, -0.1))
+	end
+	local head = lean * CFrame.new(0, h, 0)
+	for k = 0, 4 do
+		local spoke = head * CFrame.Angles(0, k * TAU / 5, 0) * CFrame.new(0, 0.2 * s, -1 * s) * CFrame.Angles(rad(30), 0, 0)
+		neon(m, Vector3.new(1.1, 0.25, 1.8) * s, spoke, if k % 2 == 0 then petal else shade(petal, 0.08), 0.2)
+	end
+	neon(m, Vector3.new(0.8, 0.6, 0.8) * s, head * CFrame.new(0, 0.4 * s, 0), color(pal, "Heart", rgb(255, 240, 160)), 0.05)
+	return finish(m, parent)
+end
+
+-- Traces d'un gros dino : 4 empreintes à trois doigts, gauche et droite en alternance (pal.Mud)
+function Props.tracks(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Tracks")
+	local mud = color(pal, "Mud", rgb(80, 64, 48))
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	for k = 0, 3 do
+		local side = if k % 2 == 0 then -1 else 1
+		local foot = base * CFrame.new(side * 1.3 * s, 0.06, (1.5 - k) * 4.2 * s)
+		prop(m, Vector3.new(1.5 * s, 0.12, 1.4 * s), foot, mud)
+		for toe = -1, 1 do
+			prop(m, Vector3.new(0.5 * s, 0.12, 1.5 * s), foot * CFrame.Angles(0, -toe * rad(28), 0) * CFrame.new(0, 0, -1.3 * s), shade(mud, 0.1))
+		end
+	end
+	return finish(m, parent)
+end
+
+-- Plante carnivore géante : feuilles au pied, tige, deux mâchoires ouvertes en V, intérieur rouge qui luit, cils clairs
+-- (pal.Leaf, pal.Mouth)
+function Props.flytrap(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Flytrap")
+	local leaf = color(pal, "Leaf", rgb(90, 160, 60))
+	local mouth = color(pal, "Mouth", rgb(255, 70, 90))
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	for k = 0, 2 do
+		prop(m, Vector3.new(2.4, 0.3, 0.9) * s, base * CFrame.Angles(0, k * TAU / 3, 0) * CFrame.new(1.1 * s, 0.3 * s, 0) * CFrame.Angles(0, 0, rad(15)), shade(leaf, 0.1))
+	end
+	local h = Kit.range(rng, 2.6, 4) * s
+	prop(m, Vector3.new(0.6 * s, h, 0.6 * s), base * CFrame.new(0, h / 2, 0), shade(leaf, 0.15))
+	local head = base * CFrame.new(0, h + 0.3 * s, 0) * CFrame.Angles(rad(Kit.range(rng, -20, -5)), 0, 0)
+	for _, side in { -1, 1 } do
+		local lobe = head * CFrame.Angles(0, 0, side * rad(40)) * CFrame.new(side * 1.1 * s, 0, 0)
+		prop(m, Vector3.new(2.2, 0.35, 2.4) * s, lobe, leaf)
+		neon(m, Vector3.new(1.9, 0.12, 2.1) * s, lobe * CFrame.new(0, 0.2 * s, 0), mouth, 0.25)
+		prop(m, Vector3.new(0.15, 0.7, 2.4) * s, lobe * CFrame.new(side * 1.15 * s, 0.35 * s, 0), rgb(220, 240, 140))
+	end
+	return finish(m, parent)
+end
+
+-- Mare de boue qui bouillonne : eau verte qui luit, bord de vase, bulles (pal.Glow, pal.Mud)
+function Props.bogPool(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("BogPool")
+	local glow = color(pal, "Glow", rgb(140, 230, 80))
+	local mud = color(pal, "Mud", rgb(70, 62, 44))
+	for _, part in Kit.disc(m, cf * CFrame.new(0, 0.05, 0), 3 * s, 0.25, glow, Enum.Material.Neon) do
+		part.Transparency = 0.3
+	end
+	for k = 0, 6 do
+		local ring = cf * CFrame.Angles(0, k * TAU / 7, 0)
+		prop(m, Vector3.new(2.9 * s, Kit.range(rng, 0.4, 0.8), 1.3 * s), ring * CFrame.new(0, 0.3, -3.2 * s), if k % 2 == 0 then mud else shade(mud, -0.1))
+	end
+	for k = 0, 2 do
+		local a = k * 2.2 + rng:NextNumber()
+		local r = Kit.range(rng, 0.4, 1.8) * s
+		local size = Kit.range(rng, 0.5, 1) * s
+		neon(m, Vector3.new(size, size, size), cf * CFrame.new(math.cos(a) * r, 0.35 + size / 2, math.sin(a) * r), shade(glow, -0.35), 0.35)
+	end
+	return finish(m, parent)
+end
+
+-- Cactus en candélabre : tronc à côtes, un ou deux bras, parfois une fleur rose (pal.Leaf)
+function Props.cactus(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Cactus")
+	local green = color(pal, "Leaf", rgb(90, 140, 70))
+	local h = Kit.range(rng, 5, 8) * s
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	prop(m, Vector3.new(1.6 * s, h, 1.6 * s), base * CFrame.new(0, h / 2, 0), green)
+	prop(m, Vector3.new(1.8 * s, h - 0.6 * s, 0.5 * s), base * CFrame.new(0, (h - 0.6 * s) / 2, 0), shade(green, 0.12))
+	prop(m, Vector3.new(1.1, 0.5, 1.1) * s, base * CFrame.new(0, h + 0.25 * s, 0), shade(green, -0.12))
+	for k, side in { -1, 1 } do
+		if k == 1 or rng:NextNumber() < 0.6 then
+			local y = h * Kit.range(rng, 0.35, 0.55)
+			local up = Kit.range(rng, 1.8, 3) * s
+			prop(m, Vector3.new(1.8, 1, 1) * s, base * CFrame.new(side * 1.5 * s, y, 0), green)
+			prop(m, Vector3.new(1 * s, up, 1 * s), base * CFrame.new(side * 2 * s, y + up / 2, 0), green)
+		end
+	end
+	if rng:NextNumber() < 0.5 then
+		prop(m, Vector3.new(0.7, 0.5, 0.7) * s, base * CFrame.new(0.2 * s, h + 0.7 * s, 0), rgb(255, 120, 170))
+	end
+	return finish(m, parent)
+end
+
+-- Boule d'herbes sèches : brindilles croisées autour d'un cœur clairsemé (pal.Leaf)
+function Props.tumbleweed(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Tumbleweed")
+	local dry = color(pal, "Leaf", rgb(190, 150, 90))
+	local center = cf * CFrame.new(0, 1.2 * s, 0)
+	for k = 0, 5 do
+		local turn = CFrame.Angles(rng:NextNumber() * TAU, rng:NextNumber() * TAU, rng:NextNumber() * TAU)
+		prop(m, Vector3.new(0.25, 0.25, 2.6) * s, center * turn, if k % 2 == 0 then dry else shade(dry, 0.15))
+	end
+	prop(m, Vector3.new(1.4, 1.4, 1.4) * s, center * CFrame.Angles(0.4, 0.7, 0.2), shade(dry, 0.1)).Transparency = 0.4
+	return finish(m, parent)
+end
+
+-- Bonhomme de neige : trois blocs de neige, nez en carotte, yeux, bras en bâton, chapeau et écharpe (pal.Snow)
+function Props.snowman(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Snowman")
+	local snow = color(pal, "Snow", rgb(246, 250, 255))
+	local dark = rgb(40, 40, 48)
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	prop(m, Vector3.new(3, 2.6, 3) * s, base * CFrame.new(0, 1.3 * s, 0), snow)
+	prop(m, Vector3.new(2.2, 2, 2.2) * s, base * CFrame.new(0, 3.6 * s, 0), shade(snow, 0.03))
+	local head = base * CFrame.new(0, 5.4 * s, 0)
+	prop(m, Vector3.new(1.6, 1.6, 1.6) * s, head, snow)
+	prop(m, Vector3.new(0.3, 0.3, 1) * s, head * CFrame.new(0, 0, -1.2 * s), rgb(255, 140, 40))
+	for _, side in { -1, 1 } do
+		prop(m, Vector3.new(0.25, 0.25, 0.1) * s, head * CFrame.new(side * 0.4 * s, 0.3 * s, -0.82 * s), dark)
+		prop(m, Vector3.new(2.2, 0.2, 0.2) * s, base * CFrame.new(side * 2 * s, 4 * s, 0) * CFrame.Angles(0, 0, side * rad(25)), rgb(110, 80, 50))
+	end
+	prop(m, Vector3.new(2.3, 0.4, 2.3) * s, base * CFrame.new(0, 4.6 * s, 0), rgb(200, 50, 50))
+	prop(m, Vector3.new(1.8, 0.2, 1.8) * s, head * CFrame.new(0, 0.9 * s, 0), dark)
+	prop(m, Vector3.new(1.2, 1, 1.2) * s, head * CFrame.new(0, 1.5 * s, 0), dark)
+	return finish(m, parent)
+end
+
+-- Fontaine de lave : butte de basalte, jet de lave qui pulse (flotte), gerbe en haut, gouttes (pal.Glow, pal.Rock)
+function Props.lavaGeyser(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("LavaGeyser")
+	local rock = color(pal, "Rock", rgb(46, 40, 42))
+	local lava = color(pal, "Glow", rgb(255, 112, 32))
+	Kit.cone(m, cf, 3 * s, 2 * s, 2, rock)
+	for _, part in Kit.disc(m, cf * CFrame.new(0, 2 * s, 0), 1.4 * s, 0.2, lava, Enum.Material.Neon) do
+		part.Transparency = 0.05
+	end
+	local h = Kit.range(rng, 6, 10) * s
+	local jet = Kit.group("LavaJet")
+	local core = neon(jet, Vector3.new(1.1 * s, h, 1.1 * s), cf * CFrame.new(0, 2 * s + h / 2, 0), lava, 0.1)
+	neon(jet, Vector3.new(0.6 * s, h * 0.9, 0.6 * s), cf * CFrame.new(0, 2 * s + h * 0.45, 0), rgb(255, 226, 120), 0)
+	neon(jet, Vector3.new(2.6, 1, 2.6) * s, cf * CFrame.new(0, 2 * s + h + 0.3 * s, 0) * CFrame.Angles(0, math.pi / 4, 0), lava, 0.2)
+	for k = 0, 3 do
+		local a = k * TAU / 4 + rng:NextNumber() * 0.5
+		neon(jet, Vector3.new(0.6, 0.9, 0.6) * s, cf * CFrame.new(math.cos(a) * 1.8 * s, 2 * s + Kit.range(rng, 0.4, 0.9) * h, math.sin(a) * 1.8 * s), shade(lava, -0.2), 0.15)
+	end
+	Kit.float(jet, core, Kit.range(rng, 0.5, 0.9), Kit.range(rng, 1.8, 2.6), Kit.range(rng, 0.3, 0.6))
+	jet.Parent = m
+	return finish(m, parent)
+end
+
+-- Fumerolle : rocher fendu qui rougeoie, bouffées de vapeur qui montent et descendent (pal.Rock, pal.Glow)
+function Props.steamVent(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("SteamVent")
+	local rock = color(pal, "Rock", rgb(60, 52, 54))
+	local glow = color(pal, "Glow", rgb(255, 120, 40))
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	prop(m, Vector3.new(3.4, 1.2, 2.8) * s, base * CFrame.new(0, 0.6 * s, 0), rock)
+	prop(m, Vector3.new(2.4, 1, 2) * s, base * CFrame.new(0.3 * s, 1.5 * s, 0.2 * s) * CFrame.Angles(0, 0.4, 0), shade(rock, 0.1))
+	neon(m, Vector3.new(0.3, 0.3, 2.4) * s, base * CFrame.new(-0.2 * s, 2.05 * s, 0), glow, 0.1)
+	local steam = Kit.group("Steam")
+	local core = prop(steam, Vector3.new(1.6, 1.6, 1.6) * s, base * CFrame.new(0, 3.6 * s, 0), rgb(236, 236, 240), Enum.Material.SmoothPlastic)
+	core.Transparency = 0.45
+	for k = 1, 2 do
+		local puff = prop(steam, Vector3.new(1.6 + k * 0.8, 1.4 + k * 0.6, 1.6 + k * 0.8) * s, base * CFrame.new(k * 0.5 * s, (3.6 + k * 2.2) * s, 0) * CFrame.Angles(0, k, 0), rgb(220, 220, 226), Enum.Material.SmoothPlastic)
+		puff.Transparency = 0.5 + k * 0.12
+	end
+	Kit.float(steam, core, Kit.range(rng, 0.6, 1), Kit.range(rng, 0.8, 1.3), Kit.range(rng, 0.2, 0.4))
+	steam.Parent = m
+	return finish(m, parent)
+end
+
+-- Coffre au trésor ouvert : caisse, bandes et pièces d'or qui brillent, couvercle relevé, pièces tombées (pal.Wood,
+-- pal.Gold)
+function Props.treasure(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Treasure")
+	local wood = color(pal, "Wood", rgb(120, 76, 46))
+	local gold = color(pal, "Gold", rgb(255, 204, 70))
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0) * CFrame.Angles(0, 0, rad(Kit.range(rng, -6, 6)))
+	prop(m, Vector3.new(3, 1.6, 2) * s, base * CFrame.new(0, 0.8 * s, 0), wood)
+	for _, x in { -1, 1 } do
+		prop(m, Vector3.new(0.3, 1.7, 2.1) * s, base * CFrame.new(x * 1 * s, 0.8 * s, 0), gold)
+	end
+	neon(m, Vector3.new(2.6, 0.4, 1.6) * s, base * CFrame.new(0, 1.7 * s, 0), gold, 0.05)
+	neon(m, Vector3.new(1.4, 0.4, 1) * s, base * CFrame.new(0.3 * s, 2.05 * s, 0.1 * s), shade(gold, -0.2), 0)
+	local hinge = base * CFrame.new(0, 1.6 * s, 1 * s) * CFrame.Angles(rad(110), 0, 0)
+	prop(m, Vector3.new(3, 0.4, 2) * s, hinge * CFrame.new(0, 0.2 * s, -1 * s), shade(wood, 0.1))
+	for _ = 1, 3 do
+		local a = rng:NextNumber() * TAU
+		neon(m, Vector3.new(0.6, 0.15, 0.6) * s, base * CFrame.new(math.cos(a) * 2.4 * s, 0.08 * s, math.sin(a) * 2.4 * s), gold, 0)
+	end
+	return finish(m, parent)
+end
+
+-- Cheminée sous-marine : roche en deux blocs, bouche qui luit, bulles qui montent et descendent (pal.Rock, pal.Glow)
+function Props.bubbleVent(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("BubbleVent")
+	local rock = color(pal, "Rock", rgb(80, 92, 104))
+	local glow = color(pal, "Glow", rgb(170, 240, 255))
+	prop(m, Vector3.new(2.6, 1.6, 2.6) * s, cf * CFrame.new(0, 0.8 * s, 0) * CFrame.Angles(0, rng:NextNumber(), 0), rock)
+	prop(m, Vector3.new(1.6, 1.6, 1.6) * s, cf * CFrame.new(0, 2.2 * s, 0) * CFrame.Angles(0, rng:NextNumber(), 0), shade(rock, 0.1))
+	neon(m, Vector3.new(1, 0.2, 1) * s, cf * CFrame.new(0, 3.05 * s, 0), glow, 0.2)
+	local bubbles = Kit.group("Bubbles")
+	local core = neon(bubbles, Vector3.new(0.8, 0.8, 0.8) * s, cf * CFrame.new(0, 4.4 * s, 0), glow, 0.45)
+	neon(bubbles, Vector3.new(0.5, 0.5, 0.5) * s, cf * CFrame.new(0.5 * s, 5.8 * s, 0.2 * s), glow, 0.5)
+	neon(bubbles, Vector3.new(0.6, 0.6, 0.6) * s, cf * CFrame.new(-0.3 * s, 7.2 * s, -0.3 * s), glow, 0.55)
+	Kit.float(bubbles, core, Kit.range(rng, 0.8, 1.2), Kit.range(rng, 1.4, 2), Kit.range(rng, 0.6, 1))
+	bubbles.Parent = m
+	return finish(m, parent)
+end
+
+-- Éclat de météorite : roche noire fendue, fissures qui luisent, sol brûlé autour (pal.Rock, pal.Glow)
+function Props.meteorite(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Meteorite")
+	local rock = color(pal, "Rock", rgb(40, 34, 48))
+	local glow = color(pal, "Glow", rgb(70, 230, 120))
+	Kit.disc(m, cf * CFrame.new(0, 0.05, 0), 3 * s, 0.15, shade(rock, -0.1))
+	local base = cf * CFrame.Angles(rad(Kit.range(rng, -15, 15)), rng:NextNumber() * TAU, rad(Kit.range(rng, -15, 15)))
+	prop(m, Vector3.new(3, 2.4, 2.6) * s, base * CFrame.new(0, 1 * s, 0), rock)
+	prop(m, Vector3.new(2, 1.6, 2.2) * s, base * CFrame.new(0.8 * s, 2.2 * s, -0.2 * s) * CFrame.Angles(0.3, 0.5, 0.2), shade(rock, 0.1))
+	prop(m, Vector3.new(1.4, 1.2, 1.4) * s, base * CFrame.new(-1.3 * s, 0.6 * s, 1 * s) * CFrame.Angles(0.2, 0.9, 0), shade(rock, -0.05))
+	neon(m, Vector3.new(0.25, 2, 2.7) * s, base * CFrame.new(0.3 * s, 1.1 * s, 0) * CFrame.Angles(0, 0, rad(12)), glow, 0.15)
+	neon(m, Vector3.new(3.1, 0.25, 0.3) * s, base * CFrame.new(0, 1.6 * s, -0.4 * s), glow, 0.2)
+	return finish(m, parent)
+end
+
+-- Rocher qui flotte et tourne (attiré par la météorite) : deux blocs, fissure qui luit dessous (pal.Rock, pal.Glow)
+function Props.floatRock(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("FloatRock")
+	local rock = color(pal, "Rock", rgb(70, 58, 90))
+	local glow = color(pal, "Glow", rgb(190, 110, 255))
+	local center = cf * CFrame.new(0, Kit.range(rng, 5, 10) * s, 0) * CFrame.Angles(rng:NextNumber() * 0.5, rng:NextNumber() * TAU, rng:NextNumber() * 0.5)
+	local core = prop(m, Vector3.new(2.4, 1.8, 2) * s, center, rock)
+	prop(m, Vector3.new(1.6, 1.2, 1.4) * s, center * CFrame.new(0.6 * s, -1 * s, 0.2 * s) * CFrame.Angles(0.4, 0.3, 0), shade(rock, 0.1))
+	neon(m, Vector3.new(1.2, 0.2, 1) * s, center * CFrame.new(0.4 * s, -1.65 * s, 0.2 * s), glow, 0.1)
+	Kit.float(m, core, Kit.range(rng, 1, 1.8), Kit.range(rng, 0.5, 0.9), Kit.range(rng, 0.15, 0.35) * (if rng:NextNumber() < 0.5 then -1 else 1))
 	return finish(m, parent)
 end
 
