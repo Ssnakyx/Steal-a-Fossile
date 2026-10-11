@@ -52,6 +52,7 @@ type Profile = {
 	Released: boolean,
 	Saving: boolean,
 	LastSave: number,
+	Reset: boolean?, -- remise à zéro demandée (DataService.Reset) : les écritures suivantes partent de données neuves
 }
 
 local DataService = {}
@@ -297,8 +298,14 @@ local function write(profile: Profile, release: boolean): boolean
 		return true
 	end
 	local player = profile.Player
+	local data = profile.Data
+	if profile.Reset then
+		data = build(nil, player.Name)
+		-- (achats Robux déjà donnés : on les garde pour ne jamais donner deux fois un achat rejoué par Roblox)
+		data.Purchases = profile.Data.Purchases
+	end
 	local problems = {}
-	local copy = storable(profile.Data, "data", problems, {})
+	local copy = storable(data, "data", problems, {})
 	if #problems > 0 then
 		warn(string.format("[DataService] %s : %d valeur(s) réparée(s) avant sauvegarde : %s", player.Name, #problems, table.concat(problems, ", ", 1, math.min(#problems, 5))))
 	end
@@ -588,6 +595,18 @@ function DataService.Save(player: Player): boolean
 		return false
 	end
 	return save(profile, false)
+end
+
+-- Remet la sauvegarde du joueur à zéro (commande d'admin) : la prochaine écriture (celle du départ) part de données
+-- neuves, sauf la liste des achats Robux déjà donnés. Il faut ensuite expulser le joueur : les services gardent son
+-- état en mémoire jusqu'à son départ. Renvoie false si rien ne peut être écrit (pas chargé, Studio en lecture seule).
+function DataService.Reset(player: Player): boolean
+	local profile = profiles[player]
+	if not profile or profile.Released or profile.ReadOnly then
+		return false
+	end
+	profile.Reset = true
+	return true
 end
 
 -- Dernière sauvegarde et fin du verrou (appelé par Boot quand le joueur part)

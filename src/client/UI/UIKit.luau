@@ -1434,4 +1434,66 @@ function UIKit.toast(text: string, kind: string?, duration: number?): Frame
 	return toast
 end
 
+-- Grande alerte dans la liste des messages courts (bloc rare apparu...) : carte de la couleur `props.Color` (ou
+-- arc-en-ciel avec props.Rainbow), icône props.Icon à gauche, titre props.Title et ligne props.Text. Elle respire
+-- doucement pendant props.Duration secondes (5 par défaut).
+function UIKit.alert(props: { [string]: any }): Frame
+	local list = getToastList()
+	toastOrder += 1
+	local alert = UIKit.card({
+		Name = "Alert",
+		Color = props.Color or Colors.Yellow,
+		Rainbow = props.Rainbow,
+		Accent = WHITE,
+		Size = UDim2.fromOffset(500, 86),
+		LayoutOrder = toastOrder,
+		Parent = list,
+	})
+	local z = alert.ZIndex + 2
+	UIKit.icon(props.Icon or "egg_gold", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 8, 0.5, 0),
+		Size = UDim2.fromOffset(70, 70),
+		ZIndex = z,
+		Parent = alert,
+	})
+	UIKit.label({
+		Name = "Title",
+		Position = UDim2.fromOffset(88, 8),
+		Size = UDim2.new(1, -100, 0, 40),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = props.Title or "",
+		MaxTextSize = 36,
+		ZIndex = z + 1,
+		Parent = alert,
+	})
+	UIKit.label({
+		Name = "Text",
+		Position = UDim2.fromOffset(88, 48),
+		Size = UDim2.new(1, -100, 0, 28),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = props.Text or "",
+		MaxTextSize = 24,
+		ZIndex = z + 1,
+		Parent = alert,
+	})
+	local pop: UIScale = new("UIScale", { Scale = 0.5, Parent = alert })
+	UIKit.tween(pop, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+	playSound("Notify")
+	local duration = props.Duration or 5
+	task.spawn(function()
+		task.wait(0.3)
+		local breathe = TweenService:Create(pop, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.04 })
+		breathe:Play()
+		task.wait(math.max(0, duration - 0.3))
+		breathe:Cancel()
+		if alert.Parent then
+			UIKit.tween(pop, 0.15, { Scale = 0 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			task.wait(0.16)
+			alert:Destroy()
+		end
+	end)
+	return alert
+end
+
 return UIKit
