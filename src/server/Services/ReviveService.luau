@@ -3,7 +3,8 @@
 -- Un bloc rapporté au parc part dans la première cuve libre, sinon en réserve (data.Stored, Config.Economy.MaxStored) :
 -- il partira tout seul dans la prochaine cuve libérée. Minuteur selon la rareté (Config.Rarity), 2x plus court avec le
 -- pass Fast Revive (ShopService du brief 4, s'il existe). Cuve prête : « Reveal » tire l'espèce (parmi les espèces de la
--- zone du bloc qui ont sa rareté), la taille et la mutation, et le dino va dans l'enclos (s'il y a de la place).
+-- zone du bloc qui ont sa rareté), la taille et la mutation, et le dino va dans l'enclos (s'il y a de la place). Un bloc
+-- rare a plus de chances de donner une mutation rare (Config.Economy.RareMutation, rappelé dans le message « ready »).
 -- Pièces Tank1..Tank6 du parc : minuteur au-dessus de la cuve (BillboardGui « TankLabel » : rareté, compte à rebours
 -- tagué « LoopCountdown » et barre de progression taguée « LoopProgress », animés par LoopController), bloc visible
 -- dans la cuve, ProximityPrompt « Reveal » quand elle est prête et « Buy Tank » sur la première cuve pas encore achetée.
@@ -149,8 +150,9 @@ function ReviveService.Roll(rarity: string, zoneName: string, luck: number?): Ro
 	local size = pickWeighted(Economy.Sizes, function(info: Economy.SizeInfo): number
 		return info.Chance
 	end)
-	-- (mutations de toutes les zones + celle du biome du bloc, de la plus rare à la plus commune : Config.Economy)
-	local mutation = Economy.RollMutation(zoneName, luck, rng:NextNumber())
+	-- (mutations de toutes les zones + celle du biome du bloc, de la plus rare à la plus commune, les rares plus souvent
+	-- dans un bloc rare : Config.Economy.RareMutation)
+	local mutation = Economy.RollMutation(zoneName, luck, rng:NextNumber(), rarity)
 	return { Species = species, Size = size.Name, Mutation = mutation, Level = 0 }
 end
 
@@ -589,7 +591,12 @@ local function checkReady(player: Player)
 		if slot and isReady(tank) and seen[slot] ~= tank.EndsAt then
 			seen[slot] = tank.EndsAt
 			updateVisual(player, slot)
-			Notify.Send(player, "Your " .. tank.Rarity .. " fossil is ready to reveal!", "success")
+			local boost = Economy.RareMutationBoost(tank.Rarity)
+			Notify.Send(
+				player,
+				"Your " .. tank.Rarity .. " fossil is ready to reveal!" .. (if boost > 1 then string.format(" x%s chance of a rare mutation!", tostring(boost)) else ""),
+				"success"
+			)
 		end
 	end
 end

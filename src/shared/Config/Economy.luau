@@ -44,6 +44,22 @@ local Economy = {
 	} :: { MutationInfo },
 	-- Une mutation de Chance <= MutationAnnounce (%) est annoncée à tout le serveur quand elle sort (MutationService)
 	MutationAnnounce = 1,
+	-- Bloc rare = plus de chances d'une mutation rare (demande de Snaky du 2026-10-11 : « quand on ouvre un œuf rare, on
+	-- a une chance qu'il ait une mutation rare »). Une mutation est rare si sa Chance <= MaxChance (%) : Lava, Obsidian,
+	-- Abyssal, Galaxy et Rainbow, les mêmes que celles annoncées au serveur. À la réanimation, sa chance est multipliée
+	-- par Boost[rareté du bloc] (en plus de la chance du joueur) ; les autres mutations ne changent pas.
+	RareMutation = {
+		MaxChance = 1,
+		Boost = {
+			Common = 1,
+			Uncommon = 1,
+			Rare = 1.5,
+			Epic = 2,
+			Legendary = 3,
+			Mythic = 5,
+			Secret = 10,
+		} :: { [string]: number },
+	},
 
 	-- Niveaux de fusion Upgrade (data.Dinos[id].Level : 0, 1, 2), multiplicateur de revenu. Réglés avec le brief 8.
 	Levels = {
@@ -133,16 +149,33 @@ local function luckBoost(luck: number?): number
 	return 1 + (if type(luck) == "number" and luck == luck and luck > 0 and luck < math.huge then luck else 0)
 end
 
--- Tire la mutation d'un dino réanimé : zone du fossile, bonus de chance du joueur (0.1 = +10 %), roll dans [0, 1[.
+-- Mutation rare ? (Chance <= RareMutation.MaxChance : sa chance monte avec la rareté du bloc)
+function Economy.IsRareMutation(info: MutationInfo): boolean
+	return info.Chance <= Economy.RareMutation.MaxChance
+end
+
+-- Multiplicateur des mutations rares pour un bloc de cette rareté (1 : rareté inconnue ou sans bonus)
+function Economy.RareMutationBoost(rarity: string?): number
+	local boost = if type(rarity) == "string" then Economy.RareMutation.Boost[rarity] else nil
+	return if type(boost) == "number" and boost > 0 and boost < math.huge then boost else 1
+end
+
+-- Chance (%) d'une mutation avec la chance du joueur et la rareté du bloc
+local function boosted(info: MutationInfo, boost: number, rarity: string?): number
+	return info.Chance * boost * (if Economy.IsRareMutation(info) then Economy.RareMutationBoost(rarity) else 1)
+end
+
+-- Tire la mutation d'un dino réanimé : zone du fossile, bonus de chance du joueur (0.1 = +10 %), roll dans [0, 1[,
+-- rareté du bloc (facultative : plus de chances de mutation rare, voir RareMutation).
 -- De la plus rare à la plus commune (avec une chance énorme, la plus rare de la zone sort toujours). "" : aucune.
-function Economy.RollMutation(zoneName: string?, luck: number?, roll: number): string
+function Economy.RollMutation(zoneName: string?, luck: number?, roll: number, rarity: string?): string
 	local boost = luckBoost(luck)
 	local r = (if type(roll) == "number" and roll == roll then math.clamp(roll, 0, 1) else 1) * 100
 	local acc = 0
 	for index = #Economy.Mutations, 1, -1 do
 		local info = Economy.Mutations[index]
 		if Economy.MutationInZone(info, zoneName) then
-			acc += info.Chance * boost
+			acc += boosted(info, boost, rarity)
 			if r < acc then
 				return info.Name
 			end
@@ -151,9 +184,10 @@ function Economy.RollMutation(zoneName: string?, luck: number?, roll: number): s
 	return ""
 end
 
--- Probas affichables des mutations d'une zone (0 à 1, avec la chance du joueur), de la plus commune à la plus rare,
--- puis { Name = "", ... } : aucune mutation. Mêmes calculs que RollMutation (toute chance payante affiche ses probas).
-function Economy.MutationChances(zoneName: string?, luck: number?): { MutationChance }
+-- Probas affichables des mutations d'une zone (0 à 1, avec la chance du joueur et la rareté du bloc facultative), de
+-- la plus commune à la plus rare, puis { Name = "", ... } : aucune mutation. Mêmes calculs que RollMutation (toute
+-- chance payante affiche ses probas).
+function Economy.MutationChances(zoneName: string?, luck: number?, rarity: string?): { MutationChance }
 	local boost = luckBoost(luck)
 	local out: { MutationChance } = {}
 	local left = 1
@@ -161,7 +195,7 @@ function Economy.MutationChances(zoneName: string?, luck: number?): { MutationCh
 	for index = #Economy.Mutations, 1, -1 do
 		local info = Economy.Mutations[index]
 		if Economy.MutationInZone(info, zoneName) then
-			local p = math.min(info.Chance * boost / 100, left)
+			local p = math.min(boosted(info, boost, rarity) / 100, left)
 			left -= p
 			table.insert(out, 1, { Name = info.Name, Chance = p, Income = info.Income })
 		end

@@ -192,6 +192,22 @@ FossilDebug (Studio, barre de commande en vue serveur) :
 3. `MutationController.Effects` : son effet animé.
 4. Tests : `t_mutation_rolls` (nombre de mutations, probas) et `t_mutation_client` vérifient tout le reste tout seuls.
 
+## Bloc rare : plus de chances de mutation rare
+
+Demande de Snaky (2026-10-11) : « quand on ouvre un œuf rare, on a une chance qu'il ait une mutation rare ». Le bloc
+fossile est l'œuf du jeu : plus il est rare, plus les mutations rares sortent souvent à la réanimation.
+`Config.Economy.RareMutation` : une mutation est rare si sa `Chance` est au plus `MaxChance` (1 %, les mêmes que celles
+annoncées au serveur : Lava, Obsidian, Abyssal, Galaxy, Rainbow). Sa chance est multipliée selon la rareté du bloc,
+en plus de la chance du VIP ; les autres mutations ne changent pas.
+
+| Bloc | Common | Uncommon | Rare | Epic | Legendary | Mythic | Secret |
+|---|---|---|---|---|---|---|---|
+| Mutations rares | x1 | x1 | x1.5 | x2 | x3 | x5 | x10 |
+
+Exemple au Glacier : Lava 1 % et Rainbow 0,05 % avec un bloc Common, 3 % et 0,15 % avec un bloc Legendary. Le message
+« Your Legendary fossil is ready to reveal! » ajoute « x3 chance of a rare mutation! ». Commande admin :
+`mutations <zone> <rareté>` (probas avec la rareté du bloc).
+
 ## Sérum de mutation (objet)
 
 Demande de Snaky (2026-10-11) : un objet qui applique une mutation à un dino, lui donne un bonus, avec une chance
