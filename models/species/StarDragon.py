@@ -1,14 +1,14 @@
 """Star Dragon : volant Mythic du Meteor Crater, wyverne cosmique, la créature la plus spectaculaire du jeu.
 
 Modélisé ailes déployées (membranes en plaques horizontales : peu de pièces), voxels de 0,4 stud : environ 28 studs
-d'envergure à la taille Normal. Corps violet nuit parcouru de constellations Neon (étoiles blanches reliées par des
-traits cyan) : une figure sur chaque flanc, une grande étoile sur le poitrail et un chemin d'étoiles sur l'arête de la
-queue qui mène à une lame de cristal Neon en étoile à quatre branches. Grandes ailes de dragon attachées haut sur les
-épaules, festonnées, aux membranes de nébuleuse (bandes violet, magenta et bleu) semées d'étoiles Neon blanches posées
-sur la membrane (elles se voient aussi ailes repliées). Pics de cristal lilas (Glass) le long du dos, grandes cornes
-dorées (Metal) balayées vers l'arrière en V, yeux Neon blanc cyan. Le cou et la tête sont modélisés droits devant (peu
-de pièces) puis relevés par les rotations de repos ; la queue en segments effilés se relève vers la lame. Au parc il
-marche replié sur ses pattes et ses poignets (les animations replient les ailes)."""
+d'envergure à la taille Normal. Corps violet nuit au ventre lilas, parcouru de constellations Neon (étoiles blanches
+reliées par des traits cyan) : une figure sur chaque flanc, une grande étoile sur le poitrail et un chemin d'étoiles
+sur l'arête de la queue qui mène à une lame de cristal Neon en étoile à quatre branches. Grandes ailes de dragon
+attachées haut sur les épaules, festonnées, aux membranes de nébuleuse (bandes violet, magenta et bleu) semées
+d'étoiles Neon blanches posées sur la membrane (elles se voient aussi ailes repliées). Pics de cristal lilas (Glass)
+le long du dos, grandes cornes dorées (Metal) balayées vers l'arrière en V, yeux Neon blanc cyan. Le cou et la tête
+sont modélisés droits devant (peu de pièces) puis relevés par les rotations de repos ; la queue en segments effilés se
+relève vers la lame. Au parc il marche replié sur ses pattes et ses poignets (les animations replient les ailes)."""
 import os
 import sys
 
@@ -25,7 +25,7 @@ NEB2 = (196, 52, 168)       # magenta
 NEB3 = (56, 92, 214)        # bleu (bord de fuite)
 STRUT = (52, 30, 96)
 STAR = (240, 246, 255)
-CONST = (150, 230, 255)     # traits des constellations
+CONST = (60, 200, 255)      # traits des constellations : cyan franc (il reste cyan en Neon, les étoiles blanches)
 CRYSTAL = (214, 176, 255)
 HORN = (255, 176, 48)
 CLAW = (236, 228, 255)
@@ -125,8 +125,6 @@ def build():
         x = d.surface_x(NY, z, "Head")
         if x is not None:
             d.set("Head", x, NY, z, TOOTH, "Smooth")              # crocs
-    if (-1, NY + 2, -23) in d.vox:
-        d.set("Head", -1, NY + 2, -23, PUPIL, "Smooth")          # narine
     # grandes cornes dorées en V : elles montent puis filent vers l'arrière
     for a, b, ra, rb in (((-2.0, NY + 3.8, -14.6), (-3.0, NY + 5.8, -12.2), 1.15, 0.95),
                          ((-3.0, NY + 5.8, -12.2), (-3.8, NY + 6.8, -9.4), 0.95, 0.7),
@@ -165,7 +163,7 @@ def build():
     d.eye("Head", "LidL", NY + 2, -19, IRIS, PUPIL, lid_color=BODY, h=1, w=3)
     d.remove(lambda x, y, z: y < 0)
     d.mirror()
-    belly = {}
+    belly = {"Chest": 10, "Hips": 10, "Neck1": 12, "Neck2": 12}     # ventre et gorge lilas, coupés à plat
 
     def paint(x, y, z, bone, c):
         if c == IRIS:

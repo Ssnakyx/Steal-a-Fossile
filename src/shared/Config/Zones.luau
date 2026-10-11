@@ -78,7 +78,7 @@ local List: { Zone } = {
 		Index = 8,
 		Speed = 2.5e7,
 		Weights = { Legendary = 72, Mythic = 28, Secret = 0.3 },
-		Species = { "Quetzalcoatlus", "Giganotosaurus", "T-Rex" },
+		Species = { "Quetzalcoatlus", "Giganotosaurus", "T-Rex", "Kosmoceratops", "Deinocheirus", "Argentinosaurus", "Celestial Serpent", "Star Dragon" },
 		Color = Color3.fromRGB(95, 60, 130),
 	},
 }

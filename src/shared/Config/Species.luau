@@ -81,6 +81,11 @@ local list: { SpeciesDef } = {
 	{ Name = "Quetzalcoatlus", Model = "Quetzalcoatlus", Family = "Flyer", Zone = "Meteor Crater", BaseSize = 26, Income = 90000 },
 	{ Name = "Giganotosaurus", Model = "Giganotosaurus", Family = "Biped", Zone = "Meteor Crater", BaseSize = 22, Income = 130000 },
 	{ Name = "T-Rex", Model = "TRex", Family = "Biped", Zone = "Meteor Crater", BaseSize = 20, Income = 180000 },
+	{ Name = "Kosmoceratops", Model = "Kosmoceratops", Family = "Quadruped", Zone = "Meteor Crater", BaseSize = 14, Income = 85000 },
+	{ Name = "Deinocheirus", Model = "Deinocheirus", Family = "Biped", Zone = "Meteor Crater", BaseSize = 20, Income = 100000 },
+	{ Name = "Argentinosaurus", Model = "Argentinosaurus", Family = "Quadruped", Zone = "Meteor Crater", BaseSize = 35, Income = 110000 },
+	{ Name = "Celestial Serpent", Model = "CelestialSerpent", Family = "Swimmer", Zone = "Meteor Crater", BaseSize = 32, Income = 200000 },
+	{ Name = "Star Dragon", Model = "StarDragon", Family = "Flyer", Zone = "Meteor Crater", BaseSize = 28, Income = 220000 },
 	-- Secrets (zones lointaines surtout)
 	{ Name = "Golden Raptor", Model = "GoldenRaptor", Family = "Biped", Zone = "Secret", BaseSize = 14, Income = 500000, Secret = true },
 	{ Name = "Crystal Rex", Model = "CrystalRex", Family = "Biped", Zone = "Secret", BaseSize = 22, Income = 1000000, Secret = true },

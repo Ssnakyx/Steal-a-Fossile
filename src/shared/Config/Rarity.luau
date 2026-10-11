@@ -91,6 +91,11 @@ local Species: { [string]: string } = {
 	Quetzalcoatlus = "Legendary",
 	Giganotosaurus = "Mythic",
 	["T-Rex"] = "Mythic",
+	Kosmoceratops = "Legendary",
+	Deinocheirus = "Legendary",
+	Argentinosaurus = "Legendary",
+	["Celestial Serpent"] = "Mythic",
+	["Star Dragon"] = "Mythic",
 	-- Secrets (toutes zones, surtout les lointaines)
 	["Golden Raptor"] = "Secret",
 	["Crystal Rex"] = "Secret",
