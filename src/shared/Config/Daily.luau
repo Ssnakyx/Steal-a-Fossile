@@ -15,8 +15,8 @@
 local Format = require(script.Parent.Parent.Format)
 
 export type Reward = {
-	Kind: string, -- "Money" | "Speed" | "Spins" | "BearTraps" | "Block"
-	Amount: number?, -- Money, Speed : minimum ; Spins, BearTraps : nombre
+	Kind: string, -- "Money" | "Speed" | "Spins" | "BearTraps" | "Block" | "Serums"
+	Amount: number?, -- Money, Speed : minimum ; Spins, BearTraps, Serums : nombre
 	IncomeMinutes: number?, -- Money : minutes du revenu actuel du joueur ($/s x 60 x minutes)
 	SpeedPercent: number?, -- Speed : pourcentage de la vitesse gagnée (data.Speed)
 	Rarity: string?, -- Block : rareté du bloc fossile (il part dans une cuve, l'espèce sera tirée à la révélation)
@@ -48,7 +48,7 @@ local Daily = {
 			{ Kind = "Money", IncomeMinutes = 20, Amount = 2_500 },
 			{ Kind = "Speed", SpeedPercent = 5, Amount = 1_000 },
 			{ Kind = "BearTraps", Amount = 5 },
-			{ Kind = "Spins", Amount = 3 },
+			{ Kind = "Serums", Amount = 2 }, -- (sérums de mutation, Config.Mutator)
 			{ Kind = "Money", IncomeMinutes = 45, Amount = 10_000 },
 			{ Kind = "Speed", SpeedPercent = 8, Amount = 3_000 },
 			{ Kind = "Block", Rarity = "Legendary" },
@@ -85,7 +85,7 @@ local Daily = {
 		{ Minutes = 10, Reward = { Kind = "Speed", SpeedPercent = 1, Amount = 200 } },
 		{ Minutes = 15, Reward = { Kind = "Money", IncomeMinutes = 10, Amount = 500 } },
 		{ Minutes = 25, Reward = { Kind = "BearTraps", Amount = 2 } },
-		{ Minutes = 40, Reward = { Kind = "Spins", Amount = 1 } },
+		{ Minutes = 40, Reward = { Kind = "Serums", Amount = 1 } },
 		{ Minutes = 60, Reward = { Kind = "Money", IncomeMinutes = 25, Amount = 2_000 } },
 		{ Minutes = 90, Reward = { Kind = "Block", Rarity = "Rare" } },
 		{ Minutes = 120, Reward = { Kind = "Spins", Amount = 2 } },
@@ -124,7 +124,7 @@ function Daily.Amount(reward: Reward, scale: Scale?): number
 	return math.max(1, math.floor(minimum))
 end
 
--- Texte court d'une récompense : "+$1.2K", "+500 Speed", "+3 Spins", "3 Bear Traps", "Epic Fossil"
+-- Texte court d'une récompense : "+$1.2K", "+500 Speed", "+3 Spins", "3 Bear Traps", "Epic Fossil", "2 Mutation Serums"
 function Daily.Label(reward: Reward, scale: Scale?): string
 	local amount = Daily.Amount(reward, scale)
 	if reward.Kind == "Money" then
@@ -137,6 +137,8 @@ function Daily.Label(reward: Reward, scale: Scale?): string
 		return amount .. (if amount == 1 then " Bear Trap" else " Bear Traps")
 	elseif reward.Kind == "Block" then
 		return tostring(reward.Rarity) .. " Fossil"
+	elseif reward.Kind == "Serums" then
+		return amount .. (if amount == 1 then " Mutation Serum" else " Mutation Serums")
 	end
 	return reward.Kind
 end

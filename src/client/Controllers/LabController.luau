@@ -3,7 +3,8 @@
 -- S'ouvre quand le joueur utilise le labo de son parc (FusionController.LabOpened, prompt « Fuse ») :
 --   * à gauche ses dinos (clé replica « Dinos »), rangés par espèce : un clic en choisit 2 ou 3 ;
 --   * à droite les emplacements choisis, l'aperçu du résultat (« ??? » pour un hybride pas encore découvert), le prix,
---     le bouton Fuse, la règle des deux modes, « Auto pick » (3 dinos identiques) et un lien vers les hybrides de l'Index.
+--     le bouton Fuse, la règle des deux modes, « Auto pick » (3 dinos identiques), un lien vers les hybrides de l'Index
+--     et le bouton MUTATE qui ouvre le menu du sérum de mutation (MutatorController, avec le premier dino choisi).
 -- Le serveur décide tout (PreviewFusion, FuseDinos) ; ses textes d'erreur sont montrés tels quels. Une fusion réussie
 -- montre l'écran de révélation (RevealController) puis rouvre le labo.
 -- API : LabController.Open(), Close(), IsOpen(), Select(ids), Selected() -> ids.
@@ -16,6 +17,7 @@ local DinoView = require(script.Parent.Parent.UI.DinoView)
 local UIKit = require(script.Parent.Parent.UI.UIKit)
 local FusionController = require(script.Parent.FusionController)
 local IndexController = require(script.Parent.IndexController)
+local MutatorController = require(script.Parent.MutatorController)
 local NotifyController = require(script.Parent.NotifyController)
 local ReplicaController = require(script.Parent.ReplicaController)
 local RevealController = require(script.Parent.RevealController)
@@ -597,15 +599,30 @@ local function buildRight(content: Frame): (Frame, { Slot }, TextLabel, TextLabe
 	}, function()
 		IndexController.Open("Hybrids")
 	end)
+	-- sérum de mutation (Config.Mutator) : le menu du sérum, avec le premier dino choisi ici
+	UIKit.button({
+		Name = "Mutate",
+		Text = "MUTATE (SERUM)",
+		Color = Config.Mutator.Color,
+		Position = UDim2.fromOffset(0, 402),
+		Size = UDim2.new(1, -6, 0, 46),
+		MaxTextSize = 22,
+		ZIndex = Z,
+		Parent = right,
+	}, function()
+		local first = picked[1]
+		LabController.Close()
+		MutatorController.Open(first)
+	end)
 	text({
 		Name = "Rules",
-		Position = UDim2.fromOffset(0, 404),
-		Size = UDim2.new(1, -6, 0, 90),
+		Position = UDim2.fromOffset(0, 454),
+		Size = UDim2.new(1, -6, 0, 44),
 		TextWrapped = true,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Body = true,
-		MaxTextSize = 19,
+		MaxTextSize = 16,
 		TextColor3 = Colors.Muted,
 		Text = "2 different dinos: HYBRID (secret recipes, check the hints in the Index).\n3 identical dinos: LEVEL UP (Golden, then Diamond).",
 		Parent = right,

@@ -1,10 +1,10 @@
 --!strict
--- Écran de révélation (brief 12 « ui-ux ») : quand un dino sort d'une cuve (DinoRevealed) ou du labo de fusion
--- (FusionController.Done), une carte montre le dino en 3D qui tourne, sa rareté, son nom, sa taille, sa mutation, son
+-- Écran de révélation (brief 12 « ui-ux ») : quand un dino sort d'une cuve (DinoRevealed), du labo de fusion
+-- (FusionController.Done) ou d'un sérum de mutation (MutatorController, réussi ou raté : info.Success), une carte montre le dino en 3D qui tourne, sa rareté, son nom, sa taille, sa mutation, son
 -- niveau et son revenu, avec « NEW! » la première fois (espèce pas encore dans l'Index, hybride découvert à l'instant).
 -- Le premier dino d'un nouveau joueur rappelle qu'il rapporte même hors ligne. La carte se ferme au clic ou toute seule ;
 -- plusieurs révélations passent l'une après l'autre.
--- API : RevealController.Show(infos, genre) (genre : « Tank » ou « Fusion »), RevealController.Closed (signal : genre),
+-- API : RevealController.Show(infos, genre) (genre : « Tank », « Fusion » ou « Mutation »), RevealController.Closed (signal : genre),
 -- RevealController.IsOpen(), RevealController.Pending() -> nombre en attente.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -107,8 +107,12 @@ local function display(item: Item)
 	local rarity = if type(info.Rarity) == "string" and UIKit.Rarity[info.Rarity] then info.Rarity else (Config.Rarity.Species[tostring(info.Species)] or "Common")
 	local colors = UIKit.Rarity[rarity] or UIKit.Rarity.Common
 	local hybrid = item.Kind == "Fusion" and info.Mode == "Hybrid"
-	currentUi.Title.Text = if item.Kind == "Tank" then "NEW DINO!" elseif hybrid and item.New then "HYBRID DISCOVERED!" elseif hybrid then "HYBRID!" else "LEVEL UP!"
-	paintHeader(currentUi, if colors.Rainbow then Colors.Pink else colors.Fill)
+	local mutation = item.Kind == "Mutation"
+	local failed = mutation and info.Success ~= true
+	currentUi.Title.Text = if item.Kind == "Tank" then "NEW DINO!"
+		elseif mutation then (if failed then "MUTATION FAILED" else "MUTATION!")
+		elseif hybrid and item.New then "HYBRID DISCOVERED!" elseif hybrid then "HYBRID!" else "LEVEL UP!"
+	paintHeader(currentUi, if failed then Colors.Slate elseif colors.Rainbow then Colors.Pink else colors.Fill)
 	currentUi.TagText.Text = string.upper(rarity)
 	local tagFace = currentUi.Tag:FindFirstChild("Face")
 	if tagFace then
@@ -132,6 +136,8 @@ local function display(item: Item)
 	currentUi.Hint.Text = if item.First
 		then "Your dinos make money for you, even when you're offline!"
 		elseif item.Kind == "Tank" then "Added to your park!"
+		elseif failed then "The serum didn't work... Nothing changed."
+		elseif mutation then "New mutation: more income!"
 		else "It just came out of your lab!"
 	local model = if type(info.Key) == "string" then info.Key else tostring(info.Species)
 	local level = Config.Economy.Levels[(tonumber(info.Level) or 0) + 1]
@@ -160,12 +166,12 @@ function RevealController.Show(info: { [string]: any }, kind: string?)
 	if type(info) ~= "table" or type(info.Species) ~= "string" then
 		return
 	end
-	local mode = if kind == "Fusion" then "Fusion" else "Tank"
+	local mode = if kind == "Fusion" or kind == "Mutation" then kind else "Tank"
 	local tutorial = tonumber(ReplicaController.Get("Tutorial"))
 	local item: Item = {
 		Info = info,
 		Kind = mode,
-		New = if mode == "Fusion" then info.New == true else not knownSpecies(info.Species),
+		New = if mode == "Fusion" then info.New == true elseif mode == "Mutation" then false else not knownSpecies(info.Species),
 		First = mode == "Tank" and tutorial ~= nil and tutorial < 3,
 	}
 	if #queue >= MAX_QUEUE then
