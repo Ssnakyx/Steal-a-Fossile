@@ -2492,6 +2492,12 @@ Methods.Workspace = {
 	GetServerTimeNow = function()
 		return env.baseTime + now
 	end,
+	-- DinoBuilder.Pose place toutes les pièces d'un dino en un seul appel
+	BulkMoveTo = function(_, parts, cframes)
+		for i, part in parts do
+			part.CFrame = cframes[i]
+		end
+	end,
 	Raycast = function()
 		return nil
 	end,
