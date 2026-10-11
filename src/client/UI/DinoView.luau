@@ -75,7 +75,8 @@ local function place(view: ViewportFrame, framing: Framing)
 end
 
 -- Montre une espèce (silhouette = noir, pour l'Index). Renvoie false si l'espèce n'a pas de modèle.
-function DinoView.Show(view: ViewportFrame, species: string, options: DinoBuilder.BuildOptions?, silhouette: boolean?): boolean
+-- zoom (< 1 : plus près, pour une petite vue où le dino doit remplir la case) ; 1 par défaut.
+function DinoView.Show(view: ViewportFrame, species: string, options: DinoBuilder.BuildOptions?, silhouette: boolean?, zoom: number?): boolean
 	DinoView.Clear(view)
 	local module = DinoView.ModuleOf(species)
 	if not module then
@@ -89,7 +90,7 @@ function DinoView.Show(view: ViewportFrame, species: string, options: DinoBuilde
 	local radius = math.max(size.Magnitude / 2, 0.5)
 	local framing = {
 		Center = box.Position,
-		Distance = radius / math.sin(math.rad(FOV / 2)) * FIT,
+		Distance = radius / math.sin(math.rad(FOV / 2)) * FIT * (zoom or 1),
 		Angle = 0,
 	}
 	framings[view] = framing

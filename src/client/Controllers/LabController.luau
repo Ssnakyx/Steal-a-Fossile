@@ -135,7 +135,7 @@ local function showDino(view: ViewportFrame, dino: Dino): boolean
 		Size = if dino.Size ~= "" then dino.Size else nil,
 		Mutation = if dino.Mutation ~= "" then dino.Mutation else nil,
 		Level = if level then level.Name else nil,
-	})
+	}, false, 0.62)
 end
 
 local function text(props: { [string]: any }): TextLabel
