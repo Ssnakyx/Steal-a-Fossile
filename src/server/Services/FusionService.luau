@@ -357,6 +357,10 @@ function FusionService.Fuse(player: Player, ids: any, options: FuseOptions?): (b
 	if not result then
 		return false, "Unknown recipe! Your dinos are safe. Try another pair.", nil
 	end
+	-- (enclos au-dessus de sa taille, ne devrait pas arriver : le dino obtenu doit avoir sa place une fois les autres partis)
+	if EnclosureService.Count(player) - #p.Inputs + 1 > EnclosureService.Slots(player) then
+		return false, "Your enclosure is too full!", nil
+	end
 	local cost = if free then 0 else p.Cost
 	if cost > 0 and not MoneyService.Spend(player, cost, "Fusion") then
 		return false, "Not enough money! Fusion costs " .. Format.Money(cost) .. ".", nil

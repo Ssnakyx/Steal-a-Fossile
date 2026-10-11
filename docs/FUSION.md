@@ -98,7 +98,7 @@ fuse. », « Pick 2 or 3 dinos. », « Pick 2 or 3 different dinos. »,
 « This dino is not in your park. », « Pick 2 dinos for a hybrid or 3 identical dinos to upgrade. »,
 « Upgrade needs 3 dinos of the same species. », « Upgrade needs 3 dinos of the same level. »,
 « This dino is already at max level! », « A hybrid needs 2 different species. Use 3 to upgrade! »,
-« Go to the lab in your park to fuse! », « Not enough money! Fusion costs $X. », « Unknown recipe! Your dinos are
+« Go to the lab in your park to fuse! », « Your enclosure is too full! » (plus de dinos que de places), « Not enough money! Fusion costs $X. », « Unknown recipe! Your dinos are
 safe. Try another pair. », « Slow down! » (limite de fréquence).
 
 ## Signaux (Lib/Signals)

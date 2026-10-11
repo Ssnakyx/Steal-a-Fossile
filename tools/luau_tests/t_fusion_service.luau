@@ -409,6 +409,28 @@ for _, result in results do
 end
 T.check(handled >= 1 and handled <= 12, "PreviewFusion : limite de fréquence (" .. handled .. " traités sur 50)")
 
+T.section("enclos trop plein")
+local o1, o2 = give(alice, "Pteranodon"), give(alice, "T-Rex")
+local fillers = {}
+while count(data.Dinos) < 12 do
+	table.insert(fillers, give(alice, "Compy"))
+end
+local savedUpgrades = data.EnclosureUpgrades
+data.EnclosureUpgrades = 0
+T.check(EnclosureService.Count(alice) - 1 > EnclosureService.Slots(alice), "plus de dinos que de places")
+money = data.Money
+local dinosBefore = count(data.Dinos)
+ok, text = FusionService.Fuse(alice, { o1, o2 })
+T.check(not ok and text == "Your enclosure is too full!", "enclos trop plein : refusé (" .. tostring(text) .. ")")
+T.eq(count(data.Dinos), dinosBefore, "enclos trop plein : dinos gardés")
+T.eq(data.Money, money, "enclos trop plein : rien payé")
+data.EnclosureUpgrades = savedUpgrades
+ok = FusionService.Fuse(alice, { o1, o2 })
+T.check(ok, "avec de la place : fusion faite")
+for _, id in fillers do
+	EnclosureService.RemoveDino(alice, id)
+end
+
 T.section("commandes d'admin")
 local admin = T.join({ Name = "Admin", UserId = 3346721423 })
 local adminData = T.data(admin)
