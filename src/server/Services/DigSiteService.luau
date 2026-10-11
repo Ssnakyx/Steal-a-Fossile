@@ -123,6 +123,12 @@ local function tryGrab(player: Player, slot: Slot, prompt: ProximityPrompt)
 		Notify.Send(player, "You can only carry one fossil!", "error")
 		return
 	end
+	-- (bloc du tutoriel : seulement pour ceux qui n'ont pas encore rapporté leur premier bloc)
+	local data = DataService.Get(player)
+	if block.Tutorial and data and data.Tutorial >= 2 then
+		Notify.Send(player, "This fossil is for new players!", "error")
+		return
+	end
 	-- maintien d'au moins GrabTime (mesuré par le serveur ; un client qui déclenche sans maintenir est ignoré)
 	if not hold or hold.Prompt ~= prompt then
 		return
@@ -264,7 +270,8 @@ local function setRefillAt(at: number)
 	end
 end
 
--- Tutoriel : un bloc Common à la Beach tant qu'un joueur prêt n'a pas rapporté son premier bloc
+-- Tutoriel : un bloc Common à la Beach tant qu'un joueur prêt n'a pas rapporté son premier bloc. Il est posé sur une
+-- place vide (jamais à la place d'un autre bloc) et réservé aux nouveaux joueurs.
 function DigSiteService.EnsureTutorialBlock(): boolean
 	local needed = false
 	for player in ready do
@@ -279,7 +286,6 @@ function DigSiteService.EnsureTutorialBlock(): boolean
 	end
 	local zone, rarity = Zones.Dig.TutorialZone, Zones.Dig.TutorialRarity
 	local empty: Slot? = nil
-	local replaceable: Slot? = nil
 	for _, site in sites do
 		if site.Zone == zone then
 			for _, slot in site.Slots do
@@ -287,18 +293,16 @@ function DigSiteService.EnsureTutorialBlock(): boolean
 					return false
 				elseif slot.State == "Empty" and not empty then
 					empty = slot
-				elseif slot.State == "Present" and not replaceable then
-					replaceable = slot
 				end
 			end
 		end
 	end
-	local target = empty or replaceable
-	if not target then
+	if not empty then
 		return false
 	end
-	clearSlot(target)
-	placeBlock(target, newBlock(rarity, target))
+	local block = newBlock(rarity, empty)
+	block.Tutorial = true
+	placeBlock(empty, block)
 	return true
 end
 

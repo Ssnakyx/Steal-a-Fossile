@@ -50,6 +50,8 @@ return {
 		EnclosureUpgrades = 0, -- agrandissements d'enclos achetés (slots : Config.Economy.EnclosureSlots)
 		-- Tutoriel : 0 nouveau (aller à la Beach), 1 premier bloc arraché, 2 premier bloc rapporté, 3 premier dino révélé
 		Tutorial = 0,
+		-- Instant Revive achetés sans cuve en cours : la prochaine cuve lancée est prête tout de suite
+		InstantCredits = 0,
 	},
 
 	Sanitize = function(data: Data)
@@ -91,5 +93,6 @@ return {
 		data.Stored = stored
 		data.EnclosureUpgrades = Guard.IntegerOr(data.EnclosureUpgrades, 0, 0, #Economy.Enclosure.Prices)
 		data.Tutorial = Guard.IntegerOr(data.Tutorial, 0, 0, 3)
+		data.InstantCredits = Guard.IntegerOr(data.InstantCredits, 0, 0, Economy.MaxInstantCredits)
 	end,
 }

@@ -73,7 +73,9 @@ local function grab(player, slot)
 	trigger(player, prompt)
 end
 
+-- Rentre au parc comme en marchant (le temps du trajet passe d'abord : sinon c'est une téléportation)
 local function goHome(player)
+	env.advance(20)
 	PlotService.Teleport(player)
 	env.advance(0.25)
 end
@@ -309,6 +311,25 @@ T.check(not CarryService.IsCarrying(alice), "de la place : le bloc part en rése
 T.eq(#data.Stored, 1, "bloc en réserve")
 T.eq(s5.State, "Empty", "place libérée")
 
+T.section("téléportation chez soi")
+local s7, b7 = grabAndCheck(alice, "téléportation")
+PlotService.Teleport(alice)
+env.advance(0.25)
+T.check(not CarryService.IsCarrying(alice), "téléportée chez elle juste après l'arrachage : plus de bloc")
+T.check(s7.State == "Present" and s7.Block.Id == b7.Id, "le bloc retourne à son gisement")
+T.eq(#data.Stored, 1, "rien de plus en réserve")
+T.eq(lastNotify(alice), "Too fast! The fossil went back to its dig site.", "message « Too fast »")
+local s8 = grabAndCheck(alice, "rapide")
+local aliceHumanoid = alice.Character:FindFirstChildOfClass("Humanoid")
+aliceHumanoid.WalkSpeed = 120 -- (vitesse donnée par SpeedService du brief 4)
+env.advance(4)
+PlotService.Teleport(alice)
+env.advance(0.25)
+T.check(not CarryService.IsCarrying(alice), "grande vitesse de marche : arrivée rapide acceptée")
+T.eq(#data.Stored, 2, "bloc en réserve")
+T.eq(s8.State, "Empty", "place libérée")
+aliceHumanoid.WalkSpeed = 16
+
 T.section("remplissage toutes les 5 min")
 local kept = presentSlots()[1]
 local keptId = kept.Block.Id
@@ -371,6 +392,37 @@ for _, s in presentSlots("Beach") do
 end
 T.eq(commons, 1, "un bloc Common remis à la Beach pour le tutoriel")
 T.check(not DigSiteService.EnsureTutorialBlock(), "déjà un Common : rien de plus")
+local tutorialSlot = nil
+for _, s in presentSlots("Beach") do
+	if s.Block.Rarity == "Common" then
+		tutorialSlot = s
+	end
+end
+T.eq(tutorialSlot.Block.Tutorial, true, "bloc réservé au tutoriel")
+RateLimit.Reset(alice)
+grab(alice, tutorialSlot)
+T.check(not CarryService.IsCarrying(alice), "un ancien joueur ne prend pas le bloc du tutoriel")
+T.eq(lastNotify(alice), "This fossil is for new players!", "message « for new players »")
+RateLimit.Reset(carol)
+grab(carol, tutorialSlot)
+T.check(CarryService.IsCarrying(carol), "Carol, dans le tutoriel, le prend")
+DigSiteService.ReleaseBlock(CarryService.Drop(carol))
+DigSiteService.RollRarity = function()
+	return "Uncommon"
+end
+DigSiteService.Refill()
+DigSiteService.RollRarity = roll
+local beachIds = {}
+for _, s in presentSlots("Beach") do
+	beachIds[s] = s.Block.Id
+end
+T.check(next(beachIds) ~= nil, "Beach pleine, sans Common")
+T.check(not DigSiteService.EnsureTutorialBlock(), "pas de place vide : pas de bloc du tutoriel")
+local unchanged = true
+for s, id in beachIds do
+	unchanged = unchanged and s.State == "Present" and s.Block.Id == id
+end
+T.check(unchanged, "aucun bloc remplacé pour le tutoriel")
 T.data(carol).Tutorial = 3
 T.data(alice).Tutorial = 3
 T.data(loading).Tutorial = 3

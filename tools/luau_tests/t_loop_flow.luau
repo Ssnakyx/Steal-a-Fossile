@@ -74,6 +74,7 @@ T.eq(Replica.Get("Tutorial"), 1, "tutoriel : bloc arraché")
 
 T.section("rentrer au parc")
 local plot = PlotService.Get(player)
+env.advance(15) -- (le trajet du retour, à pied)
 player.Character:PivotTo(CFrame.new(plot.Entrance.Position + Vector3.new(0, 3, 8)))
 env.advance(0.3)
 T.check(CarryService.IsCarrying(player), "encore dehors, devant l'entrée")

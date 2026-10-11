@@ -61,6 +61,7 @@ local Economy = {
 
 	-- Blocs rapportés quand toutes les cuves sont pleines : ils attendent en réserve (data.Stored)
 	MaxStored = 12,
+	MaxInstantCredits = 20, -- Instant Revive gardés pour plus tard (achetés sans cuve en cours)
 
 	-- Enclos : BaseSlots dinos, + SlotsPerUpgrade par agrandissement. Prices[n] = prix du n-ième agrandissement.
 	Enclosure = {

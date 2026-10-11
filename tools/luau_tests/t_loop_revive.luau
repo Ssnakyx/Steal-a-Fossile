@@ -22,10 +22,11 @@ env.Data[stub].Extra.Module = shopStub
 stub.Parent = env.instance("ServerScriptService.Server.Services")
 local shopConfig = env.Instance.new("ModuleScript")
 shopConfig.Name = "Shop"
-env.Data[shopConfig].Extra.Module = {
+local shopValues = {
 	Products = { InstantRevive = { Id = 0 } },
-	Passes = { VIP = { LuckBonus = 0.5 } },
+	Passes = { VIP = { LuckBonus = 1.5 } }, -- (multiplicateur, comme Config.Shop du brief 4 : 1.1 = chance x1.1)
 }
+env.Data[shopConfig].Extra.Module = shopValues
 shopConfig.Parent = env.instance("ReplicatedStorage.Shared.Config")
 
 local Boot = T.bootServer()
@@ -254,12 +255,31 @@ T.eq(ReviveService.Running(alice), 1, "une cuve en cours")
 T.eq(ReviveService.FinishAll(alice), 1, "FinishAll")
 T.eq(ReviveService.Running(alice), 0, "plus rien en cours")
 ok = ReceiptService.Simulate(alice, "InstantRevive")
-T.check(not ok, "Instant Revive sans cuve en cours : pas donné")
+T.check(ok, "Instant Revive sans cuve en cours : gardé pour plus tard")
+T.eq(data.InstantCredits, 1, "1 Instant Revive gardé")
+T.eq(replica(alice, "InstantCredits"), 1, "le client le sait")
+ReviveService.AddBlock(alice, { Rarity = "Legendary", Zone = "Canyon" })
+T.eq(data.Tanks["2"] and data.Tanks["2"].EndsAt - data.Tanks["2"].StartedAt, 0, "la cuve suivante est prête tout de suite")
+T.eq(data.InstantCredits, 0, "Instant Revive gardé utilisé")
+T.eq(ReviveService.Running(alice), 0, "rien en cours")
+data.InstantCredits = Economy.MaxInstantCredits
+ok = ReceiptService.Simulate(alice, "InstantRevive")
+T.check(not ok, "trop d'Instant Revive gardés : pas donné")
+data.InstantCredits = 0
 ReviveService.AddBlock(alice, { Rarity = "Mythic", Zone = "Volcano" })
 ok = ReceiptService.Simulate(alice, "InstantRevive")
 T.check(ok, "Instant Revive donné")
 T.eq(ReviveService.Running(alice), 0, "Instant Revive finit les cuves")
+T.eq(ReviveService.MutationLuck(alice), 0, "sans VIP : pas de bonus de chance")
 passes[alice] = { VIP = true }
+T.near(ReviveService.MutationLuck(alice), 0.5, 1e-9, "VIP LuckBonus 1.5 : mutations x1.5 (+50 %)")
+shopValues.Passes.VIP.LuckBonus = 1.1
+T.near(ReviveService.MutationLuck(alice), 0.1, 1e-9, "VIP LuckBonus 1.1 : +10 %")
+for _, bad in { 0 / 0, math.huge, -2, 0.5, "x" } do
+	shopValues.Passes.VIP.LuckBonus = bad
+	T.eq(ReviveService.MutationLuck(alice), 0, "LuckBonus invalide ignoré : " .. tostring(bad))
+end
+shopValues.Passes.VIP.LuckBonus = 1.5
 for slot = 1, 2 do
 	ok = ReviveService.Reveal(alice, slot)
 	T.check(ok, "révélation avec le pass VIP (cuve " .. slot .. ")")

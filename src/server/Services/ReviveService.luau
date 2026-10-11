@@ -64,9 +64,10 @@ local function hasPass(player: Player, pass: string): boolean
 	return ok and owned == true
 end
 
--- Bonus de chance du pass VIP (Config.Shop.Passes.VIP.LuckBonus du brief 4) : 0 sans le pass
-local function vipLuck(player: Player?): number
-	if not player or not hasPass(player, "VIP") then
+-- Bonus de chance des mutations du joueur (0.1 = +10 %) : pass VIP, dont Config.Shop.Passes.VIP.LuckBonus (brief 4)
+-- est un multiplicateur (1.1 = chance x1.1). 0 sans le pass.
+function ReviveService.MutationLuck(player: Player): number
+	if not hasPass(player, "VIP") then
 		return 0
 	end
 	local folder = ReplicatedStorage.Shared:FindFirstChild("Config")
@@ -76,7 +77,7 @@ local function vipLuck(player: Player?): number
 	local ok, bonus = pcall(function()
 		return Config.Shop.Passes.VIP.LuckBonus
 	end)
-	return if ok and Guard.IsFinite(bonus) and bonus > 0 then bonus else 0
+	return if ok and Guard.IsFinite(bonus) and bonus > 1 then bonus - 1 else 0
 end
 
 local function pickWeighted<T>(list: { T }, weight: (T) -> number): T
@@ -162,6 +163,7 @@ local function publish(player: Player)
 	ReplicaService.Set(player, "Tanks", table.clone(data.Tanks))
 	ReplicaService.Set(player, "TankCount", data.TankCount)
 	ReplicaService.Set(player, "Stored", table.clone(data.Stored))
+	ReplicaService.Set(player, "InstantCredits", data.InstantCredits)
 end
 
 local function blockPart(tankPart: BasePart, rarity: string): Part
@@ -245,6 +247,11 @@ local function startTank(player: Player, data: { [string]: any }, slot: number, 
 	local info = Rarity.Info[rarity]
 	local duration = math.max(1, math.ceil((if info then info.ReviveTime else 60) / speed))
 	local now = os.time()
+	-- (Instant Revive gardé : cuve prête tout de suite)
+	if data.InstantCredits > 0 then
+		data.InstantCredits -= 1
+		duration = 0
+	end
 	local tank: Tank = { Rarity = rarity, Zone = zone, StartedAt = now, EndsAt = now + duration }
 	data.Tanks[tostring(slot)] = tank
 	Signals.Fire("TankStarted", player, slot, tank)
@@ -319,12 +326,15 @@ function ReviveService.Reveal(player: Player, rawSlot: any): (boolean, string)
 	if not EnclosureService.HasRoom(player) then
 		return false, "Your enclosure is full! Expand it or fuse dinos."
 	end
-	local rolled = ReviveService.Roll(tank.Rarity, tank.Zone, vipLuck(player))
+	-- (cuve vidée avant tout le reste : deux demandes en même temps ne révèlent jamais deux dinos)
+	local key = tostring(slot)
+	data.Tanks[key] = nil
+	local rolled = ReviveService.Roll(tank.Rarity, tank.Zone, ReviveService.MutationLuck(player))
 	local id = EnclosureService.AddDino(player, rolled, "Spawn")
 	if not id then
+		data.Tanks[key] = tank
 		return false, "Your enclosure is full! Expand it or fuse dinos."
 	end
-	data.Tanks[tostring(slot)] = nil
 	data.Index.Species[rolled.Species] = true
 	fillFromStorage(player, data)
 	publish(player)
@@ -541,11 +551,18 @@ function ReviveService.Init()
 		local product = type(products) == "table" and products.InstantRevive
 		if type(product) == "table" and type(product.Id) == "number" then
 			ReceiptService.Register("InstantRevive", product.Id, function(player: Player, _data, _receipt): boolean
-				-- (aucune cuve en cours : pas donné maintenant, Roblox le redonnera à la prochaine arrivée)
-				if ReviveService.Running(player) == 0 then
+				if ReviveService.Running(player) > 0 then
+					ReviveService.FinishAll(player)
+					return true
+				end
+				-- aucune cuve en cours : gardé pour la prochaine cuve lancée
+				local data = DataService.Get(player)
+				if not data or data.InstantCredits >= Economy.MaxInstantCredits then
 					return false
 				end
-				ReviveService.FinishAll(player)
+				data.InstantCredits += 1
+				publish(player)
+				Notify.Send(player, "Instant Revive saved! Your next fossil will be ready right away.", "success")
 				return true
 			end)
 		end

@@ -12,12 +12,14 @@ les API des services, les signaux, les clés replica et les attributs. Les valeu
 3. Il maintient E 1 s sur un bloc (`ProximityPrompt` « Grab ») : le serveur vérifie la durée et la distance, puis le
    bloc passe sur son dos (un seul à la fois, malus de vitesse par rareté).
 4. Dès qu'il entre dans son parc, le bloc est à lui pour de bon : il part dans une cuve libre, sinon en réserve
-   (12 blocs). Mort, reset ou départ avant : le bloc retourne à son gisement.
+   (12 blocs). Mort, reset ou départ avant : le bloc retourne à son gisement. Arrivé plus vite que sa vitesse de
+   marche ne le permet (téléportation) : le bloc retourne aussi à son gisement.
 5. La cuve tourne (30 s pour un Common, 3 h pour un Secret), puis « Reveal » : espèce tirée parmi la rareté et la zone,
    taille, mutation. Le dino apparaît dans l'enclos et rapporte $/s, aussi hors ligne (plafond 8 h).
 
 Tutoriel côté serveur (`data.Tutorial` : 0 nouveau, 1 bloc arraché, 2 bloc rentré, 3 premier dino) : tant qu'un joueur
-prêt n'a pas rentré son premier bloc, un bloc Common est toujours présent à la Beach.
+prêt n'a pas rentré son premier bloc, un bloc Common est toujours présent à la Beach. S'il faut en ajouter un, il est
+posé sur une place vide (jamais à la place d'un autre bloc) et réservé aux joueurs du tutoriel (`Block.Tutorial`).
 
 ## Points d'ancrage de la map (brief 10)
 
@@ -87,6 +89,7 @@ ReviveService.Roll(rarity, zone, luck?) -> { Species, Size, Mutation, Level }
 ReviveService.Reveal(player, slot) / BuyTank(player) -> (ok, texte)
 ReviveService.FinishAll(player) -> nombre       -- Instant Revive
 ReviveService.Running(player) -> nombre
+ReviveService.MutationLuck(player) -> bonus     -- 0 sans VIP, 0.1 avec LuckBonus = 1.1
 
 -- EnclosureService
 EnclosureService.AddDino(player, dino, state?) -> id?      -- fusion (brief 8)
@@ -102,8 +105,11 @@ IncomeService.GetIncome(player) / Refresh(player)
 ```
 
 Le brief 3 utilise sans en dépendre `ShopService.HasPass(player, "DoubleMoney" | "FastRevive" | "VIP")`,
-`ShopService.ServerLuck()`, `Config.Shop.Passes.VIP.LuckBonus` et le produit `InstantRevive` (brief 4), ainsi que
-`Config.Species` (`Income`, `Model`, brief 2) : chacun est lu seulement s'il existe.
+`ShopService.ServerLuck()`, `Config.Shop.Passes.VIP.LuckBonus` (multiplicateur : 1.1 = mutations x1.1) et le produit
+`InstantRevive` (brief 4), ainsi que `Config.Species` (`Income`, `Model`, brief 2) : chacun est lu seulement s'il
+existe. `HasPass` et `ServerLuck` doivent répondre sans attendre (lecture d'un cache, jamais d'appel Roblox).
+Un Instant Revive acheté sans cuve en cours est gardé (`data.InstantCredits`, 20 au plus) : la prochaine cuve lancée
+est prête tout de suite.
 
 ## Signaux (Lib/Signals)
 
@@ -124,7 +130,8 @@ Le brief 3 utilise sans en dépendre `ShopService.HasPass(player, "DoubleMoney" 
 
 Clés replica : `Plot` (index, 0 sans parc), `Carrying` ({ Rarity, Zone } ou nil), `Tanks` ({ ["1"] = { Rarity, Zone,
 StartedAt, EndsAt } }, heures `os.time()`), `TankCount`, `Stored` (liste de { Rarity, Zone }), `Dinos`
-({ [id] = { Species, Size, Mutation, Level, Income } }), `EnclosureSlots`, `Income` ($/s), `Tutorial` (0 à 3).
+({ [id] = { Species, Size, Mutation, Level, Income } }), `EnclosureSlots`, `Income` ($/s), `Tutorial` (0 à 3),
+`InstantCredits`.
 
 Attributs : joueur `Plot`, `Zone`, `Carrying` ; `Workspace.DigRefillAt` ; modèles tagués `Dino` (contrat du brief 2 :
 `Species`, `Scale`, `Mutation`, `Level`, `State`, `StateAt`, plus `DinoId` et `OwnerUserId`) ; blocs tagués

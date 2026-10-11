@@ -5,6 +5,7 @@
 -- Dès que le porteur entre dans son propre parc, le bloc est à lui pour de bon : il part dans une cuve libre ou en
 -- réserve (ReviveService.AddBlock). Si tout est plein, il reste sur le dos (le parc est sûr, rien n'y est volable).
 -- Mort, reset, départ : le bloc retourne à son gisement (signal BlockReturned, écouté par DigSiteService).
+-- Anti-téléportation : un porteur arrivé chez lui plus vite que sa vitesse de marche ne le permet perd le bloc.
 -- Attribut joueur « Carrying » (rareté portée, "" sinon). Clé replica « Carrying » ({ Rarity, Zone } ou nil).
 -- Signaux : CarryChanged(player, block?), BlockBanked(player, block), BlockReturned(block)
 
@@ -19,15 +20,20 @@ local ReplicaService = require(script.Parent.ReplicaService)
 local ReviveService = require(script.Parent.ReviveService)
 
 -- Bloc fossile qui circule entre services : Site et Slot disent d'où il vient (nil pour un bloc sans gisement,
--- comme ceux de la pluie de météorites du brief 14)
-export type Block = { Id: number, Rarity: string, Zone: string, Site: string?, Slot: number? }
+-- comme ceux de la pluie de météorites du brief 14). Tutorial : bloc du tutoriel, réservé aux nouveaux joueurs.
+export type Block = { Id: number, Rarity: string, Zone: string, Site: string?, Slot: number?, Tutorial: boolean? }
 
-type Carried = { Block: Block, Part: Part?, Connections: { RBXScriptConnection } }
+-- From, GrabbedAt : où et quand le bloc a été pris. TopSpeed : plus grande WalkSpeed vue depuis (côté serveur).
+type Carried = { Block: Block, Part: Part?, Connections: { RBXScriptConnection }, From: Vector3, GrabbedAt: number, TopSpeed: number }
 
 local CarryService = {}
 
 local CHECK_INTERVAL = 0.1 -- secondes entre deux vérifications « est-il rentré dans son parc ? »
 local FULL_MESSAGE_COOLDOWN = 4
+-- Anti-téléportation : distance à vol d'oiseau permise = TopSpeed x TRAVEL_TOLERANCE x temps + TRAVEL_GRACE
+local TRAVEL_TOLERANCE = 1.5 -- (sauts, chutes, latence)
+local TRAVEL_GRACE = 30 -- studs
+local MIN_WALK_SPEED = 16
 
 local carried: { [Player]: Carried } = {}
 local characterConnections: { [Player]: RBXScriptConnection } = {}
@@ -57,6 +63,26 @@ local function rootOf(player: Player): BasePart?
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	return if root and root:IsA("BasePart") then root else nil
+end
+
+-- WalkSpeed du personnage vue par le serveur (écrite par SpeedService du brief 4 ; le client ne peut pas la changer
+-- pour le serveur), au moins MIN_WALK_SPEED
+local function walkSpeed(player: Player): number
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local speed = if humanoid then humanoid.WalkSpeed else 0
+	return if speed == speed and speed < math.huge then math.max(speed, MIN_WALK_SPEED) else MIN_WALK_SPEED
+end
+
+-- Le porteur est-il allé plus vite que sa vitesse de marche depuis qu'il a pris le bloc (téléportation) ?
+local function travelledTooFast(player: Player, state: Carried): boolean
+	local root = rootOf(player)
+	if not root then
+		return false
+	end
+	local offset = root.Position - state.From
+	local distance = math.sqrt(offset.X * offset.X + offset.Z * offset.Z)
+	return distance > state.TopSpeed * TRAVEL_TOLERANCE * (os.clock() - state.GrabbedAt) + TRAVEL_GRACE
 end
 
 local function attachVisual(root: BasePart, block: Block): Part
@@ -99,7 +125,14 @@ function CarryService.Carry(player: Player, block: Block): boolean
 	if not root then
 		return false
 	end
-	local state: Carried = { Block = block, Part = attachVisual(root, block), Connections = {} }
+	local state: Carried = {
+		Block = block,
+		Part = attachVisual(root, block),
+		Connections = {},
+		From = root.Position,
+		GrabbedAt = os.clock(),
+		TopSpeed = walkSpeed(player),
+	}
 	local character = root.Parent
 	if character then
 		-- personnage retiré (reset, réapparition) ou mort : le bloc retourne à son gisement
@@ -155,6 +188,11 @@ function CarryService.Bank(player: Player): boolean
 	if not state then
 		return false
 	end
+	if travelledTooFast(player, state) then
+		CarryService.ReturnToSite(player)
+		Notify.Send(player, "Too fast! The fossil went back to its dig site.", "error")
+		return false
+	end
 	if not ReviveService.AddBlock(player, state.Block) then
 		local now = os.clock()
 		if now - (fullMessageAt[player] or -math.huge) >= FULL_MESSAGE_COOLDOWN then
@@ -172,7 +210,8 @@ end
 function CarryService.Start()
 	while true do
 		task.wait(CHECK_INTERVAL)
-		for player in carried do
+		for player, state in carried do
+			state.TopSpeed = math.max(state.TopSpeed, walkSpeed(player))
 			if PlotService.IsInOwnPlot(player) then
 				CarryService.Bank(player)
 			end
