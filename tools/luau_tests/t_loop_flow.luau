@@ -93,11 +93,14 @@ T.check(string.match(tankLabel.Text, "^%d+:%d%d$") ~= nil, "compte à rebours de
 T.eq(plot.Tanks[1].TankLabel.Title.Text, "COMMON FOSSIL", "rareté au-dessus du compte à rebours")
 T.check(plot.Tanks[1].TankLabel.Bar.Visible, "barre de progression visible")
 local early = tankFill.Size.X.Scale
-env.advance(14)
+-- (premier bloc d'un nouveau joueur : cuve rapide, Zones.Dig.TutorialReviveTime)
+local reviveTime = Zones.Dig.TutorialReviveTime
+T.eq(Replica.Get("Tanks")["1"].EndsAt - Replica.Get("Tanks")["1"].StartedAt, reviveTime, "première cuve rapide (tutoriel)")
+env.advance(reviveTime / 2 - 1)
 T.check(tankFill.Size.X.Scale > early and tankFill.Size.X.Scale > 0.4 and tankFill.Size.X.Scale < 0.65, "la barre avance avec le temps (" .. tankFill.Size.X.Scale .. ")")
 
 T.section("révélation")
-env.advance(16)
+env.advance(reviveTime / 2 + 1)
 T.eq(tankLabel.Text, "READY!", "cuve prête")
 T.eq(tankFill.Size.X.Scale, 1, "barre pleine")
 local tankPrompt = plot.Tanks[1].TankPrompt

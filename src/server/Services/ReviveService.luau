@@ -289,6 +289,10 @@ local function startTank(player: Player, data: { [string]: any }, slot: number, 
 	local speed = if hasPass(player, "FastRevive") then Economy.Passes.FastRevive else 1
 	local info = Rarity.Info[rarity]
 	local duration = math.max(1, math.ceil((if info then info.ReviveTime else 60) / speed))
+	-- (tutoriel : le tout premier bloc rapporté se réanime vite, le premier dino arrive dans la première minute)
+	if data.Tutorial < 2 then
+		duration = math.min(duration, Zones.Dig.TutorialReviveTime)
+	end
 	local now = os.time()
 	-- (Instant Revive gardé : cuve prête tout de suite)
 	if data.InstantCredits > 0 then
