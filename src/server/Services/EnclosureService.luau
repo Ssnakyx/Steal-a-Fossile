@@ -13,7 +13,7 @@
 -- rareté), comme une fiche de Config.Species.
 -- Clés replica « Dinos » ({ [id]: { Species, Size, Mutation, Level, Income } }) et « EnclosureSlots ».
 -- Remote BuyEnclosure (et ProximityPrompt « Expand » sur l'enclos).
--- Signaux : DinoAdded(player, id, dino), DinoRemoved(player, id, dino)
+-- Signaux : DinoAdded(player, id, dino), DinoRemoved(player, id, dino), DinoMutated(player, id, dino)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -550,6 +550,25 @@ function EnclosureService.RemoveDino(player: Player, id: string): Dino?
 	publish(player)
 	updatePrompt(player)
 	Signals.Fire("DinoRemoved", player, id, dino)
+	return dino
+end
+
+-- Change la mutation d'un dino de l'enclos (sérum de mutation, MutatorService) : le modèle est refait avec ses
+-- nouvelles couleurs et son étiquette, dans l'état d'animation `state`. Renvoie le dino, ou nil (id ou mutation inconnus).
+function EnclosureService.SetMutation(player: Player, id: string, mutation: string, state: string?): Dino?
+	local data = DataService.Get(player)
+	local dino = data and type(id) == "string" and data.Dinos[id]
+	if not dino or not MUTATIONS[mutation] then
+		return nil
+	end
+	dino.Mutation = mutation
+	local pen = pens[player]
+	if pen then
+		removeModel(pen, id)
+		spawnModel(player, pen, id, dino, state or "Idle")
+	end
+	publish(player)
+	Signals.Fire("DinoMutated", player, id, dino)
 	return dino
 end
 

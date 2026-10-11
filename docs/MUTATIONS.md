@@ -191,3 +191,30 @@ FossilDebug (Studio, barre de commande en vue serveur) :
 2. `DinoBuilder.Mutations` (même ordre) et une branche dans `paintMutation` (couleurs des briques).
 3. `MutationController.Effects` : son effet animé.
 4. Tests : `t_mutation_rolls` (nombre de mutations, probas) et `t_mutation_client` vérifient tout le reste tout seuls.
+
+## Sérum de mutation (objet)
+
+Demande de Snaky (2026-10-11) : un objet qui applique une mutation à un dino, lui donne un bonus, avec une chance
+d'échouer, comme le Fragment d'éclipse du Mutator de Pet Fusion Lab (objet consommé, 40 % de réussite, rien ne change
+si ça rate, menu « choisir un pet, puis l'objet », écran « MUTATION! » ou « MUTATION FAILED »).
+
+Valeurs : `src/shared/Config/Mutator.luau`. Serveur : `src/server/Services/MutatorService.luau` (remotes `MutateDino`,
+`BuySerums`, clés replica `Serums` et `SerumPrice`, commande admin `serums <n> [joueur]`). Données :
+`src/server/Data/Mutator.luau` (`Serums`, `SerumsUsed`). Menu : `src/client/Controllers/MutatorController.luau`, ouvert
+par le bouton **MUTATE (SERUM)** du labo de fusion (le premier dino choisi dans le labo est repris). Test FossilDebug :
+`serum`.
+
+| Réglage | Valeur de départ |
+|---|---|
+| Réussite | 40 % (`SuccessChance`) |
+| Réussite : mutation donnée | une mutation **meilleure** que celle du dino (revenu plus haut, ou même revenu et plus rare), tirée parmi les 12, poids = leur `Chance` (sans mutation : Amber 35 %, Crystal 13 %, ... Rainbow 0,22 %) |
+| Échec | le sérum est perdu, le dino ne change pas (pas de malus) |
+| Dino Rainbow | refusé (déjà la meilleure), aucun sérum perdu |
+| Bonus | celui de la mutation (`Income` de `Config.Economy.Mutations`) et ses effets animés ; une mutation rare est annoncée au serveur comme à la réanimation |
+| Prix (argent du jeu) | 10 min du revenu du joueur, au moins $2,500 (`PriceSeconds`, `MinPrice`) |
+| Robux | produit `MutationSerums3` dans `Config.Shop.Products` (3 sérums, 99 R$ conseillé, caché tant que `Id = 0`) |
+| Récompenses | calendrier jour 11 : 2 sérums (avant : 3 tours de roue) ; cadeau de 40 min : 1 sérum (avant : 1 tour) |
+| Plafond | 99 sérums gardés, 10 achetés d'un coup |
+
+Le menu affiche toujours la chance de réussite et la chance de chaque mutation possible (toute chance payante affiche
+ses probas).
