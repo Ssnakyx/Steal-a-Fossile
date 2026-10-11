@@ -58,12 +58,24 @@ def main(argv):
     ap.add_argument("filters", nargs="*")
     ap.add_argument("--out", default=os.path.join(run.CACHE, "ui_preview"))
     ap.add_argument("--phone", action="store_true", help="écran de téléphone simulé")
+    ap.add_argument("--icons", help="dossier d'images <nom>.png des icônes de UIKit.Icons (sinon : cases grises)")
     args = ap.parse_args(argv)
     run.setup_tools.ensure(quiet=True)
     luau = run.setup_tools.tool("luau")
     build = run.build_tree()
     tests_dir = os.path.join(build, "tools", "luau_tests")
     open(os.path.join(tests_dir, "preview_options.luau"), "w").write("return { Phone = %s }\n" % ("true" if args.phone else "false"))
+    icons = {}
+    if args.icons:
+        source = open(os.path.join(run.ROOT, "src", "client", "UI", "UIKit.luau"), encoding="utf-8").read()
+        block = source[source.index("UIKit.Icons = {"):]
+        block = block[:block.index("}")]
+        for name, asset in re.findall(r'(\w+) = "(rbxassetid://\d+)"', block):
+            path = os.path.abspath(os.path.join(args.icons, name + ".png"))
+            if os.path.exists(path):
+                icons[asset] = '<img src="file:///%s">' % path.replace(os.sep, "/")
+    lines = ["return {"] + ['\t["%s"] = [[%s]],' % item for item in icons.items()] + ["}"]
+    open(os.path.join(tests_dir, "preview_icons.luau"), "w").write("\n".join(lines) + "\n")
     scripts = sorted(n for n in os.listdir(HERE) if n.startswith("p_") and n.endswith(".luau"))
     if args.filters:
         scripts = [n for n in scripts if any(f in n for f in args.filters)]
