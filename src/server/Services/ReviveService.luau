@@ -221,6 +221,7 @@ local function updateVisual(player: Player, slot: number)
 	if blockRarity and not visual.Block and tankPart then
 		local part = blockPart(tankPart, blockRarity)
 		part:SetAttribute("Rarity", blockRarity)
+		part:SetAttribute("Zone", if tank then tank.Zone else nil) -- (décor du biome : FossilBlockController, brief 9)
 		visual.Block = part
 	end
 	local title, fill = visual.Title, visual.Fill
