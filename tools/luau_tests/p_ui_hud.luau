@@ -1,5 +1,5 @@
 -- Aperçu de l'interface du brief 12, avec le vrai serveur : HUD (boutons, compteurs, cuves), bandeau de zone, transport
--- d'un bloc poursuivi par le gardien, shop (4 onglets), Index (zone et hybrides), labo de fusion, écran de révélation.
+-- d'un bloc poursuivi par le gardien, shop (6 onglets), Index (zone et hybrides), labo de fusion, écran de révélation.
 -- Le monde 3D n'est pas dessiné (les portraits 3D sont des cases « 3D »). python3 tools/luau_tests/ui_preview.py ui_hud [--phone]
 local P = require("./previewkit")
 local T = require("./testkit")
@@ -100,6 +100,12 @@ P.page("ui_shop_passes")
 C.ShopController.Select("Items")
 P.settle(0.5)
 P.page("ui_shop_items")
+C.ShopController.Select("Deals")
+P.settle(0.5)
+P.page("ui_shop_deals")
+C.ShopController.Select("Money")
+P.settle(0.5)
+P.page("ui_shop_money")
 C.ShopController.Close()
 P.settle(0.5)
 

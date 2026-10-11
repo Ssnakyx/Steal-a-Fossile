@@ -22,7 +22,7 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
 - **Messages courts** : ils passent sous la carte du haut (bandeau ou transport) au lieu de la cacher.
 - **Cuves** à droite : une ligne par cuve (rareté, temps restant, barre), **OPEN** quand elle est prête (ouvre la cuve
   de loin), « +N fossils waiting », bouton **NEW TANK $X**. Visible dès qu'une cuve sert.
-- **Shop** (4 onglets à icône, style des Steal a ... du moment) : chaque onglet est une page de **sections** (« -- FEATURED -- »,
+- **Shop** (6 onglets à icône : Deals, Speed, Trails, Passes, Money, Items ; style des Steal a ... du moment) : chaque onglet est une page de **sections** (« -- FEATURED -- »,
   « -- SPEED -- », « -- PASSES -- »...) en titres d'une couleur par section, barre de titre à reflets en diagonale, cartes et boutons en verre (reflet clair en haut, bande de lumière qui les traverse toutes les 3,5 s, `UIKit.glass`), puis de **grandes cartes illustrées** (3 par ligne) :
   icône du pack de Steal a Snack, gros « x2 », nom, description, bouton vert. Prix Robux : logo Robux dessiné et prix
   (le texte du bouton reste « R$ 99 »).
@@ -37,6 +37,13 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
   - *Passes* : x2 Money, x2 Treadmill, Fast Revive, VIP (OWNED une fois achetés).
   - *Items* : Bear Traps à l'unité ou par 5 en argent, Bear Traps x5, Instant Revive (« N saved »), Server Luck x2
     (temps restant) ; SPINS : 3 Spins et 10 Spins.
+  - *Deals* : STARTER PACK, LIMITED OFFER et DAILY DEAL en grandes cartes : contenu (« Neon Trail + $15K + 10 Bear
+    Traps + 3 Instant Revives »), étiquette rouge « -75% », prix barré au-dessus du bouton, compte à rebours jaune
+    (« Ends in 2d 23h », puis « Ends in 3:12:05 »). Voir « Offres Robux » plus bas.
+  - *Money* : 4 packs d'argent (Pile, Bag, Chest, Vault of Cash). Le gros chiffre est le montant au revenu actuel du
+    joueur (il bouge avec lui), « +32% MORE » / « BEST VALUE » sur les plus gros.
+  - Bouton rose **GIFT** à côté du prix de chaque passe (Speed, Trails, Passes) quand son produit cadeau est en vente :
+    il ouvre la liste des joueurs du serveur (SEND). « GIFT (1) » : un cadeau déjà payé attend d'être envoyé.
 - **Index** : un onglet par zone, plus Secret et Hybrids. Les espèces vues ont leur portrait 3D, leur nom et leur
   revenu de base ; les autres sont une silhouette noire « ??? » (« Revive one to unlock »). Les hybrides pas trouvés
   montrent un « ? » et l'indice de leur recette ; trouvés, leur portrait et leurs deux parents. En haut : « Dinos a/b
@@ -81,6 +88,33 @@ la mise en page du shop. Pour les mettre en vente : créer le passe ou le produi
 n'apparaissent qu'une fois leurs Ids mis, et jamais dans les pays qui interdisent les achats au hasard payants
 (PolicyService).
 
+## Offres Robux (shop complet, 2026-10-11)
+
+Config : `Config/Shop.luau` (Cash, Packs, StarterHours, Rotation, Gifts) ; serveur : `OfferService` ; sauvegarde :
+domaine `Offers` (passes donnés, packs achetés, cadeaux à envoyer). Tout se règle dans la config (prix, contenu,
+ordre de rotation).
+
+- **Packs d'argent** : montant = N minutes du revenu du joueur, au moins un minimum. Pile 49 R$ (10 min, $5K min),
+  Bag 149 R$ (40 min), Chest 399 R$ (2 h 30), Vault 999 R$ (8 h).
+- **Starter Pack** 99 R$ (valeur 399) : Neon Trail, 30 min de revenu, 10 Bear Traps, 3 Instant Revive. Proposé 3
+  jours après la première connexion, une seule fois.
+- **Limited** (un à la fois pour tout le monde, change tous les 3 jours) : Speed Rush 299 R$ (x2 Treadmill, vitesse,
+  cash), Fossil Hunter 399 R$ (Fast Revive, revives, pièges, cash), Dino Tycoon 699 R$ (x2 Money, VIP, cash, revives).
+- **Daily Deal** (un par jour, 00:00 UTC) : Mega Cash Deal 249, Trap Crate 79, Revive Bundle 99, Luck Party 149
+  (Server Luck 45 min pour tout le serveur), Speed Boost 99.
+- Un pack qui contient un passe déjà possédé n'est pas proposé. Jamais de dino, de bloc ni de tour de roue dans un
+  pack (pas d'achat au hasard payant).
+- **Cadeaux** : Roblox ne vend pas un game pass pour quelqu'un d'autre, donc chaque passe offrable a un produit
+  développeur « cadeau » au même prix. Le passe offert est gardé pour toujours chez celui qui le reçoit. Si l'ami part
+  avant la fin de l'achat, le cadeau attend (« GIFT (1) ») et s'envoie plus tard sans repayer. Annonce à tout le
+  serveur : « Snaky gifted x2 Money to Bob! ».
+
+À créer dans le Creator Hub (produits développeur), puis mettre l'Id dans `Config/Shop.luau` : `Cash.CashSmall`,
+`CashMedium`, `CashLarge`, `CashHuge` ; `Packs.Starter`, `SpeedRush`, `FossilHunter`, `DinoTycoon`, `CashDeal`,
+`TrapCrate`, `ReviveBundle`, `LuckParty`, `SpeedBoost` ; `Gifts.DoubleMoney`, `DoubleTreadmill`, `FastRevive`, `VIP`,
+`NeonTrail`, `GalaxyTrail`, `GoldenTrail`. Le prix conseillé est le champ `Price` de chacun. Une réduction se montre
+avec `Worth` (valeur barrée) : pour une vraie promo, baisser le prix dans le Creator Hub et garder `Worth`.
+
 ## Placement (écran de 1280 x 720 unités, mis à l'échelle)
 
 | Élément | Où | ScreenGui (DisplayOrder) |
@@ -102,7 +136,7 @@ Un nouvel élément d'interface prend une place libre de ce tableau, ou le compl
 
 - `HudController.SetVisible(bool)` : cache tout le HUD (cinématique). `HudController.Heading(de, vers, caméra)` :
   angle de la flèche.
-- `ShopController.Open(onglet?)` (« Speed », « Trails », « Passes », « Items »), `Close`, `Toggle`, `IsOpen`,
+- `ShopController.Open(onglet?)` (« Deals », « Speed », « Trails », « Passes », « Money », « Items »), `Close`, `Toggle`, `IsOpen`,
   `Select(onglet)`. Ex. : le message « Unlock the Treadmill » peut appeler `ShopController.Open("Speed")`.
 - `IndexController.Open(page?)` (nom de zone, « Secret », « Hybrids »), `Close`, `Toggle`, `IsOpen`, `Unseen()`.
 - `LabController.Open`, `Close`, `IsOpen`, `Select(ids)`, `Selected()`. Il met `FusionController.MenuReady = true`.
@@ -121,7 +155,9 @@ Un nouvel élément d'interface prend une place libre de ce tableau, ou le compl
 
 - Shop et Index en boutons à gauche avec Daily / Spin / Gifts (comme Steal a Brainrot), plutôt qu'une barre en bas
   (la carte AFK et le guide y sont déjà).
-- Le Shop s'ouvre sur l'onglet Speed (le treadmill est l'achat principal).
+- Le Shop s'ouvre sur l'onglet Speed (le treadmill est l'achat principal) ; Deals est le premier onglet.
+- Prix et contenus des packs, rotation (Limited tous les 3 jours, offre du jour), Starter Pack 3 jours : choisis sans
+  Snaky (2026-10-11).
 - Écran de révélation fermé tout seul après 7 s, file de 10 au plus.
 - Bouton OPEN des cuves dans le HUD : ouvre une cuve prête de n'importe où (le serveur ne vérifie pas la distance).
 - Les espèces Secret ont leur propre page dans l'Index.
@@ -143,6 +179,8 @@ Un nouvel élément d'interface prend une place libre de ce tableau, ou le compl
 
 - `tools/luau_tests/t_ui_hud.luau` : HUD, colonne de gauche, compteurs, bandeau, transport, messages courts, cuves,
   Shop (achats par les boutons, Id = 0 caché hors Studio), événements abîmés.
+- `tools/luau_tests/t_offers_server.luau` et `t_offers_client.luau` : packs d'argent, Starter Pack, Limited, offre du
+  jour, cadeaux (ami parti : cadeau gardé), onglets Deals et Money, bouton GIFT et liste des joueurs.
 - `tools/luau_tests/t_ui_menus.luau` : IndexService, Index, labo (choix, aperçu, fusion, hybride), révélation (file,
   fermeture toute seule), étiquettes, événements abîmés.
 - Aperçus : `python3 tools/luau_tests/ui_preview.py ui_hud [--phone] [--icons dossier]` (`--icons` : dossier de

@@ -32,7 +32,7 @@ local function warned(text: string): boolean
 end
 
 T.section("domaines")
-T.eq(table.concat(DataService.Domains(), ","), "Core,Daily,Loop,Pvp,Quests,Speed", "domaines chargés depuis src/server/Data")
+T.eq(table.concat(DataService.Domains(), ","), "Core,Daily,Loop,Offers,Pvp,Quests,Speed", "domaines chargés depuis src/server/Data")
 T.eq(DataService.Owner("Money"), "Core", "Money appartient à Core")
 T.eq(DataService.Owner("Dinos"), "Loop", "Dinos appartient à Loop")
 T.errors(function()
