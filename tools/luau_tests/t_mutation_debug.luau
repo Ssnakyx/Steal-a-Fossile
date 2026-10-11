@@ -36,6 +36,15 @@ for _, name in { "mutations", "species" } do
 		print(table.concat(lines, "\n"))
 	end
 end
+-- sérum de mutation (Config.Mutator) : un raté puis un réussi sur un dino de test, sérums du joueur remis
+local serums = data.Serums
+local ok, fail, lines = DebugService.RunTest("serum")
+T.check(ok > 20, "serum : vérifications faites (" .. ok .. ")")
+T.eq(fail, 0, "serum : aucun échec")
+if fail > 0 then
+	print(table.concat(lines, "\n"))
+end
+T.eq(data.Serums, serums, "serum : sérums du joueur remis")
 T.eq(#workspace:GetDescendants(), before, "rien laissé dans le Workspace")
 T.eq(count(data.Dinos), dinos, "dinos de test retirés de l'enclos")
 T.clean("tests en jeu : aucune erreur")

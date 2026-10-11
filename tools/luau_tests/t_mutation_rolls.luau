@@ -1,7 +1,8 @@
 -- Mutations (docs/MUTATIONS.md) : liste de Config.Economy (Amber, Crystal, Lava du GDD gardées, une exclusive par
 -- biome, Rainbow), tirage par zone et chance du pass VIP (Economy.RollMutation, ReviveService.Roll), probas affichées
 -- (Economy.MutationChances, commande admin « mutations »), revenus, enclos et sauvegarde, fusion (meilleure mutation
--- gardée), annonce des mutations rares à tout le serveur (MutationService), couleurs des briques (DinoBuilder).
+-- gardée), annonce des mutations rares à tout le serveur (MutationService), couleurs des briques (DinoBuilder), et
+-- bloc rare = mutations rares plus souvent (Economy.RareMutation, message « ready » de la cuve).
 local T = require("./testkit")
 local env = T.env
 
@@ -327,6 +328,14 @@ okCmd = AdminService.Run(admin, "mutations", { "9" })
 T.check(not okCmd, "mutations 9 : refusé")
 okCmd = AdminService.Run(admin, "mutations", { "moon" })
 T.check(not okCmd, "mutations zone inconnue : refusé")
+okCmd, listText = AdminService.Run(admin, "mutations", { "glacier", "legendary" })
+T.eq(
+	listText,
+	"Glacier (Legendary block): Amber 8% (x1.5), Crystal 3% (x2), Frost 1.5% (x2.5), Lava 3% (x3), Rainbow 0.15% (x10), None 84.35% (x1)",
+	"mutations glacier legendary : les rares x3"
+)
+okCmd = AdminService.Run(admin, "mutations", { "glacier", "dragon" })
+T.check(not okCmd, "mutations : rareté inconnue refusée")
 passes[admin] = { VIP = true }
 okCmd, listText = AdminService.Run(admin, "mutations", { "glacier" })
 T.check(okCmd and string.find(listText, "Frost 1.65%", 1, true) ~= nil, "mutations avec le VIP : chance x1.1 (" .. tostring(listText) .. ")")
@@ -338,6 +347,93 @@ env.studio = true
 okCmd, listText = AdminService.Run(admin, "givedino", { "compy", "Big", "galaxy", "Alice" })
 T.check(okCmd, "givedino galaxy : " .. tostring(listText))
 T.eq(data.Dinos[tostring(data.NextDinoId - 1)].Mutation, "Galaxy", "givedino : mutation sans majuscules")
+
+T.section("bloc rare : mutations rares plus souvent")
+local Rarity = T.module("src/shared/Config/Rarity")
+local RARE = Economy.RareMutation
+local previous = 0
+for _, name in Rarity.Order do
+	local boost = Economy.RareMutationBoost(name)
+	T.check(boost >= 1 and boost >= previous, name .. " : bonus x" .. boost .. " (jamais plus bas que la rareté d'avant)")
+	previous = boost
+end
+T.eq(Economy.RareMutationBoost("Common"), 1, "Common : pas de bonus")
+T.check(Economy.RareMutationBoost("Legendary") > 1, "Legendary : un bonus")
+for _, bad in { nil, "Nope", 3 } do
+	T.eq(Economy.RareMutationBoost(bad :: any), 1, "rareté abîmée : pas de bonus (" .. tostring(bad) .. ")")
+end
+local rares = {}
+for _, info in Economy.Mutations do
+	if Economy.IsRareMutation(info) then
+		table.insert(rares, info.Name)
+		T.check(info.Chance <= Economy.MutationAnnounce, info.Name .. " : rare et annoncée au serveur")
+	end
+end
+T.eq(table.concat(rares, ","), "Lava,Obsidian,Abyssal,Galaxy,Rainbow", "mutations rares")
+-- tirage exact (rolls réguliers) : les rares x bonus, les autres inchangées, sans chance = comme avant
+for _, zone in Zones.List do
+	for _, rarity in Rarity.Order do
+		local N = 20000
+		local got: { [string]: number } = {}
+		for k = 0, N - 1 do
+			local name = Economy.RollMutation(zone.Name, 0, (k + 0.5) / N, rarity)
+			got[name] = (got[name] or 0) + 1
+		end
+		local boost = Economy.RareMutationBoost(rarity)
+		local total = 0
+		for _, chance in Economy.MutationChances(zone.Name, 0, rarity) do
+			total += chance.Chance
+			local info = Economy.Mutation(chance.Name)
+			if info then
+				local expected = info.Chance / 100 * (if Economy.IsRareMutation(info) then boost else 1)
+				T.near(chance.Chance, expected, 1e-9, zone.Name .. " " .. rarity .. " : " .. info.Name .. " affichée")
+			end
+			T.check(math.abs((got[chance.Name] or 0) - chance.Chance * N) <= 1, zone.Name .. " " .. rarity .. " : " .. (if chance.Name == "" then "None" else chance.Name) .. " tirée comme affichée")
+		end
+		T.near(total, 1, 1e-9, zone.Name .. " " .. rarity .. " : 100 %")
+	end
+	local same = 0
+	for k = 0, 999 do
+		local roll = (k + 0.5) / 1000
+		if Economy.RollMutation(zone.Name, 0, roll, "Common") == Economy.RollMutation(zone.Name, 0, roll) then
+			same += 1
+		end
+	end
+	T.eq(same, 1000, zone.Name .. " : bloc Common = tirage d'avant")
+end
+-- même avec la chance du VIP, la somme reste bornée à 100 %
+local sum = 0
+for _, chance in Economy.MutationChances("Meteor Crater", 30, "Secret") do
+	sum += chance.Chance
+	T.check(chance.Chance >= 0, "chance énorme : jamais négative")
+end
+T.near(sum, 1, 1e-9, "chance énorme + Secret : 100 %")
+T.eq(Economy.RollMutation("Beach", 1e9, 0.5, "Secret"), "Rainbow", "chance énorme : la plus rare")
+-- réanimation : un bloc Legendary donne bien plus souvent une mutation rare qu'un bloc Common
+local function rareCount(rarity: string): number
+	local n = 0
+	for _ = 1, 20000 do
+		local info = Economy.Mutation(ReviveService.Roll(rarity, "Glacier").Mutation)
+		if info and Economy.IsRareMutation(info) then
+			n += 1
+		end
+	end
+	return n
+end
+local commonRares, legendaryRares = rareCount("Common"), rareCount("Legendary")
+T.check(legendaryRares > 2 * commonRares, string.format("réanimation : rares Common %d, Legendary %d (x%s attendu)", commonRares, legendaryRares, tostring(RARE.Boost.Legendary)))
+-- message de la cuve prête : rappelle le bonus d'un bloc rare
+local bobData = T.data(bob)
+bobData.Tanks, bobData.Stored = {}, {}
+T.check(ReviveService.AddBlock(bob, { Rarity = "Legendary", Zone = "Glacier" }), "bloc Legendary dans une cuve")
+env.advance(Config.Rarity.Info.Legendary.ReviveTime + 5)
+local readyText = nil
+for _, entry in env.received(bob, "Notify") do
+	if string.find(entry[1], "Legendary fossil is ready", 1, true) then
+		readyText = entry[1]
+	end
+end
+T.eq(readyText, "Your Legendary fossil is ready to reveal! x3 chance of a rare mutation!", "message « ready » avec le bonus")
 
 T.section("couleurs des briques")
 local function looks(mutation: string?): { string }

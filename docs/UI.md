@@ -128,9 +128,39 @@ avec `Worth` (valeur barrée) : pour une vraie promo, baisser le prix dans le Cr
 | Shop (1040 x 620), Index, Fusion Lab (1000 x 600) | milieu | Menus (7) |
 | Écran de révélation (760 x 470) | milieu | Reveal (8) |
 | Texte RUN!! / CAUGHT! | 30 % de la hauteur | StressText (20) |
-| Messages courts | haut au milieu, y = 70 (sous la carte du haut si elle est là) | Toasts (50) |
+| Messages courts, alerte d'un bloc rare (500 x 86) | haut au milieu, y = 70 (sous la carte du haut si elle est là) | Toasts (50) |
+| Bouton Admin (64 x 64, admins seulement) | à droite du bouton Index (x = 222), même bas | AdminButton (3) |
+| Menu Admin (1000 x 600) | milieu | Menus (7) |
 
 Un nouvel élément d'interface prend une place libre de ce tableau, ou le complète.
+
+## Menu d'admin
+
+Bouton rouge à marteau à droite du bouton Index, visible seulement pour un admin (attribut « Admin » posé par
+AdminService : `Config.Core.Admins`, propriétaire du jeu, tout le monde dans Studio). Chaque bouton lance une commande
+d'admin par le remote `Admin` ; le serveur vérifie le droit à chaque appel. Cible en haut à droite (« Target: Me », un
+appui passe au joueur suivant du serveur). La réponse du serveur s'affiche en bas du menu et en message court.
+
+- **Player** : argent (+$1K à +$1Qd, Set $0), vitesse, niveau du treadmill (Studio), +10 Spins, +5 Traps, Finish
+  Tanks, protection, tutoriel (0 = nouveau joueur), Daily Reset et +30 min de jeu (Studio), Go To / Bring la cible,
+  **Reset Data** (deux appuis : la sauvegarde repart de zéro, le joueur est expulsé ; sans effet dans Studio, qui
+  n'écrit jamais la sauvegarde : utiliser Tutorial 0).
+- **Dinos** : liste des espèces par zone, taille et mutation (un appui = valeur suivante), GIVE DINO ; tous les
+  hybrides et leurs recettes ; bloc fossile d'une rareté et d'une zone (dans une cuve ou la réserve).
+- **World** : téléportation (Home et les 8 zones), bloc rare forcé dans un gisement (rareté, zone, SPAWN!, avec
+  l'alerte), remplir les gisements, rendre les blocs au sol, gardiens on / off.
+- **Console** : toutes les commandes en texte (`givedino T-Rex Huge Galaxy me`), HELP, journal des réponses.
+
+Commandes ajoutées pour le menu : `spawnrare <rareté> [zone 1-8]` (DigSiteService), `goto <joueur>`,
+`bring <joueur>`, `resetdata <joueur> confirm` (AdminToolsService, `DataService.Reset`).
+
+## Alerte d'un bloc rare
+
+Quand un bloc de rareté `Config.Zones.Dig.AlertRarity` (Mythic) ou mieux apparaît dans un gisement (remplissage ou
+`spawnrare`), tout le serveur voit une grande carte de la couleur de la rareté (arc-en-ciel pour Secret) dans la liste
+des messages courts : « MYTHIC FOSSIL! / Just appeared in the Volcano! » pendant `AlertTime` (6 s), et le même message
+dans le chat. Une seule alerte par zone et par remplissage (« 3 MYTHIC FOSSILS! »). Legendary n'alerte pas : 72 % des
+blocs du Meteor Crater le sont. Remote `FossilAlert` (rareté, zone, nombre), `AlertController.Show`, `UIKit.alert`.
 
 ## Pour les autres briefs
 

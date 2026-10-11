@@ -43,6 +43,7 @@ local KIND_COLOR: { [string]: Color3 } = {
 	Speed = Colors.Cyan,
 	Spins = Colors.Pink,
 	BearTraps = Colors.Orange,
+	Serums = Colors.Purple,
 }
 -- Icône du pack de chaque genre de récompense (UIKit.Icons)
 local KIND_ICON: { [string]: string } = {
@@ -51,6 +52,7 @@ local KIND_ICON: { [string]: string } = {
 	Spins = "wheel",
 	BearTraps = "shield",
 	Block = "egg",
+	Serums = "gem",
 }
 
 type Ui = {
@@ -377,7 +379,7 @@ local function wedgeText(reward: Reward, currentScale: DailyConfig.Scale?): stri
 		return "+" .. Format.Number(amount)
 	elseif reward.Kind == "Spins" then
 		return "+" .. amount
-	elseif reward.Kind == "BearTraps" then
+	elseif reward.Kind == "BearTraps" or reward.Kind == "Serums" then
 		return "x" .. amount
 	elseif reward.Kind == "Block" then
 		return string.upper(tostring(reward.Rarity))
