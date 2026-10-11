@@ -202,10 +202,25 @@ function T.hostileValues(): { any }
 	}
 end
 
+-- Récompenses du jour déjà prises (calendrier, tour de roue gratuit) : sinon un appel sans argument à ClaimDaily ou
+-- Spin donnerait une vraie récompense, ce qui n'est pas une faille. Rien si le joueur n'est pas chargé.
+function T.spendDailyRewards(player: any)
+	local data = T.data(player)
+	if not data or type(data.Daily) ~= "table" or type(data.Spins) ~= "table" then
+		return
+	end
+	local Daily = env.module("src/shared/Config/Daily")
+	local now = env.baseTime + math.floor(env.now())
+	data.Daily.LastClaim = now
+	data.Spins.FreeDay = Daily.Day(now)
+	data.Spins.FreeUsed = Daily.Spins.FreePerDay
+end
+
 -- Appelle chaque remote déclaré avec des valeurs hostiles (1 à 3 arguments) au nom de `player`. Les remotes de
 -- `skip` (noms) sont ignorés. Aucune erreur ne doit sortir d'un handler (Net les attrape et les note).
--- Renvoie le nombre d'appels faits.
+-- Les récompenses du jour du joueur sont d'abord prises (T.spendDailyRewards). Renvoie le nombre d'appels faits.
 function T.fuzzRemotes(player: any, skip: { [string]: boolean }?): number
+	T.spendDailyRewards(player)
 	local Remotes = env.module("src/shared/Remotes")
 	local values = T.hostileValues()
 	local calls = 0

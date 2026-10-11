@@ -8,6 +8,8 @@ env.quiet = true
 local Config = T.config()
 local Shop = Config.Shop
 local SpeedConfig = Config.Speed
+-- (échelle payante seule dans ce test : le gain gratuit sans achat est testé dans t_daily_afk)
+SpeedConfig.Treadmill.FreeMultiplier = 0
 -- (produits « créés dans le Creator Hub » pour ce test : Id 9001 à 9010, prix du GDD)
 for level, entry in Shop.Treadmill.Levels do
 	entry.Id = 9000 + level
