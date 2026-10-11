@@ -102,6 +102,11 @@ local Zones = {
 		TutorialZone = "Beach", -- tutoriel : cette zone garde un bloc Common tant qu'un nouveau n'a pas rapporté son premier bloc
 		TutorialRarity = "Common",
 		TutorialReviveTime = 10, -- secondes en cuve (au plus) pour le tout premier bloc rapporté par un nouveau joueur
+		-- Alerte de tout le serveur quand un bloc de cette rareté ou mieux apparaît dans un gisement (bandeau en haut de
+		-- l'écran + message dans le chat). Mythic : quelques alertes par remplissage, pas plus (Legendary serait trop
+		-- souvent : 72 % des blocs du Meteor Crater).
+		AlertRarity = "Mythic",
+		AlertTime = 6, -- secondes d'affichage du bandeau
 	},
 }
 

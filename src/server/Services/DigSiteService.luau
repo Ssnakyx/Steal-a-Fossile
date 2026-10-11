@@ -2,7 +2,8 @@
 -- Gisements (brief 3 « boucle ») : blocs fossiles posés sur les gisements des zones (ZoneService), tirés selon les
 -- chances de la zone (Config.Zones, x Server Luck du brief 4 s'il existe). Toutes les 5 min, les places vides se
 -- remplissent (compte à rebours répliqué : attribut « DigRefillAt » de Workspace, heure serveur, et étiquette au-dessus
--- de chaque gisement). Un bloc Secret est annoncé dans le chat de tout le serveur.
+-- de chaque gisement). Un bloc de rareté Config.Zones.Dig.AlertRarity ou mieux (Mythic) est annoncé à tout le serveur :
+-- bandeau en haut de l'écran (remote FossilAlert, AlertController) et message dans le chat (LoopAnnounce).
 -- Arracher : ProximityPrompt « Grab » maintenu 1 s. Le serveur vérifie la durée (depuis PromptButtonHoldBegan), la
 -- distance et qu'on ne porte rien, puis CarryService.Carry. La place reste « dehors » jusqu'à ce que le bloc soit
 -- rapporté dans un parc (place libérée, remplie au prochain remplissage) ou rendu (il revient à sa place).
@@ -204,29 +205,110 @@ local function clearSlot(slot: Slot)
 end
 
 -- Remplit les places vides de tous les gisements (toutes les 5 min). Renvoie le nombre de blocs posés.
+-- Rareté assez haute pour une alerte de tout le serveur (Config.Zones.Dig.AlertRarity)
+function DigSiteService.IsAlertRarity(rarity: string): boolean
+	local info = Rarity.Info[rarity]
+	local threshold = Rarity.Info[Zones.Dig.AlertRarity or "Secret"]
+	return info ~= nil and threshold ~= nil and info.Rank >= threshold.Rank
+end
+
+type Alert = { Zone: string, Rarity: string, Count: number }
+
+-- Note un bloc posé pour l'alerte : un seul message par zone (sa meilleure rareté, et combien de blocs rares)
+local function noteAlert(alerts: { [string]: Alert }, zone: string, rarity: string)
+	if not DigSiteService.IsAlertRarity(rarity) then
+		return
+	end
+	local alert = alerts[zone]
+	if not alert then
+		alerts[zone] = { Zone = zone, Rarity = rarity, Count = 1 }
+		return
+	end
+	alert.Count += 1
+	if Rarity.Info[rarity].Rank > Rarity.Info[alert.Rarity].Rank then
+		alert.Rarity = rarity
+	end
+end
+
+local function sendAlerts(alerts: { [string]: Alert })
+	local list: { Alert } = {}
+	for _, alert in alerts do
+		table.insert(list, alert)
+	end
+	-- (les plus rares d'abord, puis dans l'ordre de la route)
+	table.sort(list, function(a, b)
+		local ra, rb = Rarity.Info[a.Rarity].Rank, Rarity.Info[b.Rarity].Rank
+		if ra ~= rb then
+			return ra > rb
+		end
+		local za, zb = Zones.ByName[a.Zone], Zones.ByName[b.Zone]
+		return (if za then za.Index else 0) < (if zb then zb.Index else 0)
+	end)
+	for _, alert in list do
+		local text = string.format("A %s fossil appeared in the %s!", string.upper(alert.Rarity), alert.Zone)
+		if alert.Count > 1 then
+			text = string.format("%d %s fossils appeared in the %s!", alert.Count, string.upper(alert.Rarity), alert.Zone)
+		end
+		Remotes.Event("LoopAnnounce"):FireAllClients(text)
+		Remotes.Event("FossilAlert"):FireAllClients(alert.Rarity, alert.Zone, alert.Count)
+	end
+end
+
 function DigSiteService.Refill(): number
 	local luck = serverLuck()
 	local placed = 0
-	local secretZones: { [string]: boolean } = {}
+	local alerts: { [string]: Alert } = {}
 	for _, site in sites do
 		for _, slot in site.Slots do
 			if slot.State == "Empty" then
 				local rarity = DigSiteService.RollRarity(site.Zone, luck)
 				placeBlock(slot, newBlock(rarity, slot))
 				placed += 1
-				if rarity == "Secret" then
-					secretZones[site.Zone] = true
+				noteAlert(alerts, site.Zone, rarity)
+			end
+		end
+	end
+	sendAlerts(alerts)
+	Signals.Fire("DigSitesRefilled")
+	return placed
+end
+
+-- Pose tout de suite un bloc de cette rareté dans un gisement de la zone (commande d'admin) : une place vide si
+-- possible, sinon à la place d'un bloc moins rare (jamais celui du tutoriel). L'alerte part comme pour un remplissage.
+-- Renvoie true si le bloc est posé.
+function DigSiteService.ForceSpawn(zoneName: string, rarity: string): boolean
+	if not (Rarity.Info[rarity] and Zones.ByName[zoneName]) then
+		return false
+	end
+	local empty: Slot? = nil
+	local weakest: Slot? = nil
+	for _, site in sites do
+		if site.Zone == zoneName then
+			for _, slot in site.Slots do
+				if slot.State == "Empty" and not empty then
+					empty = slot
+				elseif slot.State == "Present" and slot.Block and not slot.Block.Tutorial then
+					local rank = Rarity.Info[slot.Block.Rarity].Rank
+					local best = weakest and weakest.Block
+					if rank < Rarity.Info[rarity].Rank and (not best or rank < Rarity.Info[best.Rarity].Rank) then
+						weakest = slot
+					end
 				end
 			end
 		end
 	end
-	for zone in secretZones do
-		local text = "A SECRET fossil appeared in the " .. zone .. "!"
-		Remotes.Event("LoopAnnounce"):FireAllClients(text)
-		Notify.All(text, "info")
+	local slot = empty or weakest
+	if not slot then
+		return false
 	end
-	Signals.Fire("DigSitesRefilled")
-	return placed
+	if slot.State == "Present" then
+		clearSlot(slot)
+	end
+	placeBlock(slot, newBlock(rarity, slot))
+	local alerts: { [string]: Alert } = {}
+	noteAlert(alerts, zoneName, rarity)
+	sendAlerts(alerts)
+	return true
 end
 
 -- Rend un bloc à sa place de gisement (gardien qui attrape, bloc au sol pas ramassé du brief 7...).
@@ -399,6 +481,28 @@ function DigSiteService.Init()
 			local placed = DigSiteService.Refill()
 			setRefillAt(Workspace:GetServerTimeNow() + Zones.Dig.RefillInterval)
 			return true, placed .. " fossil(s) placed"
+		end,
+	})
+	AdminService.RegisterCommand("spawnrare", {
+		Description = "Spawn a fossil of this rarity in a dig site now (rare ones alert the server)",
+		Usage = "spawnrare <rarity> [zone 1-8]",
+		Run = function(_caller: Player, args: { string })
+			local wanted = string.lower(args[1] or "")
+			local rarity: string? = nil
+			for _, name in Rarity.Order do
+				if string.lower(name) == wanted then
+					rarity = name
+				end
+			end
+			local zoneIndex = Guard.Integer(tonumber(args[2] or "1"), 1, #Zones.List)
+			if not (rarity and zoneIndex) then
+				return false, "Usage: spawnrare <rarity> [zone 1-8]"
+			end
+			local zone = Zones.List[zoneIndex].Name
+			if not DigSiteService.ForceSpawn(zone, rarity) then
+				return false, "No free dig site place in " .. zone
+			end
+			return true, rarity .. " fossil spawned in " .. zone
 		end,
 	})
 	AdminService.RegisterCommand("tutorial", {
