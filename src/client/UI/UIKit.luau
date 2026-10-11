@@ -100,6 +100,9 @@ UIKit.Icons = {
 	info = "rbxassetid://116086284335525",
 } :: { [string]: string }
 
+-- Rayons blancs (Essential UI Pack, téléversé pour Steal a Snack) derrière les images des cartes
+UIKit.Sunburst = "rbxassetid://101335357428300"
+
 UIKit.TitleFont = Font.fromEnum(Enum.Font.FredokaOne)
 UIKit.LabelFont = UIKit.TitleFont
 UIKit.BodyFont = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
@@ -494,47 +497,34 @@ function UIKit.robuxGlyph(props: { [string]: any }): Frame
 	return holder
 end
 
--- Titre de section « -- FEATURED -- » : texte jaune en dégradé entre deux traits, sur toute la largeur de `width`
+-- Titre de section « -- FEATURED -- » (comme Steal an Egg) : texte en dégradé de `props.Color` (jaune par défaut),
+-- centré sur `props.Width`
 function UIKit.sectionTitle(props: { [string]: any }): Frame
 	local title = props.Text or ""
 	local width = props.Width or 600
+	local color: Color3 = props.Color or Colors.Yellow
 	props.Text = nil
 	props.Width = nil
+	props.Color = nil
 	props.BackgroundTransparency = 1
-	props.Size = props.Size or UDim2.fromOffset(width, 44)
+	props.Size = props.Size or UDim2.fromOffset(width, 48)
 	local parent = props.Parent
 	props.Parent = nil
 	local frame: Frame = new("Frame", props)
-	local z = frame.ZIndex
 	local label = UIKit.label({
 		Name = "Text",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.new(0, math.max(150, #title * 25 + 36), 1, -8),
-		Text = title,
-		ZIndex = z + 1,
+		Size = UDim2.new(1, -8, 1, -6),
+		Text = "-- " .. title .. " --",
+		ZIndex = frame.ZIndex + 1,
 		Parent = frame,
 	})
 	new("UIGradient", {
 		Rotation = 90,
-		Color = ColorSequence.new(C(255, 246, 150), C(255, 178, 20)),
+		Color = ColorSequence.new(lighten(color, 0.45), color),
 		Parent = label,
 	})
-	local lineWidth = (width - label.Size.X.Offset) / 2 - 22
-	for side = 0, 1 do
-		new("Frame", {
-			Name = if side == 0 then "LineLeft" else "LineRight",
-			AnchorPoint = Vector2.new(side, 0.5),
-			Position = UDim2.new(side, if side == 0 then 8 else -8, 0.5, 0),
-			Size = UDim2.fromOffset(math.max(0, lineWidth), 6),
-			BackgroundColor3 = Colors.Yellow,
-			BorderSizePixel = 0,
-			ZIndex = z,
-			Parent = frame,
-		}, {
-			new("UIStroke", { Color = INK, Thickness = 2.5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
-		})
-	end
 	frame.Parent = parent
 	return frame
 end
@@ -749,8 +739,8 @@ function UIKit.closeButton(props: { [string]: any }, onClick: () -> ()): TextBut
 	return button
 end
 
--- Bouton carré des colonnes du HUD : case à plots de la couleur `props.Color`, grande icône du pack (`props.Icon`) et
--- nom en bas qui déborde du bord. Les autres props sont celles du TextButton (Size carrée conseillée).
+-- Bouton de la colonne du HUD (comme Shop / Index de Steal an Egg) : bouton large à plots de la couleur `props.Color`,
+-- grande icône du pack (`props.Icon`) à gauche, nom à droite. Les autres props sont celles du TextButton.
 function UIKit.menuButton(props: { [string]: any }, onClick: (() -> ())?): TextButton
 	local color: Color3 = props.Color or Colors.Green
 	local iconName: string = props.Icon or ""
@@ -767,19 +757,23 @@ function UIKit.menuButton(props: { [string]: any }, onClick: (() -> ())?): TextB
 	button.Text = ""
 	local _, paint = buttonFace(button)
 	paint(color)
+	local height = if button.Size.Y.Offset > 0 then button.Size.Y.Offset else 64
+	-- (icône qui déborde un peu à gauche, nom à droite)
 	UIKit.icon(iconName, {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.42),
-		Size = UDim2.fromScale(0.72, 0.72),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, -4, 0.5, -2),
+		Size = UDim2.fromOffset(height * 1.05, height * 1.05),
 		ZIndex = button.ZIndex + 2,
 		Parent = button,
 	})
 	UIKit.label({
 		Name = "Label",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.9),
-		Size = UDim2.fromScale(1.1, 0.34),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, height + 6, 0.47, 0),
+		Size = UDim2.new(1, -(height + 14), 0.62, 0),
+		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = text,
+		MaxTextSize = 34,
 		ZIndex = button.ZIndex + 4,
 		Parent = button,
 	})
@@ -1124,6 +1118,22 @@ function UIKit.panel(root: GuiObject, title: string, accent: Color3, size: Vecto
 	local bar = UIKit.studLayer(header, UIKit.StudSize, ColorSequence.new(lighten(accent, 0.3), darken(accent, 0.06)), 90)
 	bar.Name = "Bar"
 	bar.ZIndex = 22
+	header.ClipsDescendants = true
+	-- (deux reflets blancs en diagonale, au même angle, comme les menus des Steal a ...)
+	for index, spec in { { X = 0.42, W = 46 }, { X = 0.5, W = 18 } } do
+		new("Frame", {
+			Name = "Gloss" .. index,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(spec.X, 0.5),
+			Size = UDim2.new(0, spec.W, 2.4, 0),
+			Rotation = 30,
+			BackgroundColor3 = WHITE,
+			BackgroundTransparency = 0.78,
+			BorderSizePixel = 0,
+			ZIndex = 22,
+			Parent = header,
+		})
+	end
 	new("Frame", {
 		Name = "Line",
 		AnchorPoint = Vector2.new(0, 1),

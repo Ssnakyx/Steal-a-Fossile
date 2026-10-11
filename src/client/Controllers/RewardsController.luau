@@ -664,7 +664,7 @@ local function buildSpin(root: Frame): (Panel, () -> ())
 	local sideW = 940 - 32 - sideX
 	local count = text({ Name = "Count", LayoutOrder = 1, Size = UDim2.fromOffset(sideW, 44), Text = "", Parent = side })
 	local free = text({ Name = "Free", LayoutOrder = 2, Size = UDim2.fromOffset(sideW, 26), Text = "", TextColor3 = Colors.GreenText, Parent = side })
-	UIKit.sectionTitle({ Name = "ChancesTitle", Text = "CHANCES", Width = sideW, Size = UDim2.fromOffset(sideW, 36), LayoutOrder = 3, ZIndex = Z, Parent = side })
+	UIKit.sectionTitle({ Name = "ChancesTitle", Text = "CHANCES", Color = Colors.Yellow, Width = sideW, Size = UDim2.fromOffset(sideW, 36), LayoutOrder = 3, ZIndex = Z, Parent = side })
 	local legend: Frame = new("Frame", {
 		Name = "Chances",
 		LayoutOrder = 4,
@@ -719,7 +719,7 @@ local function buildSpin(root: Frame): (Panel, () -> ())
 			Parent = row,
 		})
 	end
-	local offersTitle = UIKit.sectionTitle({ Name = "OffersTitle", Text = "MORE SPINS", Width = sideW, Size = UDim2.fromOffset(sideW, 36), LayoutOrder = 5, ZIndex = Z, Parent = side })
+	local offersTitle = UIKit.sectionTitle({ Name = "OffersTitle", Text = "MORE SPINS", Color = Colors.GreenText, Width = sideW, Size = UDim2.fromOffset(sideW, 36), LayoutOrder = 5, ZIndex = Z, Parent = side })
 	local ways = text({
 		Name = "Ways",
 		LayoutOrder = 6,
@@ -1120,18 +1120,14 @@ function RewardsController.Init()
 	local buttons: Frame = new("Frame", {
 		Name = "RewardButtons",
 		AnchorPoint = Vector2.new(0, 0),
-		-- (boutons carrés deux par ligne, du milieu - 42 vers le bas : Shop et Index du HUD, brief 12, sont juste
-		-- au-dessus, les 5 centrés ensemble)
-		Position = UDim2.new(0, 16, 0.5, -42),
-		Size = UDim2.fromOffset(2 * 84 + 10, 2 * 84 + 10),
+		-- (boutons larges en colonne, du milieu - 33 vers le bas : Shop et Index du HUD, brief 12, sont juste au-dessus,
+		-- les 5 centrés ensemble)
+		Position = UDim2.new(0, 16, 0.5, -33),
+		Size = UDim2.fromOffset(196, 3 * 64 + 2 * 10),
 		BackgroundTransparency = 1,
 		Parent = root,
 	}, {
-		new("UIGridLayout", {
-			CellSize = UDim2.fromOffset(84, 84),
-			CellPadding = UDim2.fromOffset(10, 10),
-			SortOrder = Enum.SortOrder.LayoutOrder,
-		}),
+		new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	local dailyPanel, dailyRefresh = buildDaily(root)
 	local spinPanel, spinRefresh = buildSpin(root)
@@ -1157,7 +1153,7 @@ function RewardsController.Init()
 			Icon = entry.Icon,
 			Color = entry.Color,
 			LayoutOrder = order,
-			Size = UDim2.fromOffset(84, 84),
+			Size = UDim2.fromOffset(196, 64),
 			Parent = buttons,
 		}, function()
 			current.Panels[name].Toggle()

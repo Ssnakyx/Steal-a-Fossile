@@ -7,8 +7,8 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
 
 ## Ce que voit le joueur
 
-- **Colonne de gauche** : boutons carrés à icône du pack, deux par ligne : **Shop** (vert) et **Index** (orange), puis
-  Daily et Spin, puis Gifts (brief 13). Les 5 boutons sont centrés ensemble. Pastilles rouges : Shop « ! » quand une trail en argent est payable, Index = nombre
+- **Colonne de gauche** (comme Shop / Index de Steal an Egg) : boutons larges à icône du pack, en colonne : **Shop**
+  (vert), **Index** (orange), puis Daily, Spin et Gifts (brief 13). Les 5 boutons sont centrés ensemble. Pastilles rouges : Shop « ! » quand une trail en argent est payable, Index = nombre
   d'espèces et d'hybrides découverts depuis la dernière ouverture.
 - **Compteurs** en bas à gauche : argent (il monte doucement, les gros gains et les dépenses s'envolent en +$ / -$),
   revenu par seconde, vitesse. Sous la vitesse : dans une zone, « Swamp: 10K advised » (vert si assez rapide, rouge
@@ -22,8 +22,8 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
 - **Messages courts** : ils passent sous la carte du haut (bandeau ou transport) au lieu de la cacher.
 - **Cuves** à droite : une ligne par cuve (rareté, temps restant, barre), **OPEN** quand elle est prête (ouvre la cuve
   de loin), « +N fossils waiting », bouton **NEW TANK $X**. Visible dès qu'une cuve sert.
-- **Shop** (4 onglets à icône, style des Steal a ... du moment) : chaque onglet est une page de **sections** (« FEATURED »,
-  « SPEED », « PASSES »...) en titres jaunes entre deux traits, puis de **grandes cartes illustrées** (3 par ligne) :
+- **Shop** (4 onglets à icône, style des Steal a ... du moment) : chaque onglet est une page de **sections** (« -- FEATURED -- »,
+  « -- SPEED -- », « -- PASSES -- »...) en titres d'une couleur par section, barre de titre à reflets en diagonale, puis de **grandes cartes illustrées** (3 par ligne) :
   icône du pack de Steal a Snack, gros « x2 », nom, description, bouton vert. Prix Robux : logo Robux dessiné et prix
   (le texte du bouton reste « R$ 99 »).
   - *Speed* : FEATURED = carte large du Treadmill (gain actuel par seconde, même AFK ; niveau suivant ; pastilles des
@@ -84,8 +84,8 @@ n'apparaissent qu'une fois leurs Ids mis, et jamais dans les pays qui interdisen
 
 | Élément | Où | ScreenGui (DisplayOrder) |
 |---|---|---|
-| Boutons Shop / Index (84 x 84, côte à côte) | gauche, bas à 52 au-dessus du milieu | Hud (3) |
-| Daily / Spin / Gifts (84 x 84, deux par ligne) | gauche, haut à 42 au-dessus du milieu | Rewards (5) |
+| Boutons Shop / Index (196 x 64, en colonne) | gauche, bas à 43 au-dessus du milieu | Hud (3) |
+| Daily / Spin / Gifts (196 x 64, en colonne) | gauche, haut à 33 au-dessus du milieu | Rewards (5) |
 | Compteurs (300 x 134) | bas à gauche, marge 16 | Hud (3) |
 | Bandeau de zone, carte du transport (440 de large) | haut au milieu, y = 8 | Hud (3) |
 | Cuves (232 de large) | droite, milieu + 30 | Hud (3) |

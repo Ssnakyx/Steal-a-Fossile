@@ -192,11 +192,23 @@ local function resize(sec: Section)
 	end
 end
 
+-- Couleur du titre de chaque section (comme Steal an Egg : PASSES jaune, SPEED bleu ciel, MONEY vert)
+local SECTION_COLORS: { [string]: Color3 } = {
+	FEATURED = Colors.Yellow,
+	SPEED = Colors.Cyan,
+	PASSES = Colors.Yellow,
+	["SUPER TRAILS"] = Colors.Pink,
+	["CASH TRAILS"] = Colors.GreenText,
+	ITEMS = Colors.Orange,
+	SPINS = Colors.Pink,
+}
+
 local function section(page: ScrollingFrame, title: string, wide: boolean?): Section
 	sectionOrder += 1
 	UIKit.sectionTitle({
 		Name = "Section" .. sectionOrder,
 		Text = title,
+		Color = SECTION_COLORS[title],
 		Width = PAGE_W,
 		LayoutOrder = sectionOrder * 10,
 		ZIndex = Z,
@@ -232,17 +244,19 @@ local function swatch(parent: GuiObject, spec: CardSpec, size: number, position:
 		ZIndex = Z + 1,
 		Parent = parent,
 	})
-	new("Frame", {
+	-- (rayons blancs derrière l'image, comme les cartes de Steal an Egg)
+	new("ImageLabel", {
 		Name = "Halo",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0.92, 0.92),
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		BackgroundTransparency = 0.72,
-		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1.45, 1.45),
+		BackgroundTransparency = 1,
+		Image = UIKit.Sunburst,
+		ImageTransparency = 0.55,
+		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = Z + 1,
 		Parent = holder,
-	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
+	})
 	local colors = spec.Ribbon
 	if colors and #colors > 0 then
 		local ribbon: Frame = new("Frame", {

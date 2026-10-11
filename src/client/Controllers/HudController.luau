@@ -36,9 +36,9 @@ local ECONOMY = Config.Economy
 
 -- Bloc de boutons à gauche : même taille que ceux de RewardsController (136 x 68, écart 14), juste au-dessus d'eux.
 -- RewardsController centre les siens 82 unités sous le milieu de l'écran : les 5 boutons sont centrés ensemble.
-local BUTTON = Vector2.new(84, 84) -- (boutons carrés à icône, deux par ligne)
+local BUTTON = Vector2.new(196, 64) -- (boutons larges à icône, en colonne)
 local GAP = 10
-local BUTTONS_BOTTOM = -52 -- (bas des boutons du HUD, depuis le milieu de l'écran : haut des boutons Daily - GAP)
+local BUTTONS_BOTTOM = -43 -- (bas des boutons du HUD, depuis le milieu de l'écran : haut des boutons Daily - GAP)
 local COUNTERS_WIDTH = 300
 local BANNER_TIME = 3.2
 local REFRESH = 0.1
@@ -201,11 +201,11 @@ local function buildButtons(root: Frame): (Frame, UIKit.Badge, UIKit.Badge)
 		Name = "HudButtons",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 16, 0.5, BUTTONS_BOTTOM),
-		Size = UDim2.fromOffset(2 * BUTTON.X + GAP, BUTTON.Y),
+		Size = UDim2.fromOffset(BUTTON.X, 2 * BUTTON.Y + GAP),
 		BackgroundTransparency = 1,
 		Parent = root,
 	}, {
-		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, GAP), SortOrder = Enum.SortOrder.LayoutOrder }),
+		new("UIListLayout", { Padding = UDim.new(0, GAP), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	local shop = UIKit.menuButton({
 		Name = "Shop",
