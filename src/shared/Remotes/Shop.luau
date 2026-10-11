@@ -5,7 +5,7 @@
 return {
 	Functions = {
 		GetShop = "client -> serveur : contenu du shop (treadmill et niveau suivant, passes, produits, prix lus sur Roblox) -> table",
-		BuyTreadmill = "client -> serveur : acheter le niveau suivant du treadmill (ouvre l'achat Robux) -> (ok, texte)",
+		BuyTreadmill = "client -> serveur : acheter le niveau suivant du treadmill (\"Cash\" ou rien : argent du jeu ; \"Robux\" : ouvre l'achat Robux) -> (ok, texte)",
 		BuyPass = "client -> serveur : acheter un passe (clé de Config.Shop.Passes) -> (ok, texte)",
 		BuyProduct = "client -> serveur : acheter un produit Robux (clé de Config.Shop.Products) -> (ok, texte)",
 		BuyTrail = "client -> serveur : acheter une trail avec l'argent du jeu (clé de Config.Speed.Trails) -> (ok, texte)",

@@ -23,8 +23,9 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
 - **Cuves** à droite : une ligne par cuve (rareté, temps restant, barre), **OPEN** quand elle est prête (ouvre la cuve
   de loin), « +N fossils waiting », bouton **NEW TANK $X**. Visible dès qu'une cuve sert.
 - **Shop** (4 onglets) :
-  - *Speed* : Treadmill (gain actuel par seconde, même AFK ; niveau suivant avec sa vitesse et son vrai prix Roblox ;
-    MAX au niveau 10), passe x2 Treadmill, raccourci vers les trails.
+  - *Speed* : Treadmill (gain actuel par seconde, même AFK ; niveau suivant avec sa vitesse, son prix en argent du jeu
+    (grisé tant qu'il est trop cher) et, si le produit est en vente, son vrai prix Roblox ; MAX au niveau 10), passe x2
+    Treadmill, raccourci vers les trails.
   - *Trails* : Super trails (Neon x1.5, Galaxy x2, Golden x3, passes Robux, EQUIP / EQUIPPED une fois achetées) puis
     les 10 trails en argent (grisées tant qu'elles sont trop chères, EQUIP / EQUIPPED).
   - *Passes* : x2 Money, x2 Treadmill, Fast Revive, VIP (OWNED une fois achetés).
@@ -83,7 +84,7 @@ Un nouvel élément d'interface prend une place libre de ce tableau, ou le compl
 - `HudController.SetVisible(bool)` : cache tout le HUD (cinématique). `HudController.Heading(de, vers, caméra)` :
   angle de la flèche.
 - `ShopController.Open(onglet?)` (« Speed », « Trails », « Passes », « Items »), `Close`, `Toggle`, `IsOpen`,
-  `Select(onglet)`. Ex. : le message « Buy the Treadmill in the Shop » peut appeler `ShopController.Open("Speed")`.
+  `Select(onglet)`. Ex. : le message « Unlock the Treadmill » peut appeler `ShopController.Open("Speed")`.
 - `IndexController.Open(page?)` (nom de zone, « Secret », « Hybrids »), `Close`, `Toggle`, `IsOpen`, `Unseen()`.
 - `LabController.Open`, `Close`, `IsOpen`, `Select(ids)`, `Selected()`. Il met `FusionController.MenuReady = true`.
 - `RevealController.Show(infos, "Tank" | "Fusion")`, `IsOpen`, `Pending`, signal `Closed(genre)`. Le brief 11 peut

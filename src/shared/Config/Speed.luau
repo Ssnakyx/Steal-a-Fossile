@@ -52,8 +52,8 @@ local Speed = {
 	RefreshInterval = 0.2, -- secondes entre deux mises à jour du WalkSpeed (bloc porté, trail, effets)
 
 	-- Treadmill du parc : vitesse gagnée chaque seconde en courant dessus ou AFK dessus (rien à regarder).
-	-- Sans achat, le tapis donne FreeMultiplier x BaseGain (tout le monde peut AFK dessus) ; l'achat (niveau 1, 25 R$)
-	-- et les niveaux suivants sont dans Config.Shop.Treadmill.
+	-- Sans achat, le tapis donne FreeMultiplier x BaseGain (tout le monde peut AFK dessus) ; le déblocage (niveau 1,
+	-- $1K en argent du jeu ou en Robux) et les niveaux suivants sont dans Config.Shop.Treadmill.
 	Treadmill = {
 		Tag = "Treadmill", -- BasePart taguée (CollectionService) = surface du tapis
 		OwnerAttribute = "OwnerUserId", -- sur la pièce ou un ancêtre (parc) : seul ce joueur y gagne de la vitesse

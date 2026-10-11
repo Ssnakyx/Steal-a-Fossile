@@ -15,7 +15,7 @@ Toutes les valeurs sont dans les fichiers de config (valeurs de départ, à équ
 - **Gifts** (bouton rose) : 9 cadeaux débloqués par le temps de jeu du jour, AFK compris (2, 5, 10, 15, 25, 40, 60,
   90 et 120 min). Les cadeaux prêts et pas ouverts sont donnés tout seuls au changement de jour (00:00 UTC).
 - Une pastille rouge sur chaque bouton quand quelque chose attend.
-- **Treadmill** : sans achat, il donne déjà 5 vitesse/s (x0.2 du treadmill acheté), même AFK. Une carte en bas de
+- **Treadmill** : sans achat, il donne déjà 5 vitesse/s (x0.2 du treadmill débloqué à $1K), même AFK. Une carte en bas de
   l'écran montre le gain par seconde et le gain depuis qu'on est monté. Roblox expulse un joueur inactif depuis 20 min :
   après 15 min d'inactivité sur son tapis, le joueur est reconnecté au même serveur et reposé sur son tapis (seulement
   dans le jeu publié, TeleportService ne marche pas dans Studio).

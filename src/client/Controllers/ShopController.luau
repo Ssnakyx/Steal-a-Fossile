@@ -1,7 +1,7 @@
 --!strict
 -- Shop (brief 12 « ui-ux », GDD : Monétisation, Vitesse et treadmill). Bouton Shop du HUD, quatre onglets :
---   * Speed   : treadmill (niveau, gain actuel, niveau suivant avec son gain et son prix réel lu sur Roblox), passe
---               x2 Treadmill, et un raccourci vers les trails ;
+--   * Speed   : treadmill (niveau, gain actuel, niveau suivant avec son gain, son prix en argent du jeu et, si le
+--               produit est en vente, son prix Robux réel lu sur Roblox), passe x2 Treadmill, et un raccourci vers les trails ;
 --   * Trails  : trails Robux (Neon, Galaxy, Golden : passes) puis trails en argent du jeu (acheter, porter) ;
 --   * Passes  : x2 Money, Fast Revive, VIP ;
 --   * Items   : Bear Traps (argent du jeu, par 1 ou 5), Bear Traps x5, Instant Revive et Server Luck (Robux), tours de
@@ -372,51 +372,59 @@ local function treadmillPage(page: ScrollingFrame)
 	local maxLevel = #levels
 	local nextInfo = if type(info) == "table" and type(info.Next) == "table" then info.Next else nil
 	local nextLevel = level + 1
-	local button: ButtonSpec
+	local buttons: { ButtonSpec } = {}
 	local subtitle: string
+	local cash: number? = nil
 	if level >= maxLevel then
-		button = { Text = "MAX", Color = Colors.Disabled, Disabled = true }
+		table.insert(buttons, { Text = "MAX", Color = Colors.Disabled, Disabled = true })
 		subtitle = "Your treadmill is maxed out!"
-	elseif nextInfo then
-		button = {
-			Text = robux(nextInfo.Price),
-			Color = Colors.Robux,
-			OnClick = function()
-				request("Treadmill", "BuyTreadmill")
-			end,
-		}
-		subtitle = string.format(
-			"Level %d: +%s Speed/s (%s).",
-			nextLevel,
-			Format.Number(tonumber(nextInfo.Rate) or 0),
-			times(nextInfo.Multiplier)
-		)
-	elseif STUDIO then
-		button = studioPlaceholder()
-		local multiplier = levels[nextLevel].Multiplier
-		subtitle = string.format(
-			"Level %d: +%s Speed/s (%s).",
-			nextLevel,
-			Format.Number(Config.Speed.Treadmill.BaseGain * multiplier),
-			times(multiplier)
-		)
 	else
-		button = { Text = "SOON", Color = Colors.Disabled, Disabled = true }
-		subtitle = "More levels are coming soon!"
+		-- argent du jeu (déblocage $1K, puis le prix monte), et Robux pour aller plus vite quand le produit est en vente
+		local entry = levels[nextLevel]
+		local price = if nextInfo and type(nextInfo.Cash) == "number" then nextInfo.Cash else entry.Cash
+		cash = price
+		table.insert(buttons, {
+			Text = Format.Money(price),
+			Color = Colors.Green,
+			OnClick = function()
+				request("Treadmill", "BuyTreadmill", "Cash")
+			end,
+		})
+		if nextInfo and type(nextInfo.Price) == "number" then
+			table.insert(buttons, {
+				Text = robux(nextInfo.Price),
+				Color = Colors.Robux,
+				OnClick = function()
+					request("TreadmillRobux", "BuyTreadmill", "Robux")
+				end,
+			})
+		end
+		local rate = if nextInfo and type(nextInfo.Rate) == "number"
+			then nextInfo.Rate
+			else Config.Speed.Treadmill.BaseGain * entry.Multiplier
+		subtitle = string.format(
+			"Level %d: +%s Speed/s (%s).",
+			nextLevel,
+			Format.Number(rate),
+			times(entry.Multiplier)
+		)
 	end
 	local title = if level <= 0 then "Treadmill (free)" else string.format("Treadmill  Level %d/%d", level, maxLevel)
-	local _, _, sub = row(page, 1, {
+	local _, rowButtons, sub = row(page, 1, {
 		Name = "Treadmill",
 		Title = title,
 		Subtitle = "",
 		Color = Colors.Cyan,
 		Glyph = if level > 0 then tostring(level) else "AFK",
 		Height = 132,
-		Buttons = { button },
+		Buttons = buttons,
 	})
 	table.insert(updaters, function()
 		local rate = num("TreadmillRate")
 		sub.Text = string.format("Now: +%s Speed/s on your treadmill, even AFK!\nNext %s", Format.Number(rate), subtitle)
+		if cash and rowButtons[1] then
+			rowButtons[1]:SetAttribute("Disabled", num("Money") < cash)
+		end
 	end)
 	passRow(page, 2, "DoubleTreadmill", "x2", Colors.Cyan)
 	local _, _ = row(page, 3, {
