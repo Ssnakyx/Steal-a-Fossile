@@ -151,6 +151,32 @@ for _, name in species do
 	end
 end
 
+-- rareté : 7 niveaux dans l'ordre, anneau de briques autour de chaque espèce
+check("7 raretés", #DinoBuilder.Rarities == 7, #DinoBuilder.Rarities)
+for i, r in DinoBuilder.Rarities do
+	check("rareté " .. r.Name .. " : niveau", r.Level == i)
+	check("rareté " .. r.Name .. " : par nom", DinoBuilder.RarityByName[r.Name] == r)
+end
+check("Secret en arc-en-ciel", DinoBuilder.RarityByName.Secret.Rainbow == true)
+for _, name in species do
+	local data = DinoBuilder.Decode(name, require("./models/" .. name))
+	for _, scale in { 0.75, 1, 2.5 } do
+		local a, b = DinoBuilder.RingShape(data, scale)
+		local segs = DinoBuilder.RingSegments(data, scale)
+		local bad = 0
+		for _, seg in segs do
+			local cframe, size = seg[1], seg[2]
+			local p = cframe.Position
+			local e = (p.X / a) ^ 2 + (p.Z / b) ^ 2
+			if size.X <= 0 or size.Y <= 0 or size.Z <= 0 or p.Y <= 0 or e < 0.85 or e > 1.01 then
+				bad += 1
+			end
+		end
+		check(name .. " : anneau x" .. scale, #segs >= 10 and #segs <= 24 and bad == 0 and a > 0 and b >= a * 0.5,
+			string.format("%d briques, %d hors de l'ellipse", #segs, bad))
+	end
+end
+
 -- fondu : un tour complet ne se rembobine pas (chemin le plus court)
 local a = { Hips = { 0, 350, 0, 0, 0, 0 } }
 local b = { Hips = { 0, 10, 0, 0, 0, 0 } }
