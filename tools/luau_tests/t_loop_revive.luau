@@ -309,7 +309,7 @@ for name in sizes do
 	end
 	T.check(known, "taille connue : " .. name)
 end
-T.eq(ReviveService.Roll("Common", "Beach", 1e9).Mutation, "Lava", "chance énorme : la mutation la plus rare")
+T.eq(ReviveService.Roll("Common", "Beach", 1e9).Mutation, "Rainbow", "chance énorme : la mutation la plus rare")
 T.eq(Rarity.Species[ReviveService.Roll("Secret", "Beach").Species], "Secret", "bloc Secret : espèce Secret")
 T.check(#ReviveService.Candidates("Mythic", "") > 0, "bloc sans zone : espèces de la rareté")
 

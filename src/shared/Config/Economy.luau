@@ -4,7 +4,14 @@
 -- Valeurs de départ à équilibrer.
 
 export type SizeInfo = { Name: string, Chance: number, Income: number, Scale: number }
-export type MutationInfo = { Name: string, Chance: number, Income: number }
+export type MutationInfo = {
+	Name: string,
+	Chance: number, -- % (tirage unique à la réanimation)
+	Income: number, -- multiplicateur de revenu
+	Zone: string?, -- mutation de biome : ne sort que des fossiles de cette zone (nil : toutes les zones)
+	Color: Color3, -- couleur de la mutation (textes, effets)
+}
+export type MutationChance = { Name: string, Chance: number, Income: number }
 export type LevelInfo = { Name: string, Income: number }
 
 local Economy = {
@@ -17,12 +24,26 @@ local Economy = {
 		{ Name = "Huge", Chance = 3, Income = 3, Scale = 2.5 },
 	} :: { SizeInfo },
 
-	-- Mutations : Chance en % (tirage unique ; sans mutation le reste du temps)
+	-- Mutations (docs/MUTATIONS.md), de la plus commune à la plus rare. Chance en % (tirage unique ; sans mutation le
+	-- reste du temps), multipliée par la chance du joueur (pass VIP). Amber, Crystal, Lava et Rainbow sortent de toutes
+	-- les zones ; chaque biome a en plus sa mutation à lui (Zone), qui ne sort que de ses fossiles.
+	-- Apparence : DinoBuilder (couleurs des briques) et MutationController (effets autour du dino), mêmes noms.
 	Mutations = {
-		{ Name = "Amber", Chance = 8, Income = 1.5 },
-		{ Name = "Crystal", Chance = 3, Income = 2 },
-		{ Name = "Lava", Chance = 1, Income = 3 },
+		{ Name = "Amber", Chance = 8, Income = 1.5, Color = Color3.fromRGB(255, 172, 38) },
+		{ Name = "Crystal", Chance = 3, Income = 2, Color = Color3.fromRGB(150, 228, 255) },
+		{ Name = "Pearl", Chance = 2, Income = 2, Zone = "Beach", Color = Color3.fromRGB(255, 226, 236) },
+		{ Name = "Bloom", Chance = 2, Income = 2, Zone = "Fern Forest", Color = Color3.fromRGB(255, 120, 196) },
+		{ Name = "Toxic", Chance = 1.5, Income = 2.5, Zone = "Swamp", Color = Color3.fromRGB(150, 255, 60) },
+		{ Name = "Ruby", Chance = 1.5, Income = 2.5, Zone = "Canyon", Color = Color3.fromRGB(235, 30, 70) },
+		{ Name = "Frost", Chance = 1.5, Income = 2.5, Zone = "Glacier", Color = Color3.fromRGB(190, 236, 255) },
+		{ Name = "Lava", Chance = 1, Income = 3, Color = Color3.fromRGB(255, 108, 28) },
+		{ Name = "Obsidian", Chance = 1, Income = 3, Zone = "Volcano", Color = Color3.fromRGB(170, 90, 255) },
+		{ Name = "Abyssal", Chance = 0.75, Income = 4, Zone = "Ocean Trench", Color = Color3.fromRGB(60, 230, 255) },
+		{ Name = "Galaxy", Chance = 0.5, Income = 5, Zone = "Meteor Crater", Color = Color3.fromRGB(190, 120, 255) },
+		{ Name = "Rainbow", Chance = 0.05, Income = 10, Color = Color3.fromRGB(255, 90, 200) },
 	} :: { MutationInfo },
+	-- Une mutation de Chance <= MutationAnnounce (%) est annoncée à tout le serveur quand elle sort (MutationService)
+	MutationAnnounce = 1,
 
 	-- Niveaux de fusion Upgrade (data.Dinos[id].Level : 0, 1, 2), multiplicateur de revenu. Réglés avec le brief 8.
 	Levels = {
@@ -77,6 +98,76 @@ function Economy.NextTankPrice(owned: number): number?
 		return nil
 	end
 	return Economy.Tanks.Prices[owned - Economy.Tanks.Start + 1]
+end
+
+local MUTATION_BY_NAME: { [string]: MutationInfo } = {}
+for _, info in Economy.Mutations do
+	MUTATION_BY_NAME[info.Name] = info
+end
+
+-- Fiche d'une mutation par son nom (nil : pas de mutation ou nom inconnu)
+function Economy.Mutation(name: string?): MutationInfo?
+	return if type(name) == "string" then MUTATION_BY_NAME[name] else nil
+end
+
+-- Nom exact d'une mutation tapé sans faire attention aux majuscules (commandes admin) ; nil si inconnu
+function Economy.FindMutation(text: string?): string?
+	if type(text) ~= "string" then
+		return nil
+	end
+	local wanted = string.lower(text)
+	for _, info in Economy.Mutations do
+		if string.lower(info.Name) == wanted then
+			return info.Name
+		end
+	end
+	return nil
+end
+
+-- La mutation peut-elle sortir d'un fossile de cette zone ? (mutation de biome : seulement de sa zone)
+function Economy.MutationInZone(info: MutationInfo, zoneName: string?): boolean
+	return info.Zone == nil or info.Zone == zoneName
+end
+
+local function luckBoost(luck: number?): number
+	return 1 + (if type(luck) == "number" and luck == luck and luck > 0 and luck < math.huge then luck else 0)
+end
+
+-- Tire la mutation d'un dino réanimé : zone du fossile, bonus de chance du joueur (0.1 = +10 %), roll dans [0, 1[.
+-- De la plus rare à la plus commune (avec une chance énorme, la plus rare de la zone sort toujours). "" : aucune.
+function Economy.RollMutation(zoneName: string?, luck: number?, roll: number): string
+	local boost = luckBoost(luck)
+	local r = (if type(roll) == "number" and roll == roll then math.clamp(roll, 0, 1) else 1) * 100
+	local acc = 0
+	for index = #Economy.Mutations, 1, -1 do
+		local info = Economy.Mutations[index]
+		if Economy.MutationInZone(info, zoneName) then
+			acc += info.Chance * boost
+			if r < acc then
+				return info.Name
+			end
+		end
+	end
+	return ""
+end
+
+-- Probas affichables des mutations d'une zone (0 à 1, avec la chance du joueur), de la plus commune à la plus rare,
+-- puis { Name = "", ... } : aucune mutation. Mêmes calculs que RollMutation (toute chance payante affiche ses probas).
+function Economy.MutationChances(zoneName: string?, luck: number?): { MutationChance }
+	local boost = luckBoost(luck)
+	local out: { MutationChance } = {}
+	local left = 1
+	-- (même ordre que le tirage : les plus rares d'abord, la somme bornée à 100 %)
+	for index = #Economy.Mutations, 1, -1 do
+		local info = Economy.Mutations[index]
+		if Economy.MutationInZone(info, zoneName) then
+			local p = math.min(info.Chance * boost / 100, left)
+			left -= p
+			table.insert(out, 1, { Name = info.Name, Chance = p, Income = info.Income })
+		end
+	end
+	table.insert(out, { Name = "", Chance = left, Income = 1 })
+	return out
 end
 
 -- Nombre de slots d'enclos après `upgrades` agrandissements

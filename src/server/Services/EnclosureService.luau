@@ -442,14 +442,15 @@ function EnclosureService.Init()
 	end)
 	AdminService.RegisterCommand("givedino", {
 		Description = "Put a dino in the enclosure",
-		Usage = "givedino <species> [Small|Normal|Big|Huge] [Amber|Crystal|Lava|none] [player]",
+		Usage = "givedino <species> [Small|Normal|Big|Huge] [mutation|none] [player]",
 		Run = function(caller: Player, args: { string })
 			local species = findSpecies(args[1] or "")
 			local target = AdminService.FindPlayer(caller, args[4])
 			if not (species and target) then
 				return false, "Usage: givedino <species> [size] [mutation] [player]"
 			end
-			local id = EnclosureService.AddDino(target, { Species = species, Size = args[2], Mutation = args[3] }, "Spawn")
+			local mutation = Economy.FindMutation(args[3]) or args[3] -- (Config.Economy.Mutations, sans les majuscules)
+			local id = EnclosureService.AddDino(target, { Species = species, Size = args[2], Mutation = mutation }, "Spawn")
 			if not id then
 				return false, "Enclosure full"
 			end
