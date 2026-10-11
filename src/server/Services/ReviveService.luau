@@ -4,8 +4,9 @@
 -- il partira tout seul dans la prochaine cuve libérée. Minuteur selon la rareté (Config.Rarity), 2x plus court avec le
 -- pass Fast Revive (ShopService du brief 4, s'il existe). Cuve prête : « Reveal » tire l'espèce (parmi les espèces de la
 -- zone du bloc qui ont sa rareté), la taille et la mutation, et le dino va dans l'enclos (s'il y a de la place).
--- Pièces Tank1..Tank6 du parc : étiquette (compte à rebours tagué « LoopCountdown »), bloc visible dans la cuve,
--- ProximityPrompt « Reveal » quand elle est prête et « Buy Tank » sur la première cuve pas encore achetée.
+-- Pièces Tank1..Tank6 du parc : minuteur au-dessus de la cuve (BillboardGui « TankLabel » : rareté, compte à rebours
+-- tagué « LoopCountdown » et barre de progression taguée « LoopProgress », animés par LoopController), bloc visible
+-- dans la cuve, ProximityPrompt « Reveal » quand elle est prête et « Buy Tank » sur la première cuve pas encore achetée.
 -- Clés replica « Tanks » ({ [slot]: { Rarity, Zone, StartedAt, EndsAt } }, os.time()), « TankCount », « Stored ».
 -- Remotes RevealTank, BuyTank ; événement DinoRevealed. Produit Robux « InstantRevive » (si Config.Shop du brief 4 existe).
 -- Signaux : TankStarted(player, slot, tank), DinoRevived(player, id, dino, rarity)
@@ -39,7 +40,26 @@ local ReviveService = {}
 
 local CHECK_INTERVAL = 1
 
-type Visual = { Label: TextLabel, Gui: BillboardGui, Prompt: ProximityPrompt, Block: Part? }
+-- Minuteur au-dessus de chaque cuve (tailles en studs : il grandit et rapetisse avec la cuve à l'écran)
+local TIMER_SIZE = UDim2.fromScale(8, 3)
+local TIMER_ABOVE = 4.2 -- studs entre le haut du verre et le centre du minuteur (au-dessus du couvercle)
+local TIMER_DISTANCE = 120 -- visible de partout dans son parc et depuis la place
+local PANEL = Color3.fromRGB(22, 26, 36)
+local MUTED = Color3.fromRGB(205, 205, 210)
+local GOLD = Color3.fromRGB(255, 220, 120)
+local READY = Color3.fromRGB(110, 255, 140)
+local WHITE = Color3.new(1, 1, 1)
+
+type Visual = {
+	Label: TextLabel, -- compte à rebours (« Text »)
+	Title: TextLabel, -- rareté du bloc
+	Gui: BillboardGui,
+	Stroke: UIStroke,
+	Bar: Frame,
+	Fill: Frame, -- progression (taguée « LoopProgress » : StartedAt, EndsAt)
+	Prompt: ProximityPrompt,
+	Block: Part?,
+}
 
 local visuals: { [Player]: { [number]: Visual } } = {}
 local announced: { [Player]: { [number]: number } } = {} -- cuves prêtes déjà annoncées (slot -> EndsAt)
@@ -203,29 +223,51 @@ local function updateVisual(player: Player, slot: number)
 		part:SetAttribute("Rarity", blockRarity)
 		visual.Block = part
 	end
+	local title, fill = visual.Title, visual.Fill
 	label:SetAttribute("EndsAt", nil)
+	fill:SetAttribute("StartedAt", nil)
+	fill:SetAttribute("EndsAt", nil)
+	-- (barre cachée si le début est inconnu : vieille cuve sans StartedAt valide)
+	local started = if tank and tank.StartedAt > 0 and tank.StartedAt <= tank.EndsAt then tank.StartedAt else nil
+	visual.Bar.Visible = started ~= nil
 	if slot > data.TankCount then
 		local price = if slot == data.TankCount + 1 then Economy.NextTankPrice(data.TankCount) else nil
 		visual.Gui.Enabled = price ~= nil
-		label.Text = if price then "Buy Tank: " .. Format.Money(price) else "Locked"
-		label.TextColor3 = Color3.fromRGB(255, 220, 120)
+		title.Text = "REVIVAL TANK"
+		title.TextColor3 = MUTED
+		label.Text = if price then "Buy: " .. Format.Money(price) else "Locked"
+		label.TextColor3 = GOLD
+		visual.Stroke.Color = GOLD
 		prompt.ActionText = if price then "Buy Tank (" .. Format.Money(price) .. ")" else "Locked"
 		prompt.ObjectText = "Revival Tank " .. slot
 		prompt.HoldDuration = 0.5
 		prompt.Enabled = price ~= nil
 	elseif not tank then
 		visual.Gui.Enabled = true
+		title.Text = "REVIVAL TANK"
+		title.TextColor3 = MUTED
 		label.Text = "Empty"
-		label.TextColor3 = Color3.fromRGB(220, 220, 220)
+		label.TextColor3 = MUTED
+		visual.Stroke.Color = MUTED
 		prompt.Enabled = false
 	else
 		visual.Gui.Enabled = true
 		local ready = isReady(tank)
 		local info = Rarity.Info[tank.Rarity]
-		label.TextColor3 = if info then info.Color else Color3.new(1, 1, 1)
-		-- (compte à rebours affiché par LoopController côté client)
+		local color = if info then info.Color else WHITE
+		title.Text = string.upper(tank.Rarity) .. " FOSSIL"
+		title.TextColor3 = color:Lerp(WHITE, 0.25)
+		-- (compte à rebours et barre animés par LoopController côté client)
 		label:SetAttribute("EndsAt", tank.EndsAt)
-		label.Text = if ready then "READY!" else tank.Rarity .. " " .. Format.Clock(tank.EndsAt - os.time())
+		label.Text = if ready then "READY!" else Format.Clock(tank.EndsAt - os.time())
+		label.TextColor3 = if ready then READY else WHITE
+		fill:SetAttribute("StartedAt", started)
+		fill:SetAttribute("EndsAt", tank.EndsAt)
+		local duration = tank.EndsAt - (started or tank.EndsAt)
+		local progress = if ready or duration <= 0 then 1 else math.clamp((os.time() - (started or tank.EndsAt)) / duration, 0, 1)
+		fill.Size = UDim2.fromScale(progress, 1)
+		fill.BackgroundColor3 = if ready then READY else color
+		visual.Stroke.Color = if ready then READY else color
 		prompt.ActionText = "Reveal"
 		prompt.ObjectText = tank.Rarity .. " Fossil"
 		prompt.HoldDuration = 0
@@ -431,6 +473,77 @@ local function onPrompt(player: Player, slot: number, who: Player)
 	Notify.Send(player, text, if ok then "success" else "error")
 end
 
+local function corner(radius: UDim, parent: Instance)
+	local item = Instance.new("UICorner")
+	item.CornerRadius = radius
+	item.Parent = parent
+end
+
+local function timerText(name: string, position: UDim2, size: UDim2, parent: Instance): TextLabel
+	local label = Instance.new("TextLabel")
+	label.Name = name
+	label.BackgroundTransparency = 1
+	label.Position = position
+	label.Size = size
+	label.ZIndex = 2
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextColor3 = WHITE
+	label.TextStrokeTransparency = 0.4
+	label.Parent = parent
+	return label
+end
+
+-- Minuteur au-dessus d'une cuve : panneau sombre, rareté, compte à rebours, barre de progression
+local function createTimer(tankPart: BasePart): (BillboardGui, TextLabel, TextLabel, UIStroke, Frame, Frame)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "TankLabel"
+	gui.Size = TIMER_SIZE
+	gui.StudsOffsetWorldSpace = Vector3.new(0, tankPart.Size.Y / 2 + TIMER_ABOVE, 0) -- (reste au-dessus du couvercle vu d'en haut)
+	gui.MaxDistance = TIMER_DISTANCE
+	gui.LightInfluence = 0
+	local back = Instance.new("Frame")
+	back.Name = "Back"
+	back.Size = UDim2.fromScale(1, 1)
+	back.BackgroundColor3 = PANEL
+	back.BackgroundTransparency = 0.3
+	back.BorderSizePixel = 0
+	corner(UDim.new(0.2, 0), back)
+	local stroke = Instance.new("UIStroke")
+	stroke.Name = "Stroke"
+	stroke.Thickness = 2
+	stroke.Color = MUTED
+	stroke.Parent = back
+	back.Parent = gui
+	local title = timerText("Title", UDim2.fromScale(0.06, 0.06), UDim2.fromScale(0.88, 0.26), gui)
+	local label = timerText("Text", UDim2.fromScale(0.06, 0.32), UDim2.fromScale(0.88, 0.42), gui)
+	label:SetAttribute("Format", "%s")
+	label:SetAttribute("Done", "READY!")
+	label:AddTag("LoopCountdown")
+	local bar = Instance.new("Frame")
+	bar.Name = "Bar"
+	bar.Position = UDim2.fromScale(0.1, 0.8)
+	bar.Size = UDim2.fromScale(0.8, 0.11)
+	bar.ZIndex = 2
+	bar.BackgroundColor3 = Color3.fromRGB(8, 10, 14)
+	bar.BackgroundTransparency = 0.2
+	bar.BorderSizePixel = 0
+	bar.Visible = false
+	corner(UDim.new(0.5, 0), bar)
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.fromScale(0, 1)
+	fill.ZIndex = 3
+	fill.BackgroundColor3 = WHITE
+	fill.BorderSizePixel = 0
+	corner(UDim.new(0.5, 0), fill)
+	fill:AddTag("LoopProgress")
+	fill.Parent = bar
+	bar.Parent = gui
+	gui.Parent = tankPart
+	return gui, title, label, stroke, bar, fill
+end
+
 local function createVisuals(player: Player)
 	local plot = PlotService.Get(player)
 	if not plot then
@@ -438,24 +551,7 @@ local function createVisuals(player: Player)
 	end
 	local list: { [number]: Visual } = {}
 	for slot, tankPart in plot.Tanks do
-		local gui = Instance.new("BillboardGui")
-		gui.Name = "TankLabel"
-		gui.Size = UDim2.fromScale(7, 1.6)
-		gui.StudsOffset = Vector3.new(0, tankPart.Size.Y / 2 + 1.2, 0)
-		gui.MaxDistance = 80
-		gui.LightInfluence = 0
-		local label = Instance.new("TextLabel")
-		label.Name = "Text"
-		label.BackgroundTransparency = 1
-		label.Size = UDim2.fromScale(1, 1)
-		label.Font = Enum.Font.GothamBold
-		label.TextScaled = true
-		label.TextStrokeTransparency = 0.4
-		label:SetAttribute("Format", "%s")
-		label:SetAttribute("Done", "READY!")
-		label:AddTag("LoopCountdown")
-		label.Parent = gui
-		gui.Parent = tankPart
+		local gui, title, label, stroke, bar, fill = createTimer(tankPart)
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "TankPrompt"
 		prompt.MaxActivationDistance = 10
@@ -466,7 +562,7 @@ local function createVisuals(player: Player)
 			onPrompt(player, slot, who)
 		end)
 		prompt.Parent = tankPart
-		list[slot] = { Label = label, Gui = gui, Prompt = prompt, Block = nil }
+		list[slot] = { Label = label, Title = title, Gui = gui, Stroke = stroke, Bar = bar, Fill = fill, Prompt = prompt, Block = nil }
 	end
 	visuals[player] = list
 	updateAll(player)

@@ -37,7 +37,9 @@ T.eq(#Boot.Errors, 0, "aucune erreur au démarrage")
 local stats = MapService.Stats
 T.check(stats ~= nil and stats.Parts > 5000, "la map a du détail")
 T.eq(#stats.Zones, #Zones.List, "une entrée de stats par zone")
-T.eq(#PlotService.List(), Map.Plots.Count, "PlotService lit les 8 parcs de la map")
+T.eq(Map.Plots.Count, 5, "serveurs de 5 joueurs : 5 parcs")
+T.eq(#PlotService.List(), Map.Plots.Count, "PlotService lit les 5 parcs de la map")
+T.eq(#map.Plots:GetChildren(), Map.Plots.Count, "pas de parc en trop dans la map")
 T.eq(#ZoneService.List(), #Zones.List, "ZoneService lit les 8 zones de la map")
 T.eq(map:FindFirstChild("Plots"):FindFirstChild("Plot1"):FindFirstChild("WallLeft"), nil, "pas de géométrie provisoire dans les parcs")
 
@@ -61,6 +63,11 @@ for index, plot in plots do
 	end
 	T.eq(plot.Floor.Position.Z + plot.Floor.Size.Z / 2, 0, "Plot" .. index .. " : entrée au bord Z = 0")
 end
+T.near(plots[3].Floor.Position.X, 0, 1e-6, "le parc du milieu est en face de la route")
+T.near(plots[1].Floor.Position.X, -plots[#plots].Floor.Position.X, 1e-6, "parcs centrés sur la route")
+local plaza = map.Spawn:FindFirstChild("Plaza")
+T.check(plaza ~= nil and plaza.Size.X / 2 >= plots[#plots].Floor.Position.X + plots[#plots].Floor.Size.X / 2, "la place couvre l'entrée des 5 parcs")
+T.check(plaza ~= nil and plaza.Size.X / 2 >= Map.Route.Width / 2 + Map.Route.Border, "la place est plus large que la route et ses falaises")
 
 T.section("zones")
 local geos = ZoneService.List()

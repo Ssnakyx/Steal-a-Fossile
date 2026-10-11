@@ -354,6 +354,7 @@ env.datastore.latency = 0
 env.waitUntil(function()
 	return loading:GetAttribute("Ready") == true
 end, "Loading prêt", 60)
+T.leave(loading) -- (serveurs de 5 joueurs : sa place sert à Gina)
 local ok, text = DroppedBlockService.PickUp(dave, 123456)
 T.check(not ok and text == "Too late!", "bloc inconnu")
 DroppedBlockService.ReturnAll()

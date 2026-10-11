@@ -87,12 +87,19 @@ T.check(not CarryService.IsCarrying(player), "l'entrée passée : le bloc est à
 T.eq(Replica.Get("Carrying"), nil, "plus rien sur le dos côté client")
 T.eq(Replica.Get("Tanks")["1"].Rarity, "Common", "le client voit la cuve 1 occupée")
 local tankLabel = plot.Tanks[1].TankLabel.Text
+local tankFill = plot.Tanks[1].TankLabel.Bar.Fill
 env.advance(1)
 T.check(string.match(tankLabel.Text, "^%d+:%d%d$") ~= nil, "compte à rebours de la cuve : " .. tankLabel.Text)
+T.eq(plot.Tanks[1].TankLabel.Title.Text, "COMMON FOSSIL", "rareté au-dessus du compte à rebours")
+T.check(plot.Tanks[1].TankLabel.Bar.Visible, "barre de progression visible")
+local early = tankFill.Size.X.Scale
+env.advance(14)
+T.check(tankFill.Size.X.Scale > early and tankFill.Size.X.Scale > 0.4 and tankFill.Size.X.Scale < 0.65, "la barre avance avec le temps (" .. tankFill.Size.X.Scale .. ")")
 
 T.section("révélation")
-env.advance(30)
+env.advance(16)
 T.eq(tankLabel.Text, "READY!", "cuve prête")
+T.eq(tankFill.Size.X.Scale, 1, "barre pleine")
 local tankPrompt = plot.Tanks[1].TankPrompt
 T.check(tankPrompt.Enabled, "prompt Reveal")
 env.fire(env.signal(tankPrompt, "Triggered"), player)
@@ -129,6 +136,21 @@ label:SetAttribute("EndsAt", 0 / 0)
 T.eq(LoopController.CountdownText(label, 0), nil, "EndsAt NaN ignoré")
 label:SetAttribute("EndsAt", nil)
 T.eq(LoopController.CountdownText(label, 0), nil, "sans EndsAt : texte du serveur")
+local bar = env.Instance.new("Frame")
+T.eq(LoopController.Progress(bar, 0), nil, "barre sans heures : rien")
+bar:SetAttribute("StartedAt", 100)
+bar:SetAttribute("EndsAt", 200)
+T.eq(LoopController.Progress(bar, 150), 0.5, "barre à moitié")
+T.eq(LoopController.Progress(bar, 50), 0, "barre vide avant le début")
+T.eq(LoopController.Progress(bar, 250), 1, "barre pleine à la fin")
+bar:SetAttribute("EndsAt", 100)
+T.eq(LoopController.Progress(bar, 0), 1, "durée nulle (Instant Revive) : pleine")
+bar:SetAttribute("EndsAt", 0 / 0)
+T.eq(LoopController.Progress(bar, 0), nil, "EndsAt NaN ignoré")
+bar:SetAttribute("EndsAt", 50)
+T.eq(LoopController.Progress(bar, 0), nil, "StartedAt après EndsAt : début inconnu, ignoré")
+bar:SetAttribute("StartedAt", 0)
+T.eq(LoopController.Progress(bar, 10), nil, "StartedAt nul (vieille sauvegarde) : ignoré")
 
 T.section("FossilDebug avec un personnage")
 local DebugService = Boot.Services.DebugService

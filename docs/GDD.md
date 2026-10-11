@@ -19,7 +19,7 @@ Même map et même boucle que **Steal an Egg** (pas Steal a Brainrot) : bases al
 - Treadmill obligatoire : achat pas cher en Robux, puis améliorations en Robux dont le prix monte à chaque achat.
 
 ## Carte (serveur de 8)
-- **Spawn** : une rangée de 8 parcs (un par joueur) face à la route. Chaque parc contient : cuves de réanimation (2 au départ, achetables jusqu'à 6), enclos à dinos (slots, agrandissable), treadmill, labo de fusion.
+- **Spawn** : une rangée de 5 parcs (un par joueur, serveurs de 5 joueurs) face à la route. Chaque parc contient : cuves de réanimation (2 au départ, achetables jusqu'à 6), enclos à dinos (slots, agrandissable), treadmill, labo de fusion.
 - **Route** : 8 zones en ligne, de plus en plus loin du spawn. Chaque zone a une vitesse conseillée (pas un mur : on peut y aller, mais le gardien nous rattrape).
 
 | # | Zone | Vitesse conseillée |
@@ -197,7 +197,7 @@ Les zones lointaines ont de meilleures probas. La couleur du bloc fixe la raret�
 - Gardiens : version x1.5 à x3 de l'espèce de leur zone, pour qu'ils fassent peur de loin.
 
 **Map détaillée** (une identité forte par zone, une arche d'entrée avec le nom et la vitesse conseillée)
-- Spawn : 8 parcs clôturés, enseigne au nom du joueur, cuves, enclos, treadmill, labo de fusion.
+- Spawn : 5 parcs clôturés (serveurs de 5 joueurs), enseigne au nom du joueur, cuves, enclos, treadmill, labo de fusion.
 - Beach : sable, palmiers, rochers, coquillages fossiles, mer.
 - Fern Forest : fougères géantes, troncs couchés, brume légère.
 - Swamp : eau verte, racines, nénuphars, brouillard.

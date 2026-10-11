@@ -42,7 +42,7 @@ end
 
 return {
 	plots = function(t: Tester)
-		t:Equal(#PlotService.List(), PlotService.Count, "8 parks on the map")
+		t:Equal(#PlotService.List(), PlotService.Count, PlotService.Count .. " parks on the map (one per player)")
 		local player = t:Player()
 		if not t:Check(player, "a player is loaded") then
 			return

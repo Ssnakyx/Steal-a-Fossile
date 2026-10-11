@@ -6,7 +6,8 @@ les API des services, les signaux, les clés replica et les attributs. Les valeu
 
 ## La boucle en bref
 
-1. Le joueur arrive : PlotService lui donne un parc libre (8 parcs alignés au spawn) et le fait apparaître dedans.
+1. Le joueur arrive : PlotService lui donne un parc libre (5 parcs alignés au spawn, `Config.Map.Plots.Count` : serveurs
+   de 5 joueurs) et le fait apparaître dedans.
 2. Il court vers une zone de la route (+Z depuis le spawn). Chaque zone a 3 gisements de 4 blocs, remplis toutes les
    5 min (`Zones.Dig.RefillInterval`). La rareté d'un bloc est tirée avec les poids de sa zone (`Zones.Chances`).
 3. Il maintient E 1 s sur un bloc (`ProximityPrompt` « Grab ») : le serveur vérifie la durée et la distance, puis le
@@ -31,8 +32,8 @@ ZoneService (Priority -20) : depuis un service de Priority plus petite, ou en la
 ```
 Workspace.Map
   SpawnGround            (seulement si Map.Plots n'existait pas : sol provisoire)
-  Plots                  (si le dossier existe, aucun parc n'est créé : il faut les 8)
-    Plot1 ... Plot8      Model
+  Plots                  (si le dossier existe, aucun parc n'est créé : il faut les 5)
+    Plot1 ... Plot5      Model
       Floor        BasePart  obligatoire : sol du parc. La zone sûre est sa boîte, de 4 studs dessous à 60 au-dessus.
       Spawn        BasePart  obligatoire : apparition (au-dessus de la pièce, dans son orientation)
       Enclosure    BasePart  obligatoire : sol de l'enclos (les dinos sont posés en grille dessus, 6 par rangée)
@@ -53,7 +54,7 @@ Workspace.Map
 
 Un parc sans Floor, Spawn ou Enclosure, ou une zone sans Area, est ignoré avec un `warn` dans l'Output. Le serveur
 ajoute les attributs `Index` et `OwnerUserId` (0 si libre) sur chaque parc, `Zone`, `Index` et `Speed` sur chaque
-zone. Sous les ancres, le brief 3 crée `TankLabel`, `TankPrompt`, `TankBlock` (cuves), `SiteLabel` (gisements),
+zone. Sous les ancres, le brief 3 crée `TankLabel` (minuteur, voir « Côté client »), `TankPrompt`, `TankBlock` (cuves), `SiteLabel` (gisements),
 `ExpandPrompt` (enclos), `Dinos` (dossier des dinos du parc) et les blocs `FossilBlock`.
 
 ## API des services
@@ -141,7 +142,13 @@ Remotes (`Remotes/Loop.luau`) : `RevealTank(slot)`, `BuyTank()`, `BuyEnclosure()
 `DinoRevealed(id, infos)` pour l'écran de révélation (brief 12) ; `LoopAnnounce(texte)` pour l'annonce dans le chat.
 
 `LoopController` met à jour tous les TextLabel tagués `LoopCountdown` (attributs `EndsAt`, `Format` avec `%s`,
-`Done`) et affiche les annonces dans le chat.
+`Done`), la largeur de tous les GuiObject tagués `LoopProgress` (attributs `StartedAt` et `EndsAt` : `Size` =
+`UDim2.fromScale(progression, 1)`) et affiche les annonces dans le chat.
+
+Minuteur au-dessus de chaque cuve (BillboardGui `TankLabel`, 8 x 3 studs, 4.2 studs au-dessus du verre, visible à
+120 studs) : `Back` (panneau sombre, contour `Stroke` à la couleur de la rareté), `Title` (« EPIC FOSSIL », « REVIVAL
+TANK »), `Text` (compte à rebours tagué `LoopCountdown`, « READY! » en vert, « Empty », « Buy: $1K ») et `Bar` > `Fill`
+(barre de progression taguée `LoopProgress`, cachée quand la cuve est vide ou que son début est inconnu).
 
 ## Commandes admin et FossilDebug
 

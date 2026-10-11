@@ -7,7 +7,7 @@ return {
 		Bonk = "client -> serveur : coup de pelle (joueur visé, facultatif : sinon le porteur le plus proche à portée)",
 		PlaceTrap = "client -> serveur : poser un Bear Trap à ses pieds",
 		Knocked = "serveur -> client : ton personnage est au sol ou bloqué (secondes, raison : Bonk | Catch | Trap)",
-		GuardianAlert = "serveur -> client : un gardien te poursuit (zone, état : Roar | Run | Lost | Catch)",
+		GuardianAlert = "serveur -> client : un gardien te poursuit (zone, état : Roar | Run | Lost | Catch, raison de Lost : Safe | Escaped | Dropped)",
 		PvpEffect = "serveur -> client : effet à jouer chez tous (genre : Bonk | Catch | Trap | Drop, position Vector3)",
 	},
 	Functions = {

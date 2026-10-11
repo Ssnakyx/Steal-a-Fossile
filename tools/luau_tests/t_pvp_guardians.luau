@@ -125,6 +125,16 @@ local function received(player, name: string, first: any): boolean
 	return false
 end
 
+-- Le joueur a-t-il reçu GuardianAlert(_, "Lost", reason) ?
+local function lostWith(player, reason: string): boolean
+	for _, args in env.received(player, "GuardianAlert") do
+		if args[2] == "Lost" and args[3] == reason then
+			return true
+		end
+	end
+	return false
+end
+
 local caught = {}
 Signals.Connect("GuardianCaught", function(player, zone, block)
 	table.insert(caught, { Player = player, Zone = zone, Block = block })
@@ -306,6 +316,7 @@ walkTo(fast, fastPlot.Entrance.Position + Vector3.new(0, 3, 8), 60, function()
 end)
 T.eq(#caught, caughtBefore, "jamais rattrapé")
 T.check(states.Run and states.Search, "poursuite puis recherche")
+T.check(lostWith(fast, "Escaped") and not lostWith(fast, "Dropped"), "alerte Lost avec la raison Escaped (semé)")
 T.check(CarryService.IsCarrying(fast), "toujours chargé devant son parc")
 T.check(waitFor(function()
 	return fern.State == "Sleep"
@@ -316,14 +327,17 @@ T.check(not CarryService.IsCarrying(fast), "bloc rapporté")
 
 T.section("jamais dans un parc")
 Guardians.Leash = 1000 -- (laisse très longue : seule la règle du parc l'arrête)
+-- (serveurs de 5 joueurs : Newbie et Slow s'en vont, pour qu'il reste un parc libre)
+T.leave(newbie)
+T.leave(slow)
 local runner = T.join({ Name = "Runner", Character = true })
 env.flush()
 SpeedService.Set(runner, 1e3)
 local start = slotBy("Beach", false)
 grab(runner, start)
 T.check(CarryService.IsCarrying(runner), "bloc de la Beach")
-local emptyPlot = PlotService.ByIndex(8)
-T.eq(emptyPlot.Owner, nil, "parc 8 libre")
+local emptyPlot = PlotService.ByIndex(PlotService.Count)
+T.eq(emptyPlot.Owner, nil, "dernier parc libre")
 local everInPark = false
 local goal = emptyPlot.Floor.Position + Vector3.new(0, 3, 0)
 walkTo(runner, goal, 60, function()
@@ -338,6 +352,7 @@ env.advance(5)
 T.check(not everInPark and not PlotService.IsSafe(beach.CFrame.Position + Vector3.new(0, 3, 0)), "le gardien n'entre pas dans le parc")
 T.check(CarryService.IsCarrying(runner), "pas attrapé dans le parc")
 T.check(beach.State == "Search" or beach.State == "Return" or beach.State == "BackToSleep" or beach.State == "Sleep", "il abandonne (" .. beach.State .. ")")
+T.check(lostWith(runner, "Safe"), "alerte Lost avec la raison Safe (dans un parc)")
 Guardians.Leash = 40
 CarryService.ReturnToSite(runner)
 waitFor(function()
@@ -436,6 +451,7 @@ CarryService.ReturnToSite(prey)
 waitFor(function()
 	return beach.State == "Sleep"
 end, 90)
+T.check(lostWith(prey, "Dropped") and not lostWith(prey, "Escaped"), "bloc perdu pendant la poursuite : alerte Lost avec la raison Dropped")
 
 T.section("gardiens éteints")
 GuardianService.SetEnabled(false)

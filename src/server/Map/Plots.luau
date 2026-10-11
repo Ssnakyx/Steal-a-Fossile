@@ -1,5 +1,5 @@
 --!strict
--- Les 8 parcs du spawn (brief 10), alignés sur X et tournés vers la route (+Z). Chaque parc : sol (Floor, zone sûre),
+-- Les parcs du spawn (brief 10, Config.Map.Plots.Count : 5), alignés sur X et tournés vers la route (+Z). Chaque parc : sol (Floor, zone sûre),
 -- palissade, portail avec enseigne au nom du joueur (Sign), point d'apparition (Spawn), entrée (Entrance), 6 cuves de
 -- réanimation (Tank1..Tank6), enclos (Enclosure), treadmill (Treadmill, tagué « Treadmill ») et labo de fusion (Lab).
 -- Les noms des points d'ancrage sont ceux de docs/BOUCLE.md (lus par PlotService).
@@ -24,15 +24,16 @@ local WOOD_DARK = rgb(116, 76, 46)
 local METAL = rgb(96, 102, 112)
 local GLASS = rgb(186, 232, 242)
 
--- Couleur de chaque parc (portail, drapeaux, tapis d'entrée) : on reconnaît le sien de loin
+-- Couleur de chaque parc (portail, drapeaux, tapis d'entrée) : on reconnaît le sien de loin. Les 5 premières sont
+-- celles des 5 parcs (les plus différentes), les suivantes servent si Config.Map.Plots.Count augmente.
 Plots.Accents = {
 	rgb(226, 72, 64),
-	rgb(240, 140, 50),
 	rgb(240, 200, 60),
 	rgb(90, 190, 80),
-	rgb(60, 190, 200),
 	rgb(70, 120, 225),
 	rgb(150, 90, 220),
+	rgb(240, 140, 50),
+	rgb(60, 190, 200),
 	rgb(230, 100, 170),
 } :: { Color3 }
 
