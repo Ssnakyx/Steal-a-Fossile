@@ -1,0 +1,4 @@
+__pycache__/
+species/blend/
+previews/**/*.mp4
+tests/expect/

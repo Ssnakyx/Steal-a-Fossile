@@ -6,6 +6,8 @@ local env = T.env
 env.quiet = true
 
 local Boot = T.bootServer()
+-- (gardiens du brief 7 éteints : ici le trajet du retour se fait en attendant sur place)
+Boot.Services.GuardianService.SetEnabled(false)
 local DigSiteService = Boot.Services.DigSiteService
 local CarryService = Boot.Services.CarryService
 local PlotService = Boot.Services.PlotService
