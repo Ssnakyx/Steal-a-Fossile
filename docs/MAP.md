@@ -7,17 +7,21 @@ escalier), toujours identique (graine `Config.Map.Seed`). Rien n'est enregistré
 
 ```
 src/shared/Config/Map.luau        mesures (parcs, place, route, longueur des zones), gisements, budgets
+src/shared/Config/Ambience.luau   ambiance de la place et de chaque zone (ciel, lumière, brume, particules, ciel animé)
 src/server/Services/MapService.luau  construit Workspace.Map (Priority -30, avant PlotService et ZoneService)
 src/server/Map/
   MapBuilder.luau                 assemble tout : 5 parcs, place, 8 zones, murs invisibles, falaise de fin, lumière
   Kit.luau                        briques : pièces, décor inerte, disques/dômes/cônes en escalier, raycast, grille, lumières
-  Props.luau                      décor : palmiers, fougères, sapins, rochers, coraux, cristaux, outils, lampes...
+  Props.luau                      décor : palmiers, fougères, sapins, rochers, coraux, cristaux, outils, lampes, et les
+                                  objets propres à chaque zone (nids d'œufs, cactus, geysers de lave, coffres...)
   Plots.luau                      un parc (palissade, portail et enseigne, cuves, enclos, treadmill, labo)
   Plaza.luau                      place du spawn, haies, lampadaires, tableau de la route, camp, forêt du fond
   ZoneBase.luau                   squelette commun d'une zone (sol, chemin, falaises, arche, gisements, nid, décor)
   Zones/<Nom>.luau                thème de chaque zone (couleurs, bords, lieu marquant, décor à éparpiller)
-src/server/DebugTests/Map.luau    FossilDebug « map »
-tools/luau_tests/t_map_build.luau test hors Studio
+src/client/Controllers/AmbienceController.luau  ambiance chez chaque joueur selon l'endroit où il est
+src/server/DebugTests/Map.luau    FossilDebug « map » et « ambience »
+tools/luau_tests/t_map_build.luau    test hors Studio de la map
+tools/luau_tests/t_map_ambience.luau test hors Studio des ambiances et du décor lumineux
 ```
 
 Si `Workspace.Map` existe déjà au démarrage (map enregistrée dans la place, ou faite à la main par un test), MapService
@@ -59,12 +63,73 @@ Chaque parc a aussi une couleur (portail, drapeaux, tapis d'entrée) pour qu'on 
 
 - Tout ce qui est dans un dossier `Decor` est inerte : `CanCollide`, `CanQuery`, `CanTouch`, `CastShadow` à false
   (vérifié par les tests). Les volumes solides (falaises, piliers de l'arche naturelle, blocs de glace, tronc creux,
-  météorite) sont dans le dossier `Ground` de la zone : le décor se pose dessus par raycast.
+  météorite, igloos, coque de l'épave) sont dans le dossier `Ground` de la zone : le décor se pose dessus par raycast.
 - Le décor est posé par raycast sur le sol de la zone, en évitant une grille de places réservées (chemin, gisements et
   leurs embranchements, clairière du gardien, arche, lieux marquants, décor déjà posé).
-- Budgets : 6 lumières par zone, 2 par parc, 10 sur la place ; 2200 pièces par zone au plus (environ 15 400 pièces en
-  tout). Les modèles de décor sont en `ModelStreamingMode = Atomic` (StreamingEnabled est activé).
-- Lumière du jour, brume légère et bloom modéré : `MapBuilder.Lighting()` (ne remplace pas un effet déjà présent).
+- Budgets : 6 lumières par zone, 2 par parc, 10 sur la place ; 2200 pièces par zone au plus (environ 16 500 pièces en
+  tout, la plus chargée est la Fern Forest avec environ 2 000). Les modèles de décor sont en
+  `ModelStreamingMode = Atomic` (StreamingEnabled est activé).
+- Le décor lumineux brille par le Neon et le bloom, sans PointLight en plus (les 6 lumières par zone sont déjà prises).
+- `Theme.Wall` : décor qui sort des parois des falaises (cristaux), trouvé par un raycast horizontal depuis le couloir
+  (rien n'est posé si la paroi est trop en retrait, par exemple au bord de la mer).
+- `ZoneBase.Spot` : trouve une place libre pour un lieu marquant (hors du chemin, des gisements et du nid du gardien).
+- Dans une liste `Scatter`, ce qui vient d'abord a la place : le décor lumineux est juste après les grands arbres et
+  rochers, avant le petit décor de remplissage (fougères, buissons, herbes).
+- Ambiance de la place au démarrage : `MapBuilder.Lighting()` (règle les effets déjà présents plutôt que les doubler).
+
+## Ambiances (ciel, lumière, particules)
+
+Chaque zone a son ambiance, appliquée chez chaque joueur seulement (`AmbienceController`, côté client) selon le Z de
+son personnage (la caméra s'il n'en a pas) : fondu sur 70 studs autour de chaque frontière, et en douceur (environ 2 s)
+après une téléportation. Toutes les valeurs sont dans `src/shared/Config/Ambience.luau` : heure du jour, luminosité,
+lumière ambiante, teinte du soleil, brume (`Atmosphere`), nuages du Terrain, étoiles, taille du soleil et de la lune,
+couleurs (`ColorCorrectionEffect` « AmbienceGrade »), bloom, rayons du soleil, particules, aurores, planète, étoiles
+filantes, ptérosaures.
+
+| Zone | Ambiance | Vivant |
+|---|---|---|
+| Place et parcs | après-midi ensoleillé | |
+| Beach | midi tropical, ciel clair | ptérosaures |
+| Fern Forest | matin doré, brume légère | lucioles, spores, ptérosaures |
+| Swamp | fin d'après-midi, brume verte | beaucoup de lucioles |
+| Canyon | heure dorée, ciel orangé | poussière, ptérosaures |
+| Glacier | aube rose | neige, aurores |
+| Volcano | crépuscule rouge, nuages de cendre | braises, cendres |
+| Ocean Trench | bleu profond | bulles, plancton, rayons du soleil |
+| Meteor Crater | nuit étoilée violette | poussière d'étoiles, aurores, planète à anneau, étoiles filantes |
+
+- Particules : petits cubes (style studs, aucune texture), 64 au plus autour du joueur, recyclés.
+- Ciel animé : aurores en rubans, planète, étoiles filantes et ptérosaures suivent la caméra, très loin (260 studs).
+- Toutes ces pièces sont dans un dossier `Ambience` de la caméra : chez le joueur seulement, sans collision ni requêtes.
+- Lighting n'est écrit que pendant un fondu (20 fois par seconde au plus), plus du tout quand l'ambiance est atteinte.
+- Les effets de couleur des autres systèmes (StressController...) s'ajoutent à « AmbienceGrade ».
+- Décor flottant : les modèles tagués `AmbientFloat` (feux follets, méduses, éclats de cristal, rochers flottants, jets
+  de lave, vapeur, bulles ; `Kit.float`) montent, descendent et tournent chez le joueur, dans un rayon de 220 studs.
+  Réglages : attributs `FloatHeight`, `FloatSpeed`, `FloatSpin` ; la pièce centrale est le `PrimaryPart`. Un modèle
+  flottant peut être dans un autre (le jet d'une fontaine de lave) : seul le jet bouge.
+- Décor lumineux (`Props`) : `glowCrystal` (grappe de cristaux, jusqu'à 4 couleurs : `Crystal`..`Crystal4`),
+  `glowShroom`, `geode`, `wisp`, `jellyfish`, `anemone`, `floatShard`, `lavaPool`, et les fossiles `ribcage` et `skull`.
+- Objets propres à chaque zone (on ne les voit nulle part ailleurs, vérifié par le test) :
+
+| Zone | Objets |
+|---|---|
+| Beach | nids d'œufs (un bébé dino sort de sa coquille), barques échouées, flaques de marée qui luisent, cristaux vert d'eau |
+| Fern Forest | fleurs géantes lumineuses (rose, bleu, jaune), traces de pas de dino, champignons lumineux |
+| Swamp | plantes carnivores, mares de vase qui luisent, feux follets, champignons lumineux |
+| Canyon | cactus, virevoltants, géodes, cristaux |
+| Glacier | bonshommes de neige, camp polaire (2 igloos solides, feu de camp, traîneau), bosquet de cristaux |
+| Volcano | mares et fontaines de lave, fumerolles qui crachent de la vapeur, cristaux couleur braise |
+| Ocean Trench | épave de navire (coque solide, hublots qui luisent, voile déchirée), coffres au trésor, bouches à bulles, méduses, anémones |
+| Meteor Crater | morceaux de météorite fendus de vert, rochers qui flottent, camp des chercheurs (tente, télescope, tableau de calculs) |
+
+- Lieux marquants : squelette sur la plage, cercle de pierres moussues (Fern Forest), pont de cordes et squelette
+  dégagé par les fouilles (Canyon), squelette pris dans la glace, bosquet de cristaux et camp polaire (Glacier), panache
+  de fumée du volcan, ammonite géante et épave (Ocean Trench), éclats flottants au-dessus du grand cratère, flèche de
+  cristaux géants et camp des chercheurs (Meteor Crater).
+
+Régler une ambiance : changer les valeurs dans `Config/Ambience.luau`, lancer Play et aller dans la zone (commande
+d'admin `tpzone 1` à `tpzone 8`, `tpzone 0` pour rentrer). Les valeurs se mélangent pendant les fondus : pas besoin
+qu'elles se ressemblent d'une zone à l'autre. Pendant un Play : `game.ServerScriptService.FossilDebug:Invoke("ambience")`.
 
 ## Voir la map dans Studio sans lancer le jeu
 
