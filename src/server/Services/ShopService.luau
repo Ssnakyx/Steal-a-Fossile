@@ -7,6 +7,7 @@
 --   ShopService.ServerLuck()                            chance du serveur : 2 pendant un Server Luck x2, sinon 1
 --   ShopService.Price("Product" | "GamePass", id)       prix Robux lu sur Roblox (nil si inconnu), gardé 10 min
 --   ShopService.RegisterSection(nom, fn)                ajoute une section au contenu du shop (GetShop)
+--   ShopService.BuyPass(player, clé)                    propose l'achat d'un passe -> (ok, texte) (remote BuyPass)
 -- Produits : chaque produit de Config.Shop.Products est donné par le service de son champ Owner, qui l'enregistre avec
 -- ReceiptService.Register ; ShopService enregistre ServerLuck. Un produit pas enregistré ou à Id = 0 reste caché.
 -- Passes : Roblox est la source. À chaque arrivée, chaque passe en vente est redemandé (UserOwnsGamePassAsync) ; la
@@ -243,6 +244,7 @@ function ShopService.Get(player: Player): { [string]: any }
 				Order = pass.Order,
 				Owned = ShopService.HasPass(player, key),
 				Price = ShopService.Price("GamePass", pass.Id),
+				Trail = pass.Trail, -- (trail Robux : à montrer aussi avec les trails)
 			})
 		end
 	end
@@ -278,7 +280,7 @@ end
 
 -- ===== achats =====
 
-local function buyPass(player: Player, rawKey: any): (boolean, string)
+function ShopService.BuyPass(player: Player, rawKey: any): (boolean, string)
 	local key = Guard.Key(rawKey, Shop.Passes)
 	if not key then
 		return false, "Unknown pass"
@@ -351,7 +353,7 @@ function ShopService.Init()
 		end
 		return ShopService.Get(player)
 	end)
-	Net.Function("BuyPass", { Rate = 1, Burst = 3 }, buyPass)
+	Net.Function("BuyPass", { Rate = 1, Burst = 3 }, ShopService.BuyPass)
 	Net.Function("BuyProduct", { Rate = 1, Burst = 3 }, buyProduct)
 
 	AdminService.RegisterCommand("pass", {

@@ -6,7 +6,7 @@
 -- Jamais de dino ni de bloc vendu en Robux. Toute chance payante affiche ses probas (UI, brief 12).
 
 export type Level = { Id: number, Price: number, Multiplier: number }
-export type Pass = { Id: number, Name: string, Description: string, Price: number, Order: number, Multiplier: number?, LuckBonus: number? }
+export type Pass = { Id: number, Name: string, Description: string, Price: number, Order: number, Multiplier: number?, LuckBonus: number?, Trail: string? }
 export type Product = { Id: number, Name: string, Description: string, Price: number, Order: number, Owner: string }
 
 local Shop = {
@@ -34,12 +34,17 @@ local Shop = {
 
 	-- Passes (game passes). Lire avec ShopService.HasPass(player, clé). Multiplier : effet du passe pour le service
 	-- qui l'applique (IncomeService pour DoubleMoney, ReviveService pour FastRevive, TreadmillService pour
-	-- DoubleTreadmill). LuckBonus : chance en plus du VIP (mutations à la révélation, brief 3).
+	-- DoubleTreadmill, TrailService pour les trails Robux : vitesse multipliée tant que la trail est portée).
+	-- LuckBonus : chance en plus du VIP (mutations à la révélation, brief 3). Trail : la trail Robux que donne le
+	-- passe (Config.Speed.RobuxTrails, avec ses couleurs).
 	Passes = {
 		DoubleMoney = { Id = 0, Name = "x2 Money", Description = "Earn double money from all your dinos.", Price = 299, Order = 1, Multiplier = 2 },
 		DoubleTreadmill = { Id = 0, Name = "x2 Treadmill", Description = "Gain double speed on your treadmill.", Price = 199, Order = 2, Multiplier = 2 },
 		FastRevive = { Id = 0, Name = "Fast Revive", Description = "Your revival tanks work twice as fast.", Price = 249, Order = 3, Multiplier = 2 },
 		VIP = { Id = 0, Name = "VIP", Description = "VIP tag and a little extra luck.", Price = 149, Order = 4, LuckBonus = 1.1 },
+		NeonTrail = { Id = 0, Name = "Neon Trail", Description = "A glowing neon trail. x1.5 Speed while you wear it, on top of your best trail.", Price = 99, Order = 5, Multiplier = 1.5, Trail = "Neon" },
+		GalaxyTrail = { Id = 0, Name = "Galaxy Trail", Description = "A trail full of stars. x2 Speed while you wear it, on top of your best trail.", Price = 249, Order = 6, Multiplier = 2, Trail = "Galaxy" },
+		GoldenTrail = { Id = 0, Name = "Golden Trail", Description = "A shining gold trail. x3 Speed while you wear it, on top of your best trail.", Price = 499, Order = 7, Multiplier = 3, Trail = "Golden" },
 	} :: { [string]: Pass },
 
 	-- Produits développeur (achats répétables). Owner = le service qui donne l'effet : c'est lui qui appelle

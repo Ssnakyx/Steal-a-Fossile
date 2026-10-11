@@ -86,6 +86,10 @@ return {
 		t:Equal(SpeedService.Get(player), total + 50, "bonus added")
 		SpeedService.SetBonus(player, "DebugBonus", nil)
 		t:Equal(SpeedService.Get(player), total, "bonus removed")
+		SpeedService.SetMultiplier(player, "DebugMultiplier", 2)
+		t:Equal(SpeedService.Get(player), math.min(total * 2, SpeedConfig.Max), "multiplier applied")
+		SpeedService.SetMultiplier(player, "DebugMultiplier", nil)
+		t:Equal(SpeedService.Get(player), total, "multiplier removed")
 		SpeedService.SetModifier(player, "Debug", 0.5)
 		t:Check(SpeedService.HasModifier(player, "Debug"), "modifier set")
 		local character = player.Character
@@ -145,10 +149,20 @@ return {
 		t:Check(not TrailService.Equip(player, "Nope"), "unknown trail refused")
 		t:Check(TrailService.Equip(player, ""), "unequip")
 		t:Equal(SpeedService.GetBonus(player, "Trail"), 0, "no bonus without trail")
+		for id, trail in SpeedConfig.RobuxTrails do
+			if not TrailService.Owns(player, id) then
+				t:Check(not TrailService.Equip(player, id), id .. " (Robux) not owned: cannot be worn")
+			end
+			t:Check(Shop.Passes[trail.Pass] ~= nil, id .. " (Robux) has its game pass in Config.Shop")
+		end
+		t:Note("Robux trails: give one in Studio with the admin command: pass NeonTrail (or GalaxyTrail, GoldenTrail)")
 		if not hadDust then
 			data.Trails.Owned.Dust = nil
 		end
-		TrailService.Equip(player, equipped)
+		-- (une trail Robux portée sans son passe ne se remet pas par Equip : elle reste juste notée)
+		if not TrailService.Equip(player, equipped) then
+			data.Trails.Equipped = equipped
+		end
 		MoneyService.Set(player, money, "Debug")
 		t:Equal(SpeedService.Get(player), speed, "speed restored")
 		t:Equal(MoneyService.Get(player), money, "money restored")

@@ -1,11 +1,13 @@
 --!strict
 -- Vitesse du joueur (brief 4 « vitesse-treadmill ») : la stat principale du jeu.
--- Vitesse totale = data.Speed (gagnée pour de bon : treadmill, quêtes, récompenses) + bonus (trail portée).
+-- Vitesse totale = (data.Speed (gagnée pour de bon : treadmill, quêtes, récompenses) + bonus (trail portée))
+-- x multiplicateurs (trail Robux portée).
 -- WalkSpeed = Config.Speed.WalkSpeedFor(vitesse totale) x malus du bloc porté (CarryService.GetSpeedMultiplier,
 -- brief 3) x effets temporaires (piège, gardien...). SpeedService est le seul à écrire Humanoid.WalkSpeed.
 --   SpeedService.Get(player)                          vitesse totale (à comparer à la vitesse conseillée des zones)
 --   SpeedService.Add(player, 50, "Quest")             vitesse gagnée pour de bon
 --   SpeedService.SetBonus(player, "Trail", 1500)      bonus tant qu'il est posé (nil ou 0 l'enlève)
+--   SpeedService.SetMultiplier(player, "Trail", 2)    vitesse totale x2 tant qu'il est posé (nil ou 1 l'enlève)
 --   SpeedService.SetModifier(player, "BearTrap", 0, 3) multiplie le WalkSpeed pendant 3 s (nil l'enlève)
 --   SpeedService.Refresh(player)                      recalcule le WalkSpeed tout de suite (sinon toutes les 0.2 s)
 -- Le signal CarryChanged(player, bloc | nil) du brief 3 (ramassage, dépôt, perte) recalcule tout de suite.
@@ -29,6 +31,7 @@ local ReplicaService = require(script.Parent.ReplicaService)
 type Modifier = { Multiplier: number, Expires: number? }
 type State = {
 	Bonuses: { [string]: number },
+	Multipliers: { [string]: number },
 	Modifiers: { [string]: Modifier },
 	Claiming: boolean,
 	Connection: RBXScriptConnection?,
@@ -80,6 +83,9 @@ function SpeedService.Get(player: Player): number
 	if state then
 		for _, bonus in state.Bonuses do
 			total += bonus
+		end
+		for _, multiplier in state.Multipliers do
+			total *= multiplier
 		end
 	end
 	return math.min(total, SpeedConfig.Max)
@@ -185,6 +191,26 @@ end
 function SpeedService.GetBonus(player: Player, key: string): number
 	local state = states[player]
 	return if state then state.Bonuses[key] or 0 else 0
+end
+
+-- Multiplicateur de la vitesse totale tant qu'il est posé (trail Robux portée...). nil ou 1 l'enlève. Ce n'est pas un
+-- effet sur le WalkSpeed (SetModifier) : il compte dans la vitesse affichée et comparée aux zones.
+function SpeedService.SetMultiplier(player: Player, key: string, multiplier: number?)
+	local state = states[player]
+	if not state or type(key) ~= "string" then
+		return
+	end
+	if multiplier == nil or not Guard.IsFinite(multiplier) or multiplier == 1 then
+		state.Multipliers[key] = nil
+	else
+		state.Multipliers[key] = math.clamp(multiplier, 0, 100)
+	end
+	publish(player)
+end
+
+function SpeedService.GetMultiplier(player: Player, key: string): number
+	local state = states[player]
+	return if state then state.Multipliers[key] or 1 else 1
 end
 
 -- Effet temporaire sur le WalkSpeed (0 = immobile, 0.5 = moitié moins vite). duration en secondes (nil = jusqu'à ce
@@ -302,7 +328,7 @@ function SpeedService.Start()
 end
 
 function SpeedService.OnPlayerReady(player: Player, data: { [string]: any })
-	local state: State = { Bonuses = {}, Modifiers = {}, Claiming = false, Connection = nil }
+	local state: State = { Bonuses = {}, Multipliers = {}, Modifiers = {}, Claiming = false, Connection = nil }
 	states[player] = state
 	ReplicaService.Set(player, "GroupRewardClaimed", data.GroupRewardClaimed)
 	publish(player)

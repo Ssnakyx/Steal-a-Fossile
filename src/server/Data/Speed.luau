@@ -17,8 +17,8 @@ return {
 		Speed = 0, -- vitesse gagnée pour de bon (treadmill, quêtes, récompenses) ; la trail portée s'y ajoute (SpeedService)
 		TreadmillLevel = 0, -- 0 = treadmill pas acheté, 1 à 10 = dernier niveau acheté (un produit développeur par niveau)
 		Trails = {
-			Owned = {}, -- { [trail] = true }
-			Equipped = "", -- trail portée ("" = aucune)
+			Owned = {}, -- { [trail] = true } trails achetées avec l'argent du jeu (les trails Robux sont des passes)
+			Equipped = "", -- trail portée ("" = aucune), trail en argent ou trail Robux (Config.Speed.RobuxTrails)
 		},
 		GroupRewardClaimed = false, -- récompense like + favori + groupe déjà prise
 		-- Passes déjà vus en sa possession (ShopService) : Roblox reste la source (UserOwnsGamePassAsync à chaque
@@ -37,7 +37,10 @@ return {
 			end
 		end
 		data.Trails.Owned = owned
-		if type(data.Trails.Equipped) ~= "string" or (data.Trails.Equipped ~= "" and not owned[data.Trails.Equipped]) then
+		-- (une trail Robux portée est gardée : son passe est vérifié à l'arrivée par ShopService, TrailService ne la
+		-- montre que si le joueur l'a)
+		local equipped = data.Trails.Equipped
+		if type(equipped) ~= "string" or (equipped ~= "" and not owned[equipped] and not SpeedConfig.RobuxTrails[equipped]) then
 			data.Trails.Equipped = ""
 		end
 		data.Passes = Guard.StringSet(data.Passes, 50)

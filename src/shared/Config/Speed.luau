@@ -5,7 +5,7 @@
 -- vitesse est multipliée par 10, on court PerDecade studs/s plus vite.
 --   vitesse    0    1 K    10 K   50 K   200 K   1 M   5 M   25 M
 --   WalkSpeed  16   26     36     43     49      56    63    70
--- Les prix Robux du treadmill et des passes sont dans Config/Shop.luau.
+-- Les prix Robux du treadmill, des passes et des trails Robux sont dans Config/Shop.luau.
 
 export type Trail = {
 	Name: string,
@@ -14,6 +14,16 @@ export type Trail = {
 	Price: number, -- prix en argent du jeu
 	Speed: number, -- vitesse ajoutée tant que la trail est portée
 	Colors: { Color3 }, -- couleur du début et de la fin de la traînée
+	LightEmission: number?, -- éclat de la traînée (sinon TrailLook.LightEmission)
+}
+
+-- Trail Robux : un game pass (Config.Shop.Passes[Pass], avec son prix et son Multiplier)
+export type RobuxTrail = {
+	Name: string,
+	Pass: string, -- clé du passe dans Config.Shop.Passes
+	Order: number, -- ordre d'affichage (1 = la moins chère)
+	Colors: { Color3 },
+	LightEmission: number?,
 }
 
 local WALK = {
@@ -66,6 +76,15 @@ local Speed = {
 		Meteor = { Name = "Meteor Trail", Tier = "Cosmic", Order = 9, Price = 4_000_000_000, Speed = 10_000_000, Colors = { Color3.fromRGB(255, 160, 60), Color3.fromRGB(60, 40, 120) } },
 		Rainbow = { Name = "Rainbow Trail", Tier = "Divine", Order = 10, Price = 30_000_000_000, Speed = 30_000_000, Colors = { Color3.fromRGB(255, 80, 80), Color3.fromRGB(80, 160, 255) } },
 	} :: { [string]: Trail },
+
+	-- Trails Robux (game passes, prix et multiplicateur dans Config.Shop.Passes) : portée, une trail Robux garde la
+	-- vitesse de la meilleure trail achetée avec l'argent du jeu et multiplie toute la vitesse par le Multiplier de
+	-- son passe. Elle vaut donc toujours mieux que les trails en argent. Clés différentes de celles de Trails.
+	RobuxTrails = {
+		Neon = { Name = "Neon Trail", Pass = "NeonTrail", Order = 1, LightEmission = 1, Colors = { Color3.fromRGB(0, 255, 230), Color3.fromRGB(255, 40, 200) } },
+		Galaxy = { Name = "Galaxy Trail", Pass = "GalaxyTrail", Order = 2, LightEmission = 0.8, Colors = { Color3.fromRGB(150, 90, 255), Color3.fromRGB(20, 10, 70) } },
+		Golden = { Name = "Golden Trail", Pass = "GoldenTrail", Order = 3, LightEmission = 1, Colors = { Color3.fromRGB(255, 215, 40), Color3.fromRGB(255, 250, 215) } },
+	} :: { [string]: RobuxTrail },
 
 	-- Traînée visible derrière le joueur (Trail entre deux Attachments de HumanoidRootPart)
 	TrailLook = {
