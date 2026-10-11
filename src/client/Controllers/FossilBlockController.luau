@@ -1,7 +1,7 @@
 --!strict
 -- FossilBlockController (brief 9 « blocs-hybrides ») : habille chez le client les blocs de fossiles du serveur (des cubes
--- de la couleur de leur rareté) avec les modèles en briques de BlockModels : bloc de la rareté, décor du biome, taille
--- et lumière de la rareté.
+-- de la couleur de leur rareté) avec les modèles en briques de BlockModels : une forme par biome, la couleur, la
+-- taille et la lumière de la rareté.
 --
 -- Contrat : une BasePart nommée
 --   FossilBlock    bloc posé sur un gisement (DigSiteService)
@@ -16,8 +16,10 @@
 -- Les raretés hautes sont plus grosses que la pièce du serveur (BlockModels.SideOf) : le bloc grandit vers le haut (il
 -- reste posé au sol), et vers l'arrière sur le dos d'un joueur.
 --
--- Le modèle est construit près de la caméra et défait au loin. Brillance jouée ici (BlockModels.Looks) : lave,
--- cristaux Neon et lumière qui battent, couches, cristaux et lumière arc-en-ciel du Secret. Les auras autour des blocs
+-- Le modèle est construit près de la caméra et défait au loin. Joué ici, près de la caméra et à l'écran
+-- (BlockModels.Looks) : lave, coeur, cristaux Neon et lumière qui battent ; couches, cristaux et lumière arc-en-ciel
+-- du Secret ; morceaux qui flottent (Float, Mythic) et éclats qui tournent autour du bloc (Orbit, Secret), qui montent
+-- et descendent doucement. Les auras autour des blocs
 -- viennent d'un autre module (thread des auras) par le point d'accroche :
 --   FossilBlockController.SetAura(function(model, info) ... return cleanup end)
 --     appelée pour chaque modèle construit (et pour ceux qui le sont déjà) ; info = { Rarity, Zone?, Kind, Size, Part,
@@ -78,6 +80,9 @@ type Entry = {
 	RainbowHue: { number },
 	Gems: { BasePart },
 	GemHue: { number },
+	Drift: { BasePart }, -- morceaux qui flottent et éclats qui tournent
+	DriftIndex: { number }, -- leur place dans Parts
+	DriftOut: { CFrame },
 	Light: PointLight?,
 	Clock: number,
 	Cleanup: (() -> ())?,
@@ -199,6 +204,26 @@ local function stepShine(e: Entry, dt: number)
 	end
 end
 
+-- Morceaux qui flottent (montent et descendent) et éclats qui tournent autour du bloc (et flottent aussi)
+local function stepFloat(e: Entry)
+	if #e.Drift == 0 then
+		return
+	end
+	local base = e.Part.CFrame * e.Offset
+	local t = e.Clock
+	local amp = 0.04 * e.Side
+	for k, part in e.Drift do
+		local i = e.DriftIndex[k]
+		-- (même phase pour les briques d'une même pièce : son numéro en attribut)
+		local n = part:GetAttribute(part.Name)
+		local phase = if type(n) == "number" then n * 1.9 else 0
+		local bob = CFrame.new(0, math.sin(t * 1.7 + phase) * amp, 0)
+		local motion = if part.Name == "Orbit" then CFrame.Angles(0, t * 0.6, 0) * bob else bob
+		e.DriftOut[k] = base * motion * e.Offsets[i]
+	end
+	Workspace:BulkMoveTo(e.Drift, e.DriftOut, Enum.BulkMoveMode.FireCFrameChanged)
+end
+
 -- ====================================================================== modèles
 
 local function place(e: Entry)
@@ -226,6 +251,9 @@ local function unbuild(e: Entry)
 	table.clear(e.RainbowHue)
 	table.clear(e.Gems)
 	table.clear(e.GemHue)
+	table.clear(e.Drift)
+	table.clear(e.DriftIndex)
+	table.clear(e.DriftOut)
 	e.Light = nil
 	if e.Part.Parent then
 		e.Part.LocalTransparencyModifier = 0
@@ -241,7 +269,7 @@ local function build(e: Entry)
 	if not model then
 		return
 	end
-	local data = BlockModels.Get(e.Rarity)
+	local data = BlockModels.Get(e.Rarity, e.Zone)
 	local gems = if data then math.max(1, data.Gems) else 1
 	for _, p in model:GetChildren() do
 		if not p:IsA("BasePart") then
@@ -263,6 +291,10 @@ local function build(e: Entry)
 			table.insert(e.RainbowHue, p.CFrame.Position.Y / e.Side * 0.9)
 		elseif p.Name == "Root" then
 			e.Light = p:FindFirstChildOfClass("PointLight")
+		elseif p.Name == "Float" or p.Name == "Orbit" then
+			table.insert(e.Drift, p)
+			table.insert(e.DriftIndex, #e.Parts)
+			table.insert(e.DriftOut, p.CFrame)
 		end
 	end
 	model.Name = e.Part.Name .. "Model"
@@ -332,6 +364,9 @@ local function track(part: BasePart)
 		RainbowHue = {},
 		Gems = {},
 		GemHue = {},
+		Drift = {},
+		DriftIndex = {},
+		DriftOut = {},
 		Light = nil,
 		Clock = math.random() * 10,
 		Cleanup = nil,
@@ -415,6 +450,7 @@ local function update(dt: number)
 				end
 				if onScreen then
 					stepShine(e, math.min(dt, 0.1))
+					stepFloat(e)
 				end
 			end
 		end

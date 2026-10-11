@@ -2,12 +2,11 @@
 
     blender -b --factory-startup -P models/blocks/blender_blocks.py -- <modeles.json> <dossier_tmp>
 
-<modeles.json> : {"bases": {rareté: modèle}, "biomes": {zone: modèle}, "scales": {rareté: échelle}}.
-Rendus (Eevee, même lumière que les rendus des dinos) :
-  <Rareté>_<vue>.png   face, trois-quarts gauche et droit, dos et dessus du bloc de chaque rareté (sans décor)
-  rang.png             les 7 raretés à leur taille en jeu, à côté de l'avatar de 5 studs
-  biome_<n>.png        un rang des 7 raretés avec le décor du biome n, vu de l'arrière (le décor est derrière et
-                       dessus)
+<modeles.json> : {"zones": {zone: {rareté: modèle}}, "scales": {rareté: échelle}, "only": [zone...] ou null}.
+Rendus (Eevee, même lumière que les rendus des dinos), tous à la même échelle de caméra (les tailles se comparent) :
+  <n>_<rareté>_face.png   trois-quarts avant du bloc de la zone n, à sa taille en jeu
+  <n>_<rareté>_dos.png    trois-quarts arrière (décor du biome)
+  rang_<n>.png            les 7 raretés de la zone n à leur taille en jeu, à côté de l'avatar de 5 studs
 Les images brutes vont dans <dossier_tmp> ; build.py les assemble."""
 import json
 import math
@@ -22,13 +21,12 @@ from mathutils import Vector  # noqa: E402
 
 import bscene as S  # noqa: E402
 
-# directions de caméra dans le monde Blender (l'avant du bloc, -Z Roblox, regarde vers +Y Blender)
-VIEWS = [("face", (0, 1, 0.35)), ("gauche", (-0.85, 1, 0.65)), ("droite", (0.85, 1, 0.65)), ("dos", (0.3, -1, 0.6)),
-         ("dessus", (0.35, 0.45, 1.6))]
+GROUND = [(196, 178, 140), (186, 168, 130)]
+SKY = (0.70, 0.82, 0.94)
 
 
 def place(model, x=0.0, y=0.0, rot=0.0, scale=1.0, name="Block"):
-    """Bloc posé sur le sol (le bas du bloc à z = 0), décalé de (x, y) dans le monde Blender."""
+    """Bloc posé sur le sol (le bas de la grille à z = 0), décalé de (x, y) dans le monde Blender."""
     space, arm, obj = S.build_rig(model, name=name)
     space.location = (x, y, model["size"][1] / 2 * scale)
     space.rotation_euler = (math.radians(90), 0, math.radians(rot))
@@ -41,64 +39,41 @@ def main():
     data = json.load(open(args[0], encoding="utf-8"))
     tmp = args[1]
     os.makedirs(tmp, exist_ok=True)
-    bases, biomes, scales = data["bases"], data["biomes"], data["scales"]
-    order = list(bases)
-
-    # ---------------------------------------------------------------- un bloc à la fois (sans décor)
-    for name in order:
-        model = bases[name]
+    zones, scales = data["zones"], data["scales"]
+    only = data.get("only")
+    for n, zone in enumerate(zones):
+        if only and zone not in only:
+            continue
+        row = zones[zone]
+        # ------------------------------------------------------------ chaque bloc, de trois-quarts avant et arrière
+        for rarity, model in row.items():
+            s = scales[rarity]
+            for view, rot, d in (("face", 25, (-0.35, 1, 0.55)), ("dos", 205, (-0.35, 1, 0.62))):
+                S.reset()
+                S.eevee(420, 420, sky=SKY)
+                S.ground_tiles(14, 1.0, GROUND)
+                place(model, rot=rot, scale=s)
+                cam = S.ortho_camera("cam", Vector((0, 0, 2.9)), d, 8.4)
+                S.render_to(os.path.join(tmp, "%d_%s_%s.png" % (n, rarity, view)), cam)
+        # ------------------------------------------------------------ les 7 raretés à leur taille, avec l'avatar
         S.reset()
-        S.eevee(560, 560, sky=(0.70, 0.82, 0.94))
-        S.ground_tiles(12, 1.0, [(196, 178, 140), (186, 168, 130)])
-        place(model)
-        center = Vector((0, 0, 1.6))
-        for view, d in VIEWS:
-            cam = S.ortho_camera("cam_" + view, center, d, 5.4)
-            S.render_to(os.path.join(tmp, "%s_%s.png" % (name, view)), cam)
-        print("[blocs] %s : %d pièces" % (name, len(model["boxes"])), flush=True)
-
-    # ---------------------------------------------------------------- les 7 raretés à leur taille, avec l'avatar
-    # (vue de face : +X Blender est à gauche de l'image ; Common à gauche, près de l'avatar)
-    def row(biome=None, back=False, out="rang.png"):
-        S.reset()
-        S.eevee(1900, 640, sky=(0.70, 0.82, 0.94))
-        S.ground_tiles(48, 2.0, [(196, 178, 140), (186, 168, 130)])
-        sign = 1
+        S.eevee(1900, 620, sky=SKY)
+        S.ground_tiles(52, 2.0, GROUND)
         x = 0.0
         xs = []
-        for i, name in enumerate(order):
-            s = scales[name]
-            half = 1.5 * s
+        for i, (rarity, model) in enumerate(row.items()):
+            half = 1.5 * scales[rarity] + 0.6
             if i > 0:
-                x -= sign * (half + 1.6)
-            rot = 20 if not back else 200
-            place(bases[name], x, 0, rot=rot, scale=s, name="B%d" % i)
-            if biome:
-                place(biome, x, 0, rot=rot, scale=s, name="D%d" % i)
+                x -= half + 1.4
+            place(model, x, 0, rot=25, scale=scales[rarity], name="B%d" % i)
             xs.append(x)
-            x -= sign * half
-        avatar = xs[0] + sign * 4.4
+            x -= half
+        avatar = xs[0] + 4.2
         S.dummy(x=avatar, y=0.8)
         mid = (avatar + xs[-1]) / 2
-        # (de dos : les blocs sont tournés d'un demi-tour, la caméra ne bouge pas)
-        d = (-0.25, 1, 0.42) if not back else (-0.25, 1, 0.55)
-        cam = S.ortho_camera("cam_rang", Vector((mid, 0, 2.6)), d, abs(xs[-1] - avatar) + 9)
-        S.render_to(os.path.join(tmp, out), cam)
-
-    row()
-    print("[blocs] rangée rendue", flush=True)
-    for n, zone in enumerate(biomes):
-        row(biomes[zone], back=True, out="biome_%d.png" % n)
-        # gros plan d'un bloc Rare de ce biome, de dos puis de face
-        for side, rot in (("dos", 200), ("face", 25)):
-            S.reset()
-            S.eevee(520, 520, sky=(0.70, 0.82, 0.94))
-            S.ground_tiles(12, 1.0, [(196, 178, 140), (186, 168, 130)])
-            place(bases["Rare"], rot=rot, name="B")
-            place(biomes[zone], rot=rot, name="D")
-            cam = S.ortho_camera("cam_close", Vector((0, 0, 1.7)), (-0.35, 1, 0.6), 5.6)
-            S.render_to(os.path.join(tmp, "biome_%d_%s.png" % (n, side)), cam)
-        print("[blocs] biome %s" % zone, flush=True)
+        cam = S.ortho_camera("cam_rang", Vector((mid, 0, 3.0)), (-0.25, 1, 0.42), abs(xs[-1] - avatar) + 9)
+        S.render_to(os.path.join(tmp, "rang_%d.png" % n), cam)
+        print("[blocs] %s" % (zone or "(sans biome)"), flush=True)
 
 
 if __name__ == "__main__":

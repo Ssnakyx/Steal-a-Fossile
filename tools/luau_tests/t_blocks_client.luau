@@ -52,16 +52,16 @@ local function bricks(model: any, role: string?): { any }
 	return out
 end
 
--- (min, max) des briques de roche, en coordonnées du monde
-local function rockBox(model: any): (any, any)
-	local lo, hi = Vector3.new(math.huge, math.huge, math.huge), Vector3.new(-math.huge, -math.huge, -math.huge)
+-- Bas des briques droites (non tournées) du modèle, en coordonnées du monde : le bas du bloc
+local function bottom(model: any): number
+	local low = math.huge
 	for _, p in bricks(model) do
-		if p.Name == "Rock" or p.Name == "Rainbow" or p.Name == "Glow" then
-			lo = lo:Min(p.Position - p.Size / 2)
-			hi = hi:Max(p.Position + p.Size / 2)
+		local up = p.CFrame.UpVector
+		if p.Name ~= "Root" and math.abs(up.Y - 1) < 1e-4 then
+			low = math.min(low, p.Position.Y - p.Size.Y / 2)
 		end
 	end
-	return lo, hi
+	return low
 end
 
 T.section("bloc d'un gisement près de la caméra")
@@ -76,6 +76,7 @@ if model then
 	T.eq(model.Parent, folder, "modèle dans le dossier du client")
 	T.eq(#bricks(model), BlockModels.Count("Epic", "Swamp"), "toutes les briques du bloc Epic et du décor du marais")
 	T.check(#bricks(model, "Biome") > 0, "décor du biome posé")
+	T.eq(model:GetAttribute("Form"), BlockModels.Biome("Swamp"), "forme du marais")
 	T.eq(site.LocalTransparencyModifier, 1, "cube du serveur caché chez le client")
 	T.eq(site.Transparency, 0, "transparence du serveur intacte")
 	T.check(model:HasTag(Controller.Tag), "tag FossilBlockModel pour le module des auras")
@@ -84,11 +85,8 @@ if model then
 	T.eq(model:GetAttribute("Kind"), "FossilBlock", "attribut Kind")
 	T.near(model:GetAttribute("Size"), BlockModels.SideOf("Epic", 3), 1e-6, "attribut Size : bloc Epic plus gros que le cube")
 	-- plus gros que la pièce, mais posé au même sol : il grandit vers le haut
-	local lo, hi = rockBox(model)
-	T.near(hi.Y - lo.Y, BlockModels.SideOf("Epic", 3), 0.05, "côté du bloc Epic")
-	T.near(lo.Y, site.Position.Y - 1.5, 0.05, "le bloc reste posé au sol")
-	T.near((lo.X + hi.X) / 2, site.Position.X, 0.05, "centré sur la pièce")
-	T.check((model.PrimaryPart.Position - (site.Position + Vector3.new(0, (BlockModels.SideOf("Epic", 3) - 3) / 2, 0))).Magnitude < 0.05, "Root au centre du bloc")
+	T.near(bottom(model), site.Position.Y - 1.5, 0.05, "le bloc reste posé au sol")
+	T.check((model.PrimaryPart.Position - (site.Position + Vector3.new(0, (BlockModels.SideOf("Epic", 3) - 3) / 2, 0))).Magnitude < 0.05, "Root au-dessus du centre de la pièce")
 	local front = false
 	for _, p in bricks(model, "Fossil") do
 		if p.Position.Z < site.Position.Z - 1.5 then
@@ -122,9 +120,10 @@ site.CFrame = CFrame.new(10, 1.5, -25)
 env.advance(0.1)
 model = modelOf(site)
 if model then
-	local lo, hi = rockBox(model)
-	T.near((lo.X + hi.X) / 2, 10, 0.05, "modèle déplacé avec la pièce (X)")
-	T.near((lo.Z + hi.Z) / 2, -25, 0.05, "modèle déplacé avec la pièce (Z)")
+	local at = model.PrimaryPart.Position
+	T.near(at.X, 10, 0.05, "modèle déplacé avec la pièce (X)")
+	T.near(at.Z, -25, 0.05, "modèle déplacé avec la pièce (Z)")
+	T.near(bottom(model), 0, 0.05, "toujours posé au sol")
 end
 
 T.section("loin de la caméra : cube du serveur")
@@ -198,6 +197,66 @@ end
 T.check(pulses > 2, "Mythic : la lave bat")
 T.check(glows > 2, "Mythic : la lumière bat")
 
+T.section("morceaux qui flottent (Mythic) et éclats qui tournent (Secret)")
+local floating = block("DroppedFossil", "Mythic", Vector3.new(8, 1.5, -14))
+floating:SetAttribute("Zone", "Canyon")
+floating.Parent = workspace
+env.advance(0.3)
+local floatModel = modelOf(floating)
+T.check(floatModel ~= nil and floatModel ~= false, "bloc Mythic construit")
+if floatModel then
+	local pieces = bricks(floatModel, "Float")
+	T.check(#pieces >= 3, "morceaux qui flottent")
+	local function heights(): { number }
+		local out = {}
+		for i, p in pieces do
+			out[i] = p.Position.Y
+		end
+		return out
+	end
+	local h0 = heights()
+	env.advance(0.4)
+	local h1 = heights()
+	local moved, together = 0, true
+	for i, p in pieces do
+		if math.abs(h1[i] - h0[i]) > 1e-3 then
+			moved += 1
+		end
+		-- les briques d'un même morceau bougent ensemble
+		for j, q in pieces do
+			if j ~= i and p:GetAttribute("Float") == q:GetAttribute("Float") then
+				together = together and math.abs((h1[i] - h0[i]) - (h1[j] - h0[j])) < 1e-4
+			end
+		end
+	end
+	T.eq(moved, #pieces, "les morceaux montent et descendent")
+	T.check(together, "chaque morceau garde sa veine de lave")
+	local bobMax = 0
+	for i in pieces do
+		bobMax = math.max(bobMax, math.abs(h1[i] - h0[i]))
+	end
+	T.check(bobMax < 0.3 * BlockModels.SideOf("Mythic", 3), "mouvement doux")
+end
+floating:SetAttribute("Rarity", "Secret")
+env.advance(0.3)
+local orbitModel = modelOf(floating)
+if orbitModel then
+	local shards = bricks(orbitModel, "Orbit")
+	T.check(#shards >= 4, "éclats du Secret")
+	local root = orbitModel.PrimaryPart.Position
+	local function angle(p: any): number
+		local d = p.Position - root
+		return math.atan2(d.Z, d.X)
+	end
+	local before = angle(shards[1])
+	local radius = Vector3.new(shards[1].Position.X - root.X, 0, shards[1].Position.Z - root.Z).Magnitude
+	env.advance(0.5)
+	T.check(math.abs(angle(shards[1]) - before) > 0.05, "les éclats tournent autour du bloc")
+	T.near(Vector3.new(shards[1].Position.X - root.X, 0, shards[1].Position.Z - root.Z).Magnitude, radius, 0.02, "à la même distance")
+end
+floating:Destroy()
+env.advance(0.1)
+
 T.section("rareté posée après la pièce (cuve)")
 local tank = block("TankBlock", nil, Vector3.new(-6, 4.5, -20), 2.5)
 tank.Parent = workspace
@@ -208,9 +267,8 @@ env.advance(0.3)
 local tankModel = modelOf(tank)
 T.check(tankModel ~= nil and tankModel ~= false, "rareté arrivée : construit")
 if tankModel then
-	local lo, hi = rockBox(tankModel)
-	T.near(hi.X - lo.X, 2.5 * BlockModels.TankScale, 0.05, "bloc de cuve : borné pour tenir dans le verre")
-	T.near((lo.Y + hi.Y) / 2, tank.Position.Y, 0.05, "bloc de cuve : centré dans la cuve")
+	T.near(tankModel:GetAttribute("Size"), 2.5 * BlockModels.TankScale, 1e-6, "bloc de cuve : borné pour tenir dans le verre")
+	T.near((tankModel.PrimaryPart.Position - tank.Position).Magnitude, 0, 0.05, "bloc de cuve : centré dans la cuve")
 end
 
 T.section("bloc porté sur le dos")
@@ -237,16 +295,16 @@ if carriedModel then
 	end
 	T.check(back, "porté : crâne tourné vers l'arrière")
 	-- plus gros que la pièce : il grandit vers le haut et l'arrière, pas dans le dos du joueur
-	local lo, hi = rockBox(carriedModel)
 	local grow = (BlockModels.SideOf("Legendary", 2.5) - 2.5) / 2
-	T.near(lo.Z, carried.Position.Z - 1.25, 0.05, "porté : la face contre le dos ne bouge pas")
-	T.near(lo.Y, carried.Position.Y - 1.25, 0.05, "porté : le bas ne bouge pas")
+	local at = carriedModel.PrimaryPart.Position
 	T.check(grow > 0, "porté : bloc Legendary plus gros que la pièce")
+	T.near(at.Z, carried.Position.Z + grow, 0.05, "porté : il grandit vers l'arrière, pas dans le dos")
+	T.near(at.Y, carried.Position.Y + grow, 0.05, "porté : il grandit vers le haut")
+	T.near(bottom(carriedModel), carried.Position.Y - 1.25, 0.05, "porté : le bas ne bouge pas")
 	-- le personnage court : la pièce soudée bouge sans signal CFrame (physique), le modèle suit à chaque image
 	env.setProperty(carried, "CFrame", CFrame.new(carried.Position + Vector3.new(0, 0, -30)))
 	env.advance(0.05)
-	local lo2 = rockBox(carriedModel)
-	T.near(lo2.Z, carried.Position.Z - 1.25, 0.05, "porté : le modèle suit la pièce")
+	T.near(carriedModel.PrimaryPart.Position.Z, carried.Position.Z + grow, 0.05, "porté : le modèle suit la pièce")
 end
 local mine = carry(me, "Secret")
 env.advance(0.3)
