@@ -286,6 +286,8 @@ local function spawnModel(player: Player, pen: Pen, id: string, dino: Dino, stat
 	end
 	nameLabel(root, dino, height)
 	model:AddTag("Dino")
+	-- (StreamingEnabled : le modèle arrive chez le client d'un seul bloc, avec sa pièce Root)
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	model.Parent = pen.Folder
 	pen.Models[id] = model
 end

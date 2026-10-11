@@ -141,6 +141,8 @@ local function buildModel(zone: string, info: GuardiansConfig.GuardianInfo, home
 	end
 	model:AddTag("Dino")
 	model:AddTag("Guardian")
+	-- (StreamingEnabled : toujours chez tous les clients, avec sa pièce Root, même loin de sa zone)
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 	model.Parent = container()
 	return model, size
 end
