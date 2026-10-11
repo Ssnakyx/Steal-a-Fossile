@@ -99,6 +99,8 @@ local Shop = {
 		BearTraps5 = { Id = 0, Name = "Bear Traps x5", Description = "5 bear traps to stop thieves on the road.", Price = 49, Order = 1, Owner = "PvpService" },
 		ServerLuck = { Id = 0, Name = "Server Luck x2", Description = "Double luck for everyone in the server for 15 minutes.", Price = 99, Order = 2, Owner = "ShopService" },
 		InstantRevive = { Id = 0, Name = "Instant Revive", Description = "Finish your revivals right now.", Price = 29, Order = 3, Owner = "ReviveService" },
+		-- sérums de mutation (Config.Mutator) : 3 par achat
+		MutationSerums3 = { Id = 0, Name = "Mutation Serums x3", Description = "3 serums to mutate your dinos in the lab.", Price = 99, Order = 4, Owner = "MutatorService" },
 	} :: { [string]: Product },
 
 	-- Server Luck x2 : toute la chance du serveur est multipliée pendant Duration secondes. Un nouvel achat pendant

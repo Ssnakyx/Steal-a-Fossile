@@ -1,7 +1,7 @@
 --!strict
 -- Tests FossilDebug des mutations (docs/MUTATIONS.md) et des espèces (Config.Species, modèles de src/shared/DinoModels).
 -- Lancer pendant un Play (barre de commande, vue serveur) : game.ServerScriptService.FossilDebug:Invoke("mutations")
--- (ou "species", "all"). Chaque test remet le jeu comme il l'a trouvé (dinos de test retirés, modèles détruits).
+-- (ou "serum", "species", "all"). Chaque test remet le jeu comme il l'a trouvé (dinos de test retirés, modèles détruits).
 -- Outils pour regarder en jeu (vitrine devant le premier joueur, animée chez le client comme les vrais dinos) :
 --   FossilDebug:Invoke("dinoshow")                     toutes les espèces, une rangée par zone (+ les Secrets)
 --   FossilDebug:Invoke("dinoshow", "Glacier")          une zone (nom ou 1 à 8), ou "secret"
@@ -24,6 +24,8 @@ local DebugService = require(Services.DebugService)
 local EnclosureService = require(Services.EnclosureService)
 local IncomeService = require(Services.IncomeService)
 local MutationService = require(Services.MutationService)
+local MutatorService = require(Services.MutatorService)
+local Mutator = require(ReplicatedStorage.Shared.Config.Mutator)
 
 type Tester = DebugService.Tester
 
@@ -310,6 +312,55 @@ return {
 			t:Check(EnclosureService.RemoveDino(target, dinoId), info.Name .. ": test dino removed")
 		end
 		t:Note(string.format("%d mutations tried in the enclosure", added))
+	end,
+
+	-- Sérum de mutation (Config.Mutator) : probas, puis un sérum raté et un réussi sur un dino de test du premier joueur
+	serum = function(t: Tester)
+		t:Check(Mutator.SuccessChance > 0 and Mutator.SuccessChance < 100, "success chance between 0 and 100%")
+		for _, current in { "", "Amber", "Lava", "Galaxy" } do
+			local total, rank = 0, Mutator.Rank(current)
+			for _, odds in Mutator.Odds(current) do
+				total += odds.Chance
+				t:Check(Mutator.Rank(odds.Name) > rank, (if current == "" then "None" else current) .. " -> " .. odds.Name .. ": better")
+			end
+			t:Check(math.abs(total - 1) < 1e-9, (if current == "" then "None" else current) .. ": serum odds add up to 100%", total)
+		end
+		t:Check(not Mutator.CanMutate("Rainbow"), "Rainbow is the best: no serum")
+		local player = t:Player()
+		if not t:Check(player, "a player is loaded") then
+			return
+		end
+		local target = player :: Player
+		local data = DataService.Get(target)
+		if not (data and EnclosureService.HasRoom(target)) then
+			t:Note("enclosure full: serum not tried")
+			return
+		end
+		local id = EnclosureService.AddDino(target, { Species = "Compy", Size = "Normal", Mutation = "" })
+		if not t:Check(id, "test dino added") then
+			return
+		end
+		local dinoId = id :: string
+		local serums, used = data.Serums, data.SerumsUsed
+		data.Serums = 2
+		MutatorService.ForceRolls({ { 0.99, 0 }, { 0, 0 } })
+		local ok, _, result = MutatorService.Mutate(target, dinoId)
+		t:Check(ok and result and result.Success == false, "failed serum")
+		t:Equal((EnclosureService.GetDino(target, dinoId) :: any).Mutation, "", "failed: no mutation")
+		t:Equal(data.Serums, 1, "failed: serum used")
+		ok, _, result = MutatorService.Mutate(target, dinoId)
+		local mutation = Mutator.Odds("")[1].Name
+		t:Check(ok and result and result.Success == true, "serum worked")
+		t:Equal((EnclosureService.GetDino(target, dinoId) :: any).Mutation, mutation, "worked: " .. mutation)
+		local model = EnclosureService.ModelOf(target, dinoId)
+		t:Equal(model and model:GetAttribute("Mutation"), mutation, "worked: Mutation attribute")
+		t:Equal(data.Serums, 0, "worked: serum used")
+		ok = MutatorService.Mutate(target, dinoId)
+		t:Check(not ok, "no serum left: refused")
+		MutatorService.ForceRolls({})
+		data.Serums, data.SerumsUsed = serums, used
+		MutatorService.Publish(target)
+		t:Check(EnclosureService.RemoveDino(target, dinoId), "test dino removed")
 	end,
 
 	species = function(t: Tester)

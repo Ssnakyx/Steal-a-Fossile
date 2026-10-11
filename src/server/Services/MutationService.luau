@@ -3,12 +3,14 @@
 -- Config.Economy.RollMutation (mutations de toutes les zones + celle du biome du bloc, chance du pass VIP). Ici :
 --   * annonce à tout le serveur (chat + message à l'écran) quand une mutation rare sort d'une cuve
 --     (Chance <= Config.Economy.MutationAnnounce) ;
---   * commande admin « mutations [zone] » : probas des mutations d'une zone, avec la chance du joueur.
+--   * commande admin « mutations [zone] [rareté] » : probas des mutations d'une zone, avec la chance du joueur et la
+--     rareté du bloc (les mutations rares sortent plus souvent d'un bloc rare : Config.Economy.RareMutation).
 -- Signal : MutationRevealed(player, id, dino, info) à chaque dino réanimé avec une mutation (info : Economy.MutationInfo).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Economy = require(ReplicatedStorage.Shared.Config.Economy)
+local Rarity = require(ReplicatedStorage.Shared.Config.Rarity)
 local Zones = require(ReplicatedStorage.Shared.Config.Zones)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -69,9 +71,23 @@ function MutationService.FindZone(text: string?): string?
 	return nil
 end
 
--- Probas affichables d'une zone pour ce joueur (pass VIP compris) : voir Economy.MutationChances
-function MutationService.Chances(player: Player, zoneName: string): { Economy.MutationChance }
-	return Economy.MutationChances(zoneName, ReviveService.MutationLuck(player))
+-- Probas affichables d'une zone pour ce joueur (pass VIP compris), pour un bloc de cette rareté (facultative) : voir
+-- Economy.MutationChances
+function MutationService.Chances(player: Player, zoneName: string, rarity: string?): { Economy.MutationChance }
+	return Economy.MutationChances(zoneName, ReviveService.MutationLuck(player), rarity)
+end
+
+-- Rareté de bloc tapée sans faire attention aux majuscules (commande admin) ; nil si inconnue
+local function findRarity(text: string?): string?
+	if type(text) ~= "string" then
+		return nil
+	end
+	for _, name in Rarity.Order do
+		if string.lower(name) == string.lower(text) then
+			return name
+		end
+	end
+	return nil
 end
 
 local function onRevived(player: Player, id: string, dino: EnclosureService.Dino)
@@ -93,19 +109,20 @@ end
 function MutationService.Init()
 	Signals.Connect("DinoRevived", onRevived)
 	AdminService.RegisterCommand("mutations", {
-		Description = "Mutation odds of a zone, with your luck",
-		Usage = "mutations [zone 1-8 or name]",
+		Description = "Mutation odds of a zone, with your luck and the block rarity",
+		Usage = "mutations [zone 1-8 or name] [rarity]",
 		Run = function(player: Player, args: { string })
 			local zone = MutationService.FindZone(args[1]) or (if args[1] then nil else Zones.List[1].Name)
-			if not zone then
-				return false, "Usage: mutations [zone 1-8 or name]"
+			local rarity = findRarity(args[2])
+			if not zone or (args[2] ~= nil and not rarity) then
+				return false, "Usage: mutations [zone 1-8 or name] [rarity]"
 			end
 			local parts = {}
-			for _, chance in MutationService.Chances(player, zone) do
+			for _, chance in MutationService.Chances(player, zone, rarity) do
 				local name = if chance.Name == "" then "None" else chance.Name
 				table.insert(parts, string.format("%s %s%% (x%s)", name, number(chance.Chance * 100), number(chance.Income)))
 			end
-			return true, zone .. ": " .. table.concat(parts, ", ")
+			return true, zone .. (if rarity then " (" .. rarity .. " block)" else "") .. ": " .. table.concat(parts, ", ")
 		end,
 	})
 end
