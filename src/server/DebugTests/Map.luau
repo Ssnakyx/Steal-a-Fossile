@@ -85,17 +85,27 @@ return {
 			t:Check(lights <= Map.Lights.Zone, name .. " light budget", lights)
 			t:Equal(loud, 0, name .. " decor is not collidable")
 			-- chemin dégagé : le premier obstacle sous l'axe est le sol de la zone
+			-- (sans aucun impact, les raycasts ne marchent pas ici : faux Roblox des tests hors Studio)
 			local ground = geo.Model:FindFirstChild("Ground")
-			local blocked = 0
+			local rays, hits, blocked = 0, 0, 0
 			local area = geo.Area
 			local z0 = area.Position.Z - area.Size.Z / 2
 			for z = z0 + 12, z0 + area.Size.Z - 4, 10 do
+				rays += 1
 				local hit = Workspace:Raycast(Vector3.new(0, Map.GroundTop + 100, z), Vector3.new(0, -200, 0), rayParams)
-				if not (hit and ground and hit.Instance:IsDescendantOf(ground)) then
-					blocked += 1
+				if hit then
+					hits += 1
+					if not (ground and hit.Instance:IsDescendantOf(ground)) then
+						blocked += 1
+					end
 				end
 			end
-			t:Equal(blocked, 0, name .. " path is clear")
+			if hits == 0 then
+				t:Note(name .. ": raycasts unavailable, path check skipped")
+			else
+				t:Equal(hits, rays, name .. " path has ground all along")
+				t:Equal(blocked, 0, name .. " path is clear")
+			end
 		end
 		-- enseigne du parc du joueur, recopiée à l'intérieur
 		local player = t:Player()

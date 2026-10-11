@@ -299,16 +299,35 @@ local function digSite(info: Info, folder: Folder, index: number, center: Vector
 	Kit.markCircle(info.Grid, center.X, center.Z, 16)
 end
 
--- Clairière du gardien : nid (anneau de pierres, litière) et point d'ancrage Guardian tourné vers le spawn (-Z)
+-- Taille du gardien de la zone (taille de base de l'espèce x Scale), lue dans Config.Guardians et Config.Species
+-- (briefs 7 et 2) s'ils existent ; 20 studs sinon
+function ZoneBase.GuardianSize(zoneName: string): number
+	local config = ReplicatedStorage.Shared.Config
+	local guardians = config:FindFirstChild("Guardians")
+	local species = config:FindFirstChild("Species")
+	if guardians and species and guardians:IsA("ModuleScript") and species:IsA("ModuleScript") then
+		local info = ((require :: any)(guardians).Zones or {})[zoneName]
+		local def = info and ((require :: any)(species).ByName or {})[info.Species]
+		if def and type(def.BaseSize) == "number" and type(info.Scale) == "number" then
+			return def.BaseSize * info.Scale
+		end
+	end
+	return 20
+end
+
+-- Clairière du gardien : nid à sa taille (anneau de pierres, litière) et point d'ancrage Guardian tourné vers le
+-- spawn (-Z)
 local function nest(info: Info)
 	local theme, gt = info.Theme, info.GroundTop
 	local z = info.NestZ
+	local radius = math.clamp(ZoneBase.GuardianSize(info.Zone.Name) * 0.5 + 2, 10, Map.Guardian.Radius - 8)
 	local m = Kit.group("Nest")
-	Kit.disc(m, CFrame.new(0, gt + 0.25, z), 9, 0.3, theme.Nest.Bed)
-	for k = 0, 11 do
-		local ring = CFrame.new(0, gt + 0.25, z) * CFrame.Angles(0, k * math.pi / 6, 0)
+	Kit.disc(m, CFrame.new(0, gt + 0.25, z), radius - 1.5, 0.3, theme.Nest.Bed)
+	local count = math.max(12, math.floor(radius * 2 * math.pi / 5.5))
+	for k = 0, count - 1 do
+		local ring = CFrame.new(0, gt + 0.25, z) * CFrame.Angles(0, k * math.pi * 2 / count, 0)
 		local h = if k % 3 == 0 then 2.2 else 1.4
-		Kit.prop(m, Vector3.new(5, h, 2.2), ring * CFrame.new(0, h / 2, -10.5), if k % 2 == 0 then theme.Nest.Ring else shade(theme.Nest.Ring, 0.12))
+		Kit.prop(m, Vector3.new(5, h, 2.2), ring * CFrame.new(0, h / 2, -radius), if k % 2 == 0 then theme.Nest.Ring else shade(theme.Nest.Ring, 0.12))
 	end
 	m.Parent = info.Model
 	Kit.anchor(info.Model, "Guardian", Vector3.new(8, 0.4, 8), CFrame.new(0, gt + 0.75, z))

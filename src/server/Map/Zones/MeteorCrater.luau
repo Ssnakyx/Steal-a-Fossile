@@ -60,17 +60,19 @@ local function landmark(info: ZoneBase.Info)
 	Kit.disc(info.Decor, CFrame.new(0, gt + 0.25, z), 24, 0.1, rgb(56, 44, 68))
 	for k = 0, 5 do
 		local crack = CFrame.new(0, gt + 0.38, z) * CFrame.Angles(0, k * math.pi / 3 + 0.3, 0)
-		glow(info.Decor, Vector3.new(0.5, 0.06, Kit.range(rng, 8, 12)), crack * CFrame.new(0, 0, -16), if k % 2 == 0 then GREEN else PURPLE)
+		glow(info.Decor, Vector3.new(0.5, 0.06, Kit.range(rng, 7, 9)), crack * CFrame.new(0, 0, -28), if k % 2 == 0 then GREEN else PURPLE)
 	end
 	-- météorite géante à demi enterrée
 	local mx, mz = -70, info.Z0 + info.Length * 0.52
 	crater(info, mx, mz, 13)
-	Kit.dome(info.Ground, CFrame.new(mx, gt - 2, mz), 11, 14, 4, rgb(48, 40, 56), nil, true)
+	for _, part in Kit.dome(info.Ground, CFrame.new(mx, gt - 2, mz), 11, 14, 4, rgb(48, 40, 56), nil, true) do
+		Kit.solid(part)
+	end
 	-- éclats rocheux qui dépassent de la météorite
 	for k = 0, 4 do
 		local a = k * 1.25 + 0.4
 		local chunk = CFrame.new(mx + math.cos(a) * 7, gt + 4 + (k % 2) * 3, mz + math.sin(a) * 7) * CFrame.Angles(math.cos(a) * 0.5, a, math.sin(a) * 0.5)
-		Kit.block(info.Ground, Vector3.new(5, 6, 4), chunk, if k % 2 == 0 then rgb(40, 34, 48) else rgb(60, 50, 70))
+		Kit.solid(Kit.block(info.Ground, Vector3.new(5, 6, 4), chunk, if k % 2 == 0 then rgb(40, 34, 48) else rgb(60, 50, 70)))
 	end
 	local core = glow(info.Decor, Vector3.new(2, 7, 2), CFrame.new(mx + 3, gt + 7, mz - 5) * CFrame.Angles(0.3, 0.2, 0.2), GREEN)
 	glow(info.Decor, Vector3.new(1.6, 5, 1.6), CFrame.new(mx - 5, gt + 6, mz + 2) * CFrame.Angles(-0.2, 0, 0.4), PURPLE)

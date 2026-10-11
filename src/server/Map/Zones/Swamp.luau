@@ -59,9 +59,9 @@ local function landmark(info: ZoneBase.Info)
 	local log = CFrame.new(-74, gt, lz) * CFrame.Angles(0, math.rad(80), 0)
 	-- (creux : on peut passer dedans)
 	Kit.block(info.Ground, Vector3.new(22, 1.5, 6), log * CFrame.new(0, 0.75, 0), shade(BARK, 0.15))
-	Kit.block(info.Ground, Vector3.new(22, 2, 6), log * CFrame.new(0, 8.5, 0), BARK)
+	Kit.solid(Kit.block(info.Ground, Vector3.new(22, 2, 6), log * CFrame.new(0, 8.5, 0), BARK))
 	for _, side in { -1, 1 } do
-		Kit.block(info.Ground, Vector3.new(22, 6, 1.6), log * CFrame.new(0, 4.5, side * 3.2), shade(BARK, 0.08))
+		Kit.solid(Kit.block(info.Ground, Vector3.new(22, 6, 1.6), log * CFrame.new(0, 4.5, side * 3.2), shade(BARK, 0.08)))
 		for _, x in { -11, 11 } do
 			Kit.prop(info.Decor, Vector3.new(0.4, 7.6, 0.8), log * CFrame.new(x, 4.6, side * 3.6), rgb(150, 120, 86))
 		end

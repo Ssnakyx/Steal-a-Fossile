@@ -76,12 +76,12 @@ end
 local function tank(model: Instance, origin: CFrame, index: number, x: number, z: number)
 	local base = origin * CFrame.new(x, 0.4, z)
 	Kit.disc(model, base, 3.6, 1, METAL, nil, true)
-	local glass = Kit.block(model, Vector3.new(5, 7, 5), base * CFrame.new(0, 1 + 3.5, 0), GLASS, Enum.Material.Glass)
+	local glass = Kit.block(model, Vector3.new(5, 7, 5), base * CFrame.new(0, 1 + 3.5, 0), GLASS, Enum.Material.SmoothPlastic)
 	glass.Name = "Tank" .. index
-	glass.Transparency = 0.5
+	glass.Transparency = 0.6
 	-- liquide vert au fond de la cuve (sous le bloc posé par ReviveService au centre)
 	local liquid = Kit.prop(model, Vector3.new(4.4, 1.6, 4.4), base * CFrame.new(0, 1 + 0.8, 0), rgb(110, 230, 150), Enum.Material.SmoothPlastic)
-	liquid.Transparency = 0.35
+	liquid.Transparency = 0.15
 	Kit.disc(model, base * CFrame.new(0, 8, 0), 3.6, 0.8, METAL, nil, true)
 	Kit.prop(model, Vector3.new(2, 0.8, 2), base * CFrame.new(0, 9.2, 0), shade(METAL, -0.25))
 	for _, corner in { { -2.6, -2.6 }, { 2.6, -2.6 }, { -2.6, 2.6 }, { 2.6, 2.6 } } do
@@ -106,8 +106,8 @@ local function labo(model: Instance, origin: CFrame, x: number, z: number)
 	for _, side in { -1, 1 } do
 		local pod = base * CFrame.new(side * 6, 0.6, -2)
 		Kit.disc(model, pod, 2.4, 0.8, METAL, nil, true)
-		local glass = Kit.block(model, Vector3.new(3.4, 5, 3.4), pod * CFrame.new(0, 0.8 + 2.5, 0), rgb(190, 245, 210), Enum.Material.Glass)
-		glass.Transparency = 0.55
+		local glass = Kit.block(model, Vector3.new(3.4, 5, 3.4), pod * CFrame.new(0, 0.8 + 2.5, 0), rgb(190, 245, 210), Enum.Material.SmoothPlastic)
+		glass.Transparency = 0.6
 		Kit.disc(model, pod * CFrame.new(0, 5.8, 0), 2.4, 0.7, METAL, nil, true)
 		Kit.prop(model, Vector3.new(3, 0.6, 0.6), pod * CFrame.new(-side * 2.8, 4.2, 0), shade(METAL, 0.3))
 	end

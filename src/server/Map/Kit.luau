@@ -94,6 +94,13 @@ function Kit.prop(parent: Instance, size: Vector3, cframe: CFrame, color: Color3
 	return Kit.decor(Kit.block(parent, size, cframe, color, material))
 end
 
+-- Gros volume solide d'un lieu marquant (pilier, tronc, bloc de glace) : on s'y cogne, mais les raycasts le traversent
+-- (le gardien du brief 7 suit le sol par raycast : il ne grimpe pas dessus ; le décor ne s'y pose pas)
+function Kit.solid(part: Part): Part
+	part.CanQuery = false
+	return part
+end
+
 -- Point d'ancrage invisible (lu par les services : Spawn, Guardian...)
 function Kit.anchor(parent: Instance, name: string, size: Vector3, cframe: CFrame): Part
 	local part = Kit.prop(parent, size, cframe, LIGHT, Enum.Material.SmoothPlastic)
@@ -147,24 +154,32 @@ function Kit.disc(parent: Instance, base: CFrame, radius: number, height: number
 end
 
 -- Dôme : disques empilés dont le rayon suit un quart de cercle
-function Kit.dome(parent: Instance, base: CFrame, radius: number, height: number, tiers: number, color: Color3, material: Enum.Material?, solid: boolean?)
+function Kit.dome(parent: Instance, base: CFrame, radius: number, height: number, tiers: number, color: Color3, material: Enum.Material?, solid: boolean?): { Part }
+	local parts = {}
 	local step = height / tiers
 	for k = 1, tiers do
 		local t = (k - 1) / tiers
 		local r = radius * math.sqrt(1 - t * t)
-		Kit.disc(parent, base * CFrame.new(0, (k - 1) * step, 0), math.max(0.5, r), step, color, material, solid)
+		for _, part in Kit.disc(parent, base * CFrame.new(0, (k - 1) * step, 0), math.max(0.5, r), step, color, material, solid) do
+			table.insert(parts, part)
+		end
 	end
+	return parts
 end
 
 -- Cône : disques empilés dont le rayon diminue régulièrement
-function Kit.cone(parent: Instance, base: CFrame, radius: number, height: number, tiers: number, color: Color3, material: Enum.Material?, solid: boolean?, top: number?)
+function Kit.cone(parent: Instance, base: CFrame, radius: number, height: number, tiers: number, color: Color3, material: Enum.Material?, solid: boolean?, top: number?): { Part }
+	local parts = {}
 	local step = height / tiers
 	local last = top or 0.15
 	for k = 1, tiers do
 		local t = (k - 1) / math.max(1, tiers - 1)
 		local r = radius * (1 - t * (1 - last))
-		Kit.disc(parent, base * CFrame.new(0, (k - 1) * step, 0), math.max(0.5, r), step, color, material, solid)
+		for _, part in Kit.disc(parent, base * CFrame.new(0, (k - 1) * step, 0), math.max(0.5, r), step, color, material, solid) do
+			table.insert(parts, part)
+		end
 	end
+	return parts
 end
 
 -- Tronc rond (2 pièces en croix) posé sur `base`

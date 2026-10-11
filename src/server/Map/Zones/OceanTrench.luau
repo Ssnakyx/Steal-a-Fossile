@@ -72,9 +72,11 @@ local function landmark(info: ZoneBase.Info)
 			local base = CFrame.new(x, gt, z)
 			Kit.block(info.Ground, Vector3.new(5, 1.4, 5), base * CFrame.new(0, 0.7, 0), shade(STONE, 0.1))
 			local h = Kit.range(rng, 5, 16)
-			Kit.trunk(info.Ground, base * CFrame.new(0, 1.4, 0), 3.2, h, STONE, true)
+			for _, part in Kit.trunk(info.Ground, base * CFrame.new(0, 1.4, 0), 3.2, h, STONE, true) do
+				Kit.solid(part)
+			end
 			if h > 11 then
-				Kit.block(info.Ground, Vector3.new(4.6, 1.2, 4.6), base * CFrame.new(0, 1.4 + h + 0.6, 0), shade(STONE, 0.1))
+				Kit.solid(Kit.block(info.Ground, Vector3.new(4.6, 1.2, 4.6), base * CFrame.new(0, 1.4 + h + 0.6, 0), shade(STONE, 0.1)))
 			else
 				Kit.prop(info.Decor, Vector3.new(3, 2.8, 6), base * CFrame.new(2.6, 1.4, 3) * CFrame.Angles(math.rad(80), 0.4, 0), STONE)
 			end

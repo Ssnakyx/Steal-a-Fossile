@@ -50,8 +50,8 @@ local function landmark(info: ZoneBase.Info)
 		local x, z = spot[1], info.Z0 + info.Length * spot[2]
 		if Kit.isFree(info.Grid, x, z, 9) then
 			local base = CFrame.new(x, gt, z) * CFrame.Angles(0, rng:NextNumber() * math.pi, 0)
-			Kit.block(info.Ground, Vector3.new(10, 12, 9), base * CFrame.new(0, 6, 0), ICE, Enum.Material.Ice)
-			Kit.block(info.Ground, Vector3.new(7, 6, 6), base * CFrame.new(4, 3, 4), shade(ICE, -0.2), Enum.Material.Ice)
+			Kit.solid(Kit.block(info.Ground, Vector3.new(10, 12, 9), base * CFrame.new(0, 6, 0), ICE, Enum.Material.Ice))
+			Kit.solid(Kit.block(info.Ground, Vector3.new(7, 6, 6), base * CFrame.new(4, 3, 4), shade(ICE, -0.2), Enum.Material.Ice))
 			Kit.prop(info.Decor, Vector3.new(10.4, 1, 9.4), base * CFrame.new(0, 12.5, 0), SNOW)
 			Kit.markCircle(info.Grid, x, z, 10)
 		end

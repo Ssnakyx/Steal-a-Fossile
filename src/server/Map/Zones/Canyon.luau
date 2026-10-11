@@ -28,7 +28,7 @@ local function landmark(info: ZoneBase.Info)
 		local base = CFrame.new(side * 32, gt, az)
 		local y = 0
 		for k, size in { Vector3.new(12, 12, 12), Vector3.new(10, 10, 10), Vector3.new(11, 9, 11), Vector3.new(12, 6, 12) } do
-			Kit.block(info.Ground, size, base * CFrame.new(0, y + size.Y / 2, 0) * CFrame.Angles(0, k * 0.3, 0), BANDS[k])
+			Kit.solid(Kit.block(info.Ground, size, base * CFrame.new(0, y + size.Y / 2, 0) * CFrame.Angles(0, k * 0.3, 0), BANDS[k]))
 			y += size.Y
 		end
 		Kit.markCircle(info.Grid, side * 32, az, 12)
