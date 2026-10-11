@@ -38,10 +38,10 @@ gris du rendu de contrôle mesure 5 studs : vérifier la taille à côté de lui
 
 | Classe | Espèces (BaseSize en studs) |
 |---|---|
-| Petits | Compy 4, Oviraptor 5 |
-| Moyens | Pachycephalosaurus 8, Gallimimus 9, Parasaurolophus 12, Iguanodon 12, Baryonyx 13, Velociraptor 14, Golden Raptor 14 |
-| Grands | Stegosaurus 14, Ankylosaurus 15, Cryolophosaurus 15, Pteranodon 16 (envergure), Therizinosaurus 16, Carnotaurus 16, Sarcosuchus 16, Plesiosaurus 18, Triceratops 19, T-Rex 20, Spinosaurus 20, Giganotosaurus 22, Crystal Rex 22 |
-| Géants | Megalodon 24, Quetzalcoatlus 26 (envergure), Mosasaurus 30, Brachiosaurus 32 (hauteur), Lava Titan 32 |
+| Petits | Compy 4, Oviraptor 5, Psittacosaurus 5, Protoceratops 6, Hypsilophodon 6, Diplocaulus 6, Troodon 6 |
+| Moyens | Microraptor 7 (envergure), Pachycephalosaurus 8, Dimorphodon 8 (envergure), Gallimimus 9, Coelophysis 9, Dimetrodon 10, Smilodon 10, Dracorex 10, Kentrosaurus 11, Deinonychus 11, Parasaurolophus 12, Iguanodon 12, Archelon 12, Dilophosaurus 12, Baryonyx 13, Styracosaurus 13, Edmontonia 13, Ichthyosaurus 13, Velociraptor 14, Golden Raptor 14, Tanystropheus 14, Corythosaurus 14, Kosmoceratops 14 |
+| Grands | Stegosaurus 14, Ankylosaurus 15, Cryolophosaurus 15, Basilisk 15, Pteranodon 16 (envergure), Therizinosaurus 16, Carnotaurus 16, Sarcosuchus 16, Thunder Raptor 16, Ceratosaurus 16, Dunkleosteus 16, Allosaurus 17, Woolly Mammoth 17, Plesiosaurus 18, Yutyrannus 18, Helicoprion 18, Triceratops 19, Acrocanthosaurus 19, T-Rex 20, Spinosaurus 20, Deinocheirus 20, Amargasaurus 21, Giganotosaurus 22, Crystal Rex 22, Frost Wyvern 22 (envergure), Magma Behemoth 22 |
+| Géants | Megalodon 24, Phoenix 24 (envergure), Liopleurodon 24, Quetzalcoatlus 26 (envergure), Star Dragon 28 (envergure), Mosasaurus 30, Brachiosaurus 32 (hauteur), Lava Titan 32, Celestial Serpent 32, Abyssal Leviathan 34, Argentinosaurus 35 |
 
 - Régler `VOXEL` pour tomber sur BaseSize (± 1 stud) : environ 0,1 à 0,15 pour les petits, 0,26 à 0,44 pour les moyens et
   grands, 0,5 à 0,6 pour les géants (autour de 45 à 60 voxels sur la plus grande dimension).

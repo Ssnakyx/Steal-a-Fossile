@@ -8,6 +8,94 @@ Valeurs : `src/shared/Config/Economy.luau` (`Mutations`, `MutationAnnounce`). Co
 `src/shared/DinoBuilder.luau`. Effets animés : `src/client/Controllers/MutationController.luau`. Annonce et commande
 admin : `src/server/Services/MutationService.luau`.
 
+## Les 40 nouvelles espèces
+
+5 par biome, dans les raretés de la zone (`Config.Zones` : `Weights` inchangés). Une rareté de bloc donne une
+espèce tirée parmi celles de la zone qui ont cette rareté. Les plus rares sont des créatures fantastiques (*).
+Modèles voxel faits dans Blender comme les autres (`models/species/<Espece>.py`, rendus de contrôle dans
+`models/previews/<Espece>/`), avec toutes les animations du parc, des gardiens, de la fusion et de l'Index.
+Taille : plus grande dimension à la taille Normal (studs). Revenu : base en $/s, à équilibrer.
+
+**Beach**
+
+| Espèce | Famille | Rareté | Taille | Revenu | Allure |
+|---|---|---|---|---|---|
+| Protoceratops | quadrupède | Common | 6 | $2 | petit cératopsien trapu, gros bec, collerette bordée de corail |
+| Psittacosaurus | bipède | Common | 5 | $1 | « lézard-perroquet » : bec orange, soies dressées sur la queue |
+| Dimorphodon | volant | Common | 8 | $2 | petit ptérosaure à tête de macareux, queue à palette en losange |
+| Archelon | nageur | Uncommon | 12 | $4 | tortue de mer géante, carapace à crêtes, grandes nageoires |
+| Tanystropheus | quadrupède | Uncommon | 14 | $3 | cou démesuré en gros segments, pattes de lézard |
+
+**Fern Forest**
+
+| Espèce | Famille | Rareté | Taille | Revenu | Allure |
+|---|---|---|---|---|---|
+| Hypsilophodon | bipède | Common | 6 | $6 | petit coureur vert aux grands yeux |
+| Microraptor | volant | Common | 7 | $7 | petit raptor à quatre ailes de plumes irisées |
+| Kentrosaurus | quadrupède | Uncommon | 11 | $10 | cousin du Stégosaure : plaques puis longues pointes |
+| Styracosaurus | quadrupède | Uncommon | 13 | $12 | collerette couronnée de longues pointes, grande corne |
+| Dilophosaurus | bipède | Rare | 12 | $18 | deux crêtes rouges sur le crâne |
+
+**Swamp**
+
+| Espèce | Famille | Rareté | Taille | Revenu | Allure |
+|---|---|---|---|---|---|
+| Diplocaulus | quadrupède | Uncommon | 6 | $30 | amphibien à tête en boomerang |
+| Dimetrodon | quadrupède | Uncommon | 10 | $38 | haute voile dorsale rayée |
+| Deinonychus | bipède | Rare | 11 | $48 | grand raptor à plumes, griffe en faucille |
+| Corythosaurus | quadrupède | Rare | 14 | $52 | bec de canard et crête en casque |
+| Basilisk * | quadrupède | Epic | 15 | $75 | roi des marais : couronne de piques, capuchon de cobra, taches toxiques lumineuses |
+
+**Canyon**
+
+| Espèce | Famille | Rareté | Taille | Revenu | Allure |
+|---|---|---|---|---|---|
+| Coelophysis | bipède | Rare | 9 | $150 | chasseur fin et rapide, rayé |
+| Edmontonia | quadrupède | Rare | 13 | $180 | nodosaure blindé aux pointes d'épaule |
+| Allosaurus | bipède | Epic | 17 | $240 | grand prédateur tigré aux cornes rouges |
+| Amargasaurus | quadrupède | Epic | 21 | $260 | sauropode au cou hérissé de doubles épines |
+| Thunder Raptor * | bipède | Legendary | 16 | $360 | raptor de tempête, éclairs lumineux sur les plumes |
+
+**Glacier**
+
+| Espèce | Famille | Rareté | Taille | Revenu | Allure |
+|---|---|---|---|---|---|
+| Troodon | bipède | Rare | 6 | $700 | petit raptor malin aux énormes yeux, plumage d'hiver |
+| Smilodon | quadrupède | Rare | 10 | $800 | tigre à dents de sabre |
+| Yutyrannus | bipède | Epic | 18 | $1100 | tyrannosaure à plumes blanches |
+| Woolly Mammoth | quadrupède | Epic | 17 | $1200 | mammouth laineux aux grandes défenses |
+| Frost Wyvern * | volant | Legendary | 22 | $1700 | wyverne de glace, ailes translucides, lame de cristal au bout de la queue |
+
+**Volcano**
+
+| Espèce | Famille | Rareté | Taille | Revenu | Allure |
+|---|---|---|---|---|---|
+| Dracorex | bipède | Epic | 10 | $3300 | tête de dragon couverte de piques |
+| Ceratosaurus | bipède | Epic | 16 | $4000 | cornes rouges et plaques sur le dos |
+| Acrocanthosaurus | bipède | Legendary | 19 | $5500 | haute crête dorsale cramoisie |
+| Magma Behemoth * | quadrupède | Legendary | 22 | $5800 | colosse de basalte fissuré de lave, volcan sur le dos |
+| Phoenix * | volant | Mythic | 24 | $8500 | oiseau de feu aux plumes en flammes |
+
+**Ocean Trench**
+
+| Espèce | Famille | Rareté | Taille | Revenu | Allure |
+|---|---|---|---|---|---|
+| Ichthyosaurus | nageur | Epic | 13 | $17000 | reptile-dauphin |
+| Dunkleosteus | nageur | Epic | 16 | $20000 | poisson cuirassé aux mâchoires en lames |
+| Helicoprion | nageur | Legendary | 18 | $24000 | requin à la spirale de dents |
+| Liopleurodon | nageur | Legendary | 24 | $28000 | pliosaure massif à quatre nageoires |
+| Abyssal Leviathan * | nageur | Mythic | 34 | $42000 | anguille-dragon des abysses, points lumineux et leurre de cristal |
+
+**Meteor Crater**
+
+| Espèce | Famille | Rareté | Taille | Revenu | Allure |
+|---|---|---|---|---|---|
+| Kosmoceratops | quadrupède | Legendary | 14 | $85000 | la collerette la plus ornée, crochets dorés |
+| Deinocheirus | bipède | Legendary | 20 | $100000 | bras géants à griffes, bosse-voile |
+| Argentinosaurus | quadrupède | Legendary | 35 | $110000 | le plus grand dino du jeu |
+| Celestial Serpent * | nageur | Mythic | 32 | $200000 | dragon céleste semé d'étoiles, crinière et bois dorés |
+| Star Dragon * | volant | Mythic | 28 | $220000 | wyverne cosmique, ailes en nébuleuse |
+
 ## Les 12 mutations
 
 Un seul tirage à la réanimation. Amber, Crystal, Lava (valeurs du GDD, inchangées) et Rainbow sortent de toutes les

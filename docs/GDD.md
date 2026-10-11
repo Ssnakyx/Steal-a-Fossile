@@ -66,15 +66,15 @@ Même map et même boucle que **Steal an Egg** (pas Steal a Brainrot) : bases al
 
 Les zones lointaines ont de meilleures probas. La couleur du bloc fixe la rareté, l'espèce est tirée parmi les espèces de cette rareté dans la zone.
 
-## Espèces (liste de départ, rareté de chacune à fixer à l'équilibrage)
-- Beach : Compy, Oviraptor, Pteranodon
-- Fern Forest : Gallimimus, Parasaurolophus, Stegosaurus
-- Swamp : Iguanodon, Baryonyx, Sarcosuchus
-- Canyon : Pachycephalosaurus, Velociraptor, Triceratops
-- Glacier : Ankylosaurus, Therizinosaurus, Cryolophosaurus
-- Volcano : Carnotaurus, Brachiosaurus, Spinosaurus
-- Ocean Trench : Plesiosaurus, Megalodon, Mosasaurus
-- Meteor Crater : Quetzalcoatlus, Giganotosaurus, T-Rex
+## Espèces (8 par zone ; raretés dans Config/Rarity, nouvelles espèces : docs/MUTATIONS.md)
+- Beach : Compy, Oviraptor, Pteranodon, Protoceratops, Psittacosaurus, Dimorphodon, Archelon, Tanystropheus
+- Fern Forest : Gallimimus, Parasaurolophus, Stegosaurus, Hypsilophodon, Microraptor, Kentrosaurus, Styracosaurus, Dilophosaurus
+- Swamp : Iguanodon, Baryonyx, Sarcosuchus, Diplocaulus, Dimetrodon, Deinonychus, Corythosaurus, Basilisk
+- Canyon : Pachycephalosaurus, Velociraptor, Triceratops, Coelophysis, Edmontonia, Allosaurus, Amargasaurus, Thunder Raptor
+- Glacier : Ankylosaurus, Therizinosaurus, Cryolophosaurus, Troodon, Smilodon, Yutyrannus, Woolly Mammoth, Frost Wyvern
+- Volcano : Carnotaurus, Brachiosaurus, Spinosaurus, Dracorex, Ceratosaurus, Acrocanthosaurus, Magma Behemoth, Phoenix
+- Ocean Trench : Plesiosaurus, Megalodon, Mosasaurus, Ichthyosaurus, Dunkleosteus, Helicoprion, Liopleurodon, Abyssal Leviathan
+- Meteor Crater : Quetzalcoatlus, Giganotosaurus, T-Rex, Kosmoceratops, Deinocheirus, Argentinosaurus, Celestial Serpent, Star Dragon
 - Secret (zones lointaines surtout) : Golden Raptor, Crystal Rex, Lava Titan
 
 ## Taille et mutations (à la réanimation)
