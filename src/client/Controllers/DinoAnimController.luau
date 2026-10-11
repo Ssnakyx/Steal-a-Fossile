@@ -12,9 +12,10 @@
 --   Speed (number)           (facultatif) vitesse de déplacement en studs/s : la marche se cale dessus (pas de glisse)
 --   AlwaysAnimate (boolean)  (facultatif) pour les ViewportFrame (Index) : pas de coupure à distance ou hors écran
 --   Rarity (string)          (facultatif) Common ... Secret ; sans lui, la rareté de l'espèce (Config.Rarity.Species).
---                            Effets qui s'empilent avec la rareté : anneau de briques au sol de la couleur de la rareté,
---                            cubes lumineux qui montent, paillettes qui scintillent sur le corps, aura de cubes qui
---                            tournent, couronne au-dessus de la tête, braises (Mythic), arc-en-ciel (Secret)
+--                            Aura de rareté (module Aura, le même que les blocs de fossiles) : cercle magique à runes au
+--                            sol de la couleur de la rareté, de plus en plus riche (poussière lumineuse, comètes, cercles
+--                            au-dessus de la tête, rayon de lumière, flammes Mythic, arc-en-ciel Secret) ; onde de choc
+--                            aux états Spawn et Fusion. Pas d'aura sur les gardiens (tag « Guardian »).
 -- Si le modèle n'a que sa pièce "Root" (DinoBuilder.CreateProxy), les briques sont construites ici, chez le client.
 -- StreamingEnabled : un modèle tagué peut arriver avant sa pièce Root, ou la perdre au loin. Le dino est construit quand
 -- la pièce arrive, défait quand elle repart, refait sur la nouvelle pièce quand elle revient.
@@ -28,12 +29,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local DinoBuilder = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DinoBuilder"))
+local Aura = require(script.Parent.Parent.Aura)
 
 local DinoAnimController = {}
 
 local FADE = 0.2
 local NEAR, MID, FAR, CULL = 70, 140, 260, 420 -- studs, multipliés par la taille du dino
 local IDLE_VARIANTS = { "IdleSniff", "IdleScratch", "IdleStretch", "IdleShake", "IdleYawn" }
+local PULSE_STATES = { Spawn = true, Fusion = true } -- onde de choc de l'aura au début de ces états
 local FALLBACK: { [string]: { string } } = {
 	Return = { "Walk" },
 	Run = { "Walk" },
@@ -47,33 +50,6 @@ local FALLBACK: { [string]: { string } } = {
 	BackToSleep = { "Sleep" },
 	Search = { "Idle" },
 	Catch = { "Roar" },
-}
-
-type Spark = { Part: Part, Age: number, Life: number, Pos: Vector3, Vel: Vector3, Spin: number, Size: number, Hue: number }
-type Glint = { Part: Part, Age: number, Life: number, At: CFrame, Size: number, Hue: number }
-
-type Fx = {
-	Look: DinoBuilder.RarityLook,
-	Color: Color3,
-	Light: Color3,
-	Folder: Model,
-	Parts: { BasePart }, -- anneau, aura, couronne (posés ensemble)
-	Rest: { CFrame },
-	Out: { CFrame },
-	RingCount: number,
-	OrbCount: number,
-	Sparks: { Spark },
-	Spawn: number,
-	Glints: { Glint },
-	GlintSpawn: number,
-	Clock: number,
-	A: number,
-	B: number,
-	Height: number,
-	Scale: number,
-	HeadPivot: Vector3?,
-	HaloRadius: number,
-	Lit: boolean,
 }
 
 type Dino = {
@@ -97,7 +73,8 @@ type Dino = {
 	Phase: number,
 	NextVariant: number,
 	Radius: number,
-	Fx: Fx?,
+	Aura: Aura.Handle?,
+	PulsedAt: number, -- os.clock() de la dernière onde de choc
 	Conns: { RBXScriptConnection },
 }
 
@@ -160,6 +137,13 @@ local function onState(d: Dino)
 		start = math.max(0, workspace:GetServerTimeNow() - at)
 	end
 	play(d, state :: string, start)
+	-- onde de choc de l'aura au début de Spawn et Fusion (une seule quand State et StateAt arrivent l'un après l'autre)
+	local handle = d.Aura
+	local now = os.clock()
+	if handle and PULSE_STATES[state] and start < 1 and now - d.PulsedAt > 0.5 then
+		d.PulsedAt = now
+		Aura.Pulse(handle)
+	end
 end
 
 local function fire(d: Dino, t0: number, t1: number)
@@ -171,9 +155,7 @@ local function fire(d: Dino, t0: number, t1: number)
 	end
 end
 
--- ====================================================================== rareté
-local SPARK_MAX, GLINT_MAX = 16, 20
-
+-- ====================================================================== rareté : aura (module Aura)
 -- couleurs et rareté des espèces : Config.Rarity (blocs de fossiles, brief boucle) quand il est là
 local Config: any = nil
 do
@@ -211,280 +193,67 @@ local function rarityOf(model: Model): string?
 	return if type(rarity) == "string" then rarity else nil
 end
 
-local function fxPart(name: string, size: Vector3, color: Color3, neon: boolean): Part
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Anchored = true
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.CastShadow = false
-	p.Size = size
-	p.Color = color
-	p.Material = if neon then Enum.Material.Neon else Enum.Material.Plastic
-	p.TopSurface = if neon then Enum.SurfaceType.Smooth else Enum.SurfaceType.Studs
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	return p
-end
-
-local function clearFx(d: Dino)
-	local fx = d.Fx
-	if fx then
-		fx.Folder:Destroy()
-		d.Fx = nil
+local function clearAura(d: Dino)
+	local handle = d.Aura
+	if handle then
+		d.Aura = nil
+		Aura.Detach(handle)
 	end
 end
 
-local function buildFx(d: Dino)
-	clearFx(d)
-	local name = rarityOf(d.Model)
-	local look = if name then DinoBuilder.RarityByName[name] else nil
-	if not look then
+-- Haut de la tête au repos (repère du modèle, à l'échelle) : le plus haut des pavés de l'os Head
+local function headTop(data: DinoBuilder.Data, scale: number): Vector3?
+	local best: Vector3? = nil
+	for _, box in data.Boxes do
+		if box.Bone == "Head" then
+			local top = Vector3.new(box.Center.X, box.Center.Y + box.Size.Y / 2, box.Center.Z) * scale
+			if not best or top.Y > best.Y then
+				best = top
+			end
+		end
+	end
+	return best
+end
+
+local function buildAura(d: Dino)
+	clearAura(d)
+	local model = d.Model
+	-- gardiens : leur poursuite doit rester lisible (et leur taille dit déjà qu'ils sont dangereux)
+	if model:HasTag("Guardian") or model:GetAttribute("Guardian") ~= nil then
 		return
 	end
-	local color = lookup(function()
-		return Config.Rarity.Info[look.Name].Color
-	end)
-	if typeof(color) ~= "Color3" then
-		color = look.Color
+	local rarity = rarityOf(model)
+	if not rarity or not Aura.Has(rarity) then
+		return
 	end
 	local scale = d.Rig.Scale
-	local folder = Instance.new("Model")
-	folder.Name = "RarityFx"
-	local parts: { BasePart } = {}
-	local rest: { CFrame } = {}
-	local segments = DinoBuilder.RingSegments(d.Data, scale)
-	for i, seg in segments do
-		local p = fxPart("Ring", seg[2], color, look.Neon)
-		p.Parent = folder
-		parts[i] = p
-		rest[i] = seg[1]
-	end
-	local cube = 0.7 * math.sqrt(scale)
-	for _ = 1, look.Orbiters do
-		local p = fxPart("Aura", Vector3.new(cube, cube, cube), color, true)
-		p.Parent = folder
-		table.insert(parts, p)
-		table.insert(rest, CFrame.identity)
-	end
-	local gem = 0.38 * math.sqrt(scale)
-	for _ = 1, look.Halo do
-		local p = fxPart("Crown", Vector3.new(gem, gem, gem), color, true)
-		p.Parent = folder
-		table.insert(parts, p)
-		table.insert(rest, CFrame.identity)
-	end
-	local headPivot: Vector3? = nil
-	for _, bone in d.Data.Bones do
-		if bone.Name == "Head" then
-			headPivot = bone.Pivot * scale
-		end
-	end
 	local a, b = DinoBuilder.RingShape(d.Data, scale)
-	folder.Parent = d.Local or d.Model
-	d.Fx = {
-		Look = look,
-		Color = color,
-		Light = color:Lerp(Color3.new(1, 1, 1), 0.55),
-		Folder = folder,
-		Parts = parts,
-		Rest = rest,
-		Out = table.create(#parts, CFrame.identity),
-		RingCount = #segments,
-		OrbCount = look.Orbiters,
-		Sparks = {},
-		Spawn = 0,
-		Glints = {},
-		GlintSpawn = 0,
-		Clock = math.random() * 10,
-		A = a,
-		B = b,
-		Height = d.Data.Height * scale,
-		Scale = scale,
-		HeadPivot = headPivot,
-		HaloRadius = math.clamp(0.13 * d.Data.Height * scale, 0.6, 4),
-		Lit = true,
-	}
-end
-
-local function hue(h: number): Color3
-	return Color3.fromHSV(h % 1, 0.7, 1)
-end
-
--- Anneau, aura et couronne suivent le dino ; cubes, paillettes et braises seulement quand il est proche (full)
-local function stepFx(d: Dino, dt: number, full: boolean)
-	local fx = d.Fx
-	if not fx then
-		return
-	end
-	local look = fx.Look
-	fx.Clock += dt
-	local t = fx.Clock
-	local base = d.Base
-	local s = math.sqrt(fx.Scale)
-	-- anneau de briques (bat pour Mythic et Secret)
-	local pulse = if look.Pulse then math.sin(t * 2 * math.pi * 1.6) else 0
-	for i = 1, fx.RingCount do
-		local r = fx.Rest[i]
-		if look.Pulse then
-			local out = Vector3.new(r.Position.X, 0, r.Position.Z).Unit
-			fx.Out[i] = base * (CFrame.new(out * 0.18 * fx.Scale * pulse) * r)
-		else
-			fx.Out[i] = base * r
+	local height = d.Data.Height * scale
+	local rest = headTop(d.Data, scale)
+	local top: () -> Vector3
+	if rest then
+		local restTop: Vector3 = rest
+		top = function(): Vector3
+			return d.Base * ((d.Rig.Solved.Head or CFrame.identity) * restTop)
+		end
+	else
+		top = function(): Vector3
+			return d.Base * Vector3.new(0, height, 0)
 		end
 	end
-	-- aura : cubes qui tournent autour du corps
-	local n = fx.OrbCount
-	for k = 1, n do
-		local ang = t * 0.8 + (k - 1) / n * 2 * math.pi
-		local y = fx.Height * (0.45 + 0.08 * math.sin(t * 2 + k))
-		local pos = Vector3.new(fx.A * 0.8 * math.cos(ang), y, fx.B * 0.8 * math.sin(ang))
-		fx.Out[fx.RingCount + k] = base * CFrame.new(pos) * CFrame.Angles(t * 1.3 + k, t * 1.7, 0)
-	end
-	-- couronne : petits cubes en losange qui tournent au-dessus de la tête (suit la tête quand elle bouge)
-	local first = fx.RingCount + n + 1
-	local count = #fx.Parts - first + 1
-	if count > 0 then
-		local head = d.Rig.Solved.Head
-		local hp = fx.HeadPivot
-		local center = if head and hp
-			then (base * head * hp) + Vector3.new(0, 0.3 * fx.Height, 0)
-			else (base * CFrame.new(0, fx.Height * 1.15, 0)).Position
-		for k = 0, count - 1 do
-			local ang = t * 1.2 + k / count * 2 * math.pi
-			local pos = center + Vector3.new(fx.HaloRadius * math.cos(ang), 0.12 * s * math.sin(t * 3 + k), fx.HaloRadius * math.sin(ang))
-			fx.Out[first + k] = CFrame.new(pos) * CFrame.Angles(0, -ang, math.pi / 4)
-		end
-	end
-	workspace:BulkMoveTo(fx.Parts, fx.Out, Enum.BulkMoveMode.FireCFrameChanged)
-	if look.Rainbow and full then
-		for i, p in fx.Parts do
-			p.Color = hue(t * 0.25 + i / #fx.Parts)
-		end
-	elseif look.Pulse and full then
-		for i = 1, fx.RingCount do
-			fx.Parts[i].Transparency = 0.15 + 0.15 * pulse
-		end
-	end
-	if not full then
-		-- loin : on cache ce qui vit peu de temps
-		if fx.Lit then
-			for _, sp in fx.Sparks do
-				sp.Part.Transparency = 1
-				sp.Age = sp.Life
-			end
-			for _, g in fx.Glints do
-				g.Part.Transparency = 1
-				g.Age = g.Life
-			end
-			fx.Lit = false
-		end
-		return
-	end
-	fx.Lit = true
-	-- cubes lumineux qui montent de l'anneau et du corps (braises qui vacillent pour Mythic)
-	if look.Particles > 0 then
-		fx.Spawn += dt * look.Particles
-		while fx.Spawn >= 1 do
-			fx.Spawn -= 1
-			local free: Spark? = nil
-			for _, sp in fx.Sparks do
-				if sp.Age >= sp.Life then
-					free = sp
-					break
-				end
-			end
-			if not free and #fx.Sparks < SPARK_MAX then
-				local p = fxPart("Spark", Vector3.one, fx.Color, true)
-				p.Transparency = 1
-				p.Parent = fx.Folder
-				local created: Spark = { Part = p, Age = 1, Life = 1, Pos = Vector3.zero, Vel = Vector3.zero, Spin = 0, Size = 0.4, Hue = 0 }
-				table.insert(fx.Sparks, created)
-				free = created
-			end
-			if free then
-				local ang = math.random() * 2 * math.pi
-				local fromRing = math.random() < 0.5
-				local k = if fromRing then 1 else 0.55 * math.random()
-				local y = if fromRing then 0.2 else fx.Height * (0.25 + 0.5 * math.random())
-				local loc = Vector3.new(fx.A * k * math.cos(ang), y, fx.B * k * math.sin(ang))
-				free.Pos = (base * CFrame.new(loc)).Position
-				free.Vel = Vector3.new((math.random() - 0.5) * 0.6, 1.6 + math.random() * 1.4, (math.random() - 0.5) * 0.6) * s
-				free.Age = 0
-				free.Life = 1.1 + math.random() * 0.8
-				free.Spin = (math.random() - 0.5) * 6
-				free.Size = (0.4 + math.random() * 0.35) * s
-				free.Hue = math.random()
-				free.Part.Color = if look.Rainbow then hue(free.Hue) else fx.Color
-			end
-		end
-	end
-	for _, sp in fx.Sparks do
-		if sp.Age < sp.Life then
-			sp.Age += dt
-			sp.Pos += sp.Vel * dt
-			local k = math.clamp(sp.Age / sp.Life, 0, 1)
-			local size = sp.Size * (1 - 0.6 * k)
-			sp.Part.Size = Vector3.new(size, size, size)
-			local fade = 0.1 + 0.9 * k * k
-			if look.Flicker then
-				fade = math.min(1, fade + 0.35 * math.random())
-				sp.Part.Color = if math.random() < 0.5 then fx.Color else fx.Light
-			elseif look.Rainbow then
-				sp.Part.Color = hue(sp.Hue + t * 0.3)
-			end
-			sp.Part.Transparency = if k >= 1 then 1 else fade
-			sp.Part.CFrame = CFrame.new(sp.Pos) * CFrame.Angles(sp.Age * sp.Spin, sp.Age * sp.Spin * 0.7, 0)
-		end
-	end
-	-- paillettes : petits losanges clairs qui scintillent sur le dessus des briques du corps
-	local bodyParts = d.Rig.Parts
-	if look.Glitter > 0 and #bodyParts > 0 then
-		fx.GlintSpawn += dt * look.Glitter
-		while fx.GlintSpawn >= 1 do
-			fx.GlintSpawn -= 1
-			local free: Glint? = nil
-			for _, g in fx.Glints do
-				if g.Age >= g.Life then
-					free = g
-					break
-				end
-			end
-			if not free and #fx.Glints < GLINT_MAX then
-				local p = fxPart("Glitter", Vector3.one, fx.Light, true)
-				p.Transparency = 1
-				p.Parent = fx.Folder
-				local created: Glint = { Part = p, Age = 1, Life = 1, At = CFrame.identity, Size = 0.2, Hue = 0 }
-				table.insert(fx.Glints, created)
-				free = created
-			end
-			if free then
-				local part = bodyParts[math.random(1, #bodyParts)]
-				local size = part.Size
-				local on = part.CFrame * CFrame.new((math.random() - 0.5) * size.X * 0.9, size.Y / 2 + 0.03, (math.random() - 0.5) * size.Z * 0.9)
-				free.At = CFrame.new(on.Position) * CFrame.Angles(0, math.random() * math.pi, math.pi / 4)
-				free.Age = 0
-				free.Life = 0.35 + math.random() * 0.25
-				free.Size = (0.2 + math.random() * 0.12) * s
-				free.Hue = math.random()
-				free.Part.Color = if look.Rainbow then hue(free.Hue) else fx.Light
-			end
-		end
-	end
-	for _, g in fx.Glints do
-		if g.Age < g.Life then
-			g.Age += dt
-			local k = math.clamp(g.Age / g.Life, 0, 1)
-			local size = g.Size * math.sin(math.pi * k)
-			if k >= 1 or size <= 0.01 then
-				g.Part.Transparency = 1
-			else
-				g.Part.Transparency = 0.05
-				g.Part.Size = Vector3.new(size, size, size)
-				g.Part.CFrame = g.At * CFrame.Angles(0, k * 1.5, 0)
-			end
-		end
-	end
+	d.Aura = Aura.Attach(model, {
+		Rarity = rarity,
+		Radius = math.sqrt(a * b),
+		Height = height,
+		Pivot = function(): CFrame
+			return d.Base
+		end,
+		Top = top,
+		Footprint = Vector2.new(a * 1.05, b * 0.95),
+		Body = d.Local or model,
+		Parent = model,
+		Viewport = model:GetAttribute("AlwaysAnimate") == true,
+	})
 end
 
 local function step(d: Dino, dt: number, full: boolean)
@@ -541,7 +310,6 @@ local function step(d: Dino, dt: number, full: boolean)
 		d.Base = d.Base:Lerp(target, k)
 	end
 	DinoBuilder.Pose(d.Rig, pose, d.Base)
-	stepFx(d, dt, full)
 end
 
 local function rootOf(model: Model): BasePart?
@@ -580,7 +348,7 @@ local function detach(model: Model)
 	for _, c in d.Conns do
 		c:Disconnect()
 	end
-	clearFx(d)
+	clearAura(d)
 	if d.Local then
 		d.Local:Destroy()
 	end
@@ -658,11 +426,12 @@ function attach(model: Model)
 		Phase = math.random(0, 11),
 		NextVariant = 6 + math.random() * 8,
 		Radius = math.max(data.Size.X, data.Size.Y, data.Size.Z) * rig.Scale * 0.6,
-		Fx = nil,
+		Aura = nil,
+		PulsedAt = -math.huge,
 		Conns = {},
 	}
 	dinos[model] = d
-	buildFx(d)
+	buildAura(d)
 	onState(d)
 	table.insert(d.Conns, model:GetAttributeChangedSignal("State"):Connect(function()
 		onState(d)
@@ -674,7 +443,7 @@ function attach(model: Model)
 		d.Rate = rateFor(d, d.Clip)
 	end))
 	table.insert(d.Conns, model:GetAttributeChangedSignal("Rarity"):Connect(function()
-		buildFx(d)
+		buildAura(d)
 	end))
 	-- la pièce Root repart (streaming out) : briques défaites, on attend la suivante
 	table.insert(d.Conns, model.ChildRemoved:Connect(function(child)
