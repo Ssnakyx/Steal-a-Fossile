@@ -5,22 +5,6 @@ local env = T.env
 
 env.quiet = true
 
--- faux ShopService (brief 4) : Server Luck consultée par les gisements
-local luckCalls = 0
-local shopStub = {
-	ServerLuck = function()
-		luckCalls += 1
-		return 1
-	end,
-	HasPass = function()
-		return false
-	end,
-}
-local stub = env.Instance.new("ModuleScript")
-stub.Name = "ShopService"
-env.Data[stub].Extra.Module = shopStub
-stub.Parent = env.instance("ServerScriptService.Server.Services")
-
 local Boot = T.bootServer()
 local DigSiteService = Boot.Services.DigSiteService
 local CarryService = Boot.Services.CarryService
@@ -35,7 +19,14 @@ local Workspace = env.game:GetService("Workspace")
 local CollectionService = env.game:GetService("CollectionService")
 local Vector3, CFrame = env.Vector3, env.CFrame
 
-T.check(shopStub ~= nil and Boot.Services.ShopService == shopStub, "faux ShopService chargé")
+-- Server Luck du brief 4 (ShopService) consultée par les gisements
+local ShopService = Boot.Services.ShopService
+local serverLuck = ShopService.ServerLuck
+local luckCalls = 0
+ShopService.ServerLuck = function()
+	luckCalls += 1
+	return 1
+end
 
 local function presentSlots(zone: string?): { any }
 	local list = {}
@@ -95,7 +86,9 @@ T.eq(#DigSiteService.Sites(), 8 * Zones.Dig.Sites, "gisements de toutes les zone
 T.eq(total, 8 * Zones.Dig.Sites * Zones.Dig.BlocksPerSite, "places de blocs")
 T.eq(#presentSlots(), total, "toutes les places remplies au démarrage")
 T.eq(#CollectionService:GetTagged("FossilBlock"), total, "blocs tagués FossilBlock")
+DigSiteService.Refill()
 T.check(luckCalls > 0, "Server Luck consultée au remplissage")
+ShopService.ServerLuck = serverLuck
 local refillAt = Workspace:GetAttribute("DigRefillAt")
 T.near(refillAt, Workspace:GetServerTimeNow() + Zones.Dig.RefillInterval, 2, "DigRefillAt dans 5 min (heure serveur)")
 local siteLabel = DigSiteService.Sites()[1].Label

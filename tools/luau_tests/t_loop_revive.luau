@@ -1,35 +1,19 @@
 -- Boucle (brief 3) : cuves de réanimation, révélation, enclos, revenus, revenu hors ligne, achats de cuves et de slots,
--- branchements au brief 4 (passes Double Money / Fast Revive / VIP, produit Instant Revive) avec un faux ShopService.
+-- branchements au brief 4 (passes Double Money / Fast Revive / VIP, produit Instant Revive) avec le ShopService du brief 4 (passes choisis par le test).
 local T = require("./testkit")
 local env = T.env
 
 env.studio = false -- (les sauvegardes sont écrites : revenu hors ligne)
 env.quiet = true
 
--- faux brief 4 : ShopService et Config.Shop, posés avant le démarrage
-local passes: { [any]: { [string]: boolean } } = {}
-local shopStub = {
-	HasPass = function(player, pass)
-		return passes[player] ~= nil and passes[player][pass] == true
-	end,
-	ServerLuck = function()
-		return 1
-	end,
-}
-local stub = env.Instance.new("ModuleScript")
-stub.Name = "ShopService"
-env.Data[stub].Extra.Module = shopStub
-stub.Parent = env.instance("ServerScriptService.Server.Services")
-local shopConfig = env.Instance.new("ModuleScript")
-shopConfig.Name = "Shop"
-local shopValues = {
-	Products = { InstantRevive = { Id = 0 } },
-	Passes = { VIP = { LuckBonus = 1.5 } }, -- (multiplicateur, comme Config.Shop du brief 4 : 1.1 = chance x1.1)
-}
-env.Data[shopConfig].Extra.Module = shopValues
-shopConfig.Parent = env.instance("ReplicatedStorage.Shared.Config")
-
 local Boot = T.bootServer()
+-- passes du brief 4 choisis par le test (ShopService.HasPass remplacé) ; Config.Shop du brief 4
+local passes: { [any]: { [string]: boolean } } = {}
+Boot.Services.ShopService.HasPass = function(player, pass)
+	return passes[player] ~= nil and passes[player][pass] == true
+end
+local shopValues = T.config().Shop
+shopValues.Passes.VIP.LuckBonus = 1.5
 local ReviveService = Boot.Services.ReviveService
 local EnclosureService = Boot.Services.EnclosureService
 local IncomeService = Boot.Services.IncomeService
