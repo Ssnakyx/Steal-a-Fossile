@@ -12,7 +12,8 @@ src/server/Services/MapService.luau  construit Workspace.Map (Priority -30, avan
 src/server/Map/
   MapBuilder.luau                 assemble tout : 5 parcs, place, 8 zones, murs invisibles, falaise de fin, lumière
   Kit.luau                        briques : pièces, décor inerte, disques/dômes/cônes en escalier, raycast, grille, lumières
-  Props.luau                      décor : palmiers, fougères, sapins, rochers, coraux, cristaux, outils, lampes...
+  Props.luau                      décor : palmiers, fougères, sapins, rochers, coraux, cristaux, outils, lampes, et les
+                                  objets propres à chaque zone (nids d'œufs, cactus, geysers de lave, coffres...)
   Plots.luau                      un parc (palissade, portail et enseigne, cuves, enclos, treadmill, labo)
   Plaza.luau                      place du spawn, haies, lampadaires, tableau de la route, camp, forêt du fond
   ZoneBase.luau                   squelette commun d'une zone (sol, chemin, falaises, arche, gisements, nid, décor)
@@ -62,14 +63,16 @@ Chaque parc a aussi une couleur (portail, drapeaux, tapis d'entrée) pour qu'on 
 
 - Tout ce qui est dans un dossier `Decor` est inerte : `CanCollide`, `CanQuery`, `CanTouch`, `CastShadow` à false
   (vérifié par les tests). Les volumes solides (falaises, piliers de l'arche naturelle, blocs de glace, tronc creux,
-  météorite) sont dans le dossier `Ground` de la zone : le décor se pose dessus par raycast.
+  météorite, igloos, coque de l'épave) sont dans le dossier `Ground` de la zone : le décor se pose dessus par raycast.
 - Le décor est posé par raycast sur le sol de la zone, en évitant une grille de places réservées (chemin, gisements et
   leurs embranchements, clairière du gardien, arche, lieux marquants, décor déjà posé).
-- Budgets : 6 lumières par zone, 2 par parc, 10 sur la place ; 2200 pièces par zone au plus (environ 16 600 pièces en
-  tout, la plus chargée est la Fern Forest avec environ 2 090). Les modèles de décor sont en
+- Budgets : 6 lumières par zone, 2 par parc, 10 sur la place ; 2200 pièces par zone au plus (environ 16 500 pièces en
+  tout, la plus chargée est la Fern Forest avec environ 2 000). Les modèles de décor sont en
   `ModelStreamingMode = Atomic` (StreamingEnabled est activé).
 - Le décor lumineux brille par le Neon et le bloom, sans PointLight en plus (les 6 lumières par zone sont déjà prises).
-- `Theme.Wall` : décor qui sort des parois des falaises (cristaux), trouvé par un raycast horizontal depuis le couloir.
+- `Theme.Wall` : décor qui sort des parois des falaises (cristaux), trouvé par un raycast horizontal depuis le couloir
+  (rien n'est posé si la paroi est trop en retrait, par exemple au bord de la mer).
+- `ZoneBase.Spot` : trouve une place libre pour un lieu marquant (hors du chemin, des gisements et du nid du gardien).
 - Dans une liste `Scatter`, ce qui vient d'abord a la place : le décor lumineux est juste après les grands arbres et
   rochers, avant le petit décor de remplissage (fougères, buissons, herbes).
 - Ambiance de la place au démarrage : `MapBuilder.Lighting()` (règle les effets déjà présents plutôt que les doubler).
@@ -100,15 +103,29 @@ filantes, ptérosaures.
 - Toutes ces pièces sont dans un dossier `Ambience` de la caméra : chez le joueur seulement, sans collision ni requêtes.
 - Lighting n'est écrit que pendant un fondu (20 fois par seconde au plus), plus du tout quand l'ambiance est atteinte.
 - Les effets de couleur des autres systèmes (StressController...) s'ajoutent à « AmbienceGrade ».
-- Décor flottant : les modèles tagués `AmbientFloat` (feux follets, méduses, éclats de cristal ; `Kit.float`) montent,
-  descendent et tournent chez le joueur, dans un rayon de 220 studs. Réglages : attributs `FloatHeight`,
-  `FloatSpeed`, `FloatSpin` ; la pièce centrale est le `PrimaryPart`.
+- Décor flottant : les modèles tagués `AmbientFloat` (feux follets, méduses, éclats de cristal, rochers flottants, jets
+  de lave, vapeur, bulles ; `Kit.float`) montent, descendent et tournent chez le joueur, dans un rayon de 220 studs.
+  Réglages : attributs `FloatHeight`, `FloatSpeed`, `FloatSpin` ; la pièce centrale est le `PrimaryPart`. Un modèle
+  flottant peut être dans un autre (le jet d'une fontaine de lave) : seul le jet bouge.
 - Décor lumineux (`Props`) : `glowCrystal` (grappe de cristaux, jusqu'à 4 couleurs : `Crystal`..`Crystal4`),
   `glowShroom`, `geode`, `wisp`, `jellyfish`, `anemone`, `floatShard`, `lavaPool`, et les fossiles `ribcage` et `skull`.
-- Lieux marquants ajoutés : squelette sur la plage, cercle de pierres moussues (Fern Forest), pont de cordes et
-  squelette dégagé par les fouilles (Canyon), squelette pris dans la glace et bosquet de cristaux (Glacier), panache de
-  fumée du volcan, ammonite géante (Ocean Trench), éclats flottants au-dessus du grand cratère et flèche de cristaux
-  géants (Meteor Crater).
+- Objets propres à chaque zone (on ne les voit nulle part ailleurs, vérifié par le test) :
+
+| Zone | Objets |
+|---|---|
+| Beach | nids d'œufs (un bébé dino sort de sa coquille), barques échouées, flaques de marée qui luisent, cristaux vert d'eau |
+| Fern Forest | fleurs géantes lumineuses (rose, bleu, jaune), traces de pas de dino, champignons lumineux |
+| Swamp | plantes carnivores, mares de vase qui luisent, feux follets, champignons lumineux |
+| Canyon | cactus, virevoltants, géodes, cristaux |
+| Glacier | bonshommes de neige, camp polaire (2 igloos solides, feu de camp, traîneau), bosquet de cristaux |
+| Volcano | mares et fontaines de lave, fumerolles qui crachent de la vapeur, cristaux couleur braise |
+| Ocean Trench | épave de navire (coque solide, hublots qui luisent, voile déchirée), coffres au trésor, bouches à bulles, méduses, anémones |
+| Meteor Crater | morceaux de météorite fendus de vert, rochers qui flottent, camp des chercheurs (tente, télescope, tableau de calculs) |
+
+- Lieux marquants : squelette sur la plage, cercle de pierres moussues (Fern Forest), pont de cordes et squelette
+  dégagé par les fouilles (Canyon), squelette pris dans la glace, bosquet de cristaux et camp polaire (Glacier), panache
+  de fumée du volcan, ammonite géante et épave (Ocean Trench), éclats flottants au-dessus du grand cratère, flèche de
+  cristaux géants et camp des chercheurs (Meteor Crater).
 
 Régler une ambiance : changer les valeurs dans `Config/Ambience.luau`, lancer Play et aller dans la zone (commande
 d'admin `tpzone 1` à `tpzone 8`, `tpzone 0` pour rentrer). Les valeurs se mélangent pendant les fondus : pas besoin

@@ -1,7 +1,8 @@
 --!strict
 -- Zone 1 : Beach. Sable clair, mer à gauche (eau peu profonde, écume, aiguilles de roche, arche dans la mer, ponton),
 -- falaises de grès couronnées de palmiers à droite, coquillages, étoiles de mer, bois flotté, flaques entre les rochers,
--- squelette fossile à demi enterré dans le sable et cristaux « verre de mer » lumineux (turquoise, rose, aqua).
+-- squelette fossile à demi enterré dans le sable, nids d'œufs de dino, barques échouées, flaques de marée qui luisent
+-- et quelques cristaux « verre de mer » (turquoise, rose, aqua).
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -135,6 +136,10 @@ local theme: ZoneBase.Theme = {
 		{ Prop = Props.palm, Count = 10, Radius = 6, XMin = 40, XMax = 84, Side = 1, Scale = { 0.9, 1.3 } },
 		{ Prop = Props.palm, Count = 7, Radius = 6, XMin = 40, XMax = 76, Side = -1, Scale = { 0.9, 1.2 } },
 		{ Prop = Props.palm, Count = 7, Radius = 6, XMin = 104, XMax = 122, Side = 1, Scale = { 1, 1.4 } },
+		{ Prop = Props.rowboat, Count = 2, Radius = 6, XMin = 56, XMax = 78, Side = -1, Scale = { 1, 1.2 } },
+		{ Prop = Props.eggNest, Count = 4, Radius = 4.5, XMin = 30, XMax = 84, Side = 1, Scale = { 0.9, 1.2 } },
+		{ Prop = Props.tidePool, Count = 5, Radius = 4, XMin = 36, XMax = 80, Side = -1, Scale = { 0.9, 1.2 }, Pal = { Rock = ROCK } },
+		{ Prop = Props.glowCrystal, Count = 4, Radius = 3.5, XMin = 40, XMax = 84, Side = -1, Scale = { 0.55, 0.8 }, Pal = SEA_GLASS },
 		{ Prop = Props.rock, Count = 12, Radius = 4, Pal = { Rock = ROCK } },
 		{ Prop = Props.log, Count = 5, Radius = 5, Pal = { Trunk = rgb(186, 166, 136), Moss = rgb(206, 192, 160) } },
 		{ Prop = Props.reeds, Count = 18, Radius = 3, XMin = 30, Pal = { Leaf = rgb(150, 172, 82), Tip = rgb(206, 186, 126) } },
@@ -142,11 +147,6 @@ local theme: ZoneBase.Theme = {
 		{ Prop = Props.starfish, Count = 10, Radius = 2, Scale = { 0.8, 1.2 } },
 		{ Prop = Props.crate, Count = 3, Radius = 3, Pal = { Wood = rgb(180, 150, 110) } },
 		{ Prop = Props.rock, Count = 6, Radius = 5, XMin = 102, XMax = 122, Side = 1, Pal = { Rock = rgb(200, 176, 128) } },
-		{ Prop = Props.glowCrystal, Count = 8, Radius = 3.5, XMin = 40, XMax = 84, Side = -1, Scale = { 0.55, 0.85 }, Pal = SEA_GLASS },
-		{ Prop = Props.glowCrystal, Count = 4, Radius = 4, XMin = 104, XMax = 122, Side = 1, Scale = { 0.9, 1.3 }, Pal = SEA_GLASS },
-	},
-	Wall = {
-		{ Prop = Props.glowCrystal, Count = 6, Radius = 0, Side = 1, Scale = { 0.6, 0.9 }, Pal = SEA_GLASS },
 	},
 }
 

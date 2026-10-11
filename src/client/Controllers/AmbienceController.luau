@@ -97,6 +97,8 @@ local moveFrames: { CFrame } = {}
 local scratchMotes: { [string]: number } = {}
 
 local panes: { Pane } = {}
+local ribbonTint: { Color3 } = {} -- couleur posée sur chaque ruban d'aurore (repeint seulement quand elle change)
+local repaint: { boolean } = {}
 local auroraShown = false
 local planet: { Piece } = {}
 local planetShown = false
@@ -104,6 +106,8 @@ local stars: { Star } = {}
 local birds: { Bird } = {}
 local floaters: { [Instance]: Floater } = {}
 local moving = 0
+-- transparence posée sur chaque pièce de l'ambiance (évite de relire la propriété à chaque image)
+local alphaOf: { [BasePart]: number } = setmetatable({}, { __mode = "k" }) :: any
 
 -- ===================================================================== calculs (sans effet de bord)
 
@@ -259,10 +263,13 @@ local function setNumber(inst: Instance, key: string, value: number, epsilon: nu
 	end
 end
 
+local function colorGap(a: Color3, b: Color3): number
+	return math.abs(a.R - b.R) + math.abs(a.G - b.G) + math.abs(a.B - b.B)
+end
+
 local function setColor(inst: Instance, key: string, value: Color3)
 	local object = inst :: any
-	local old: Color3 = object[key]
-	if math.abs(old.R - value.R) + math.abs(old.G - value.G) + math.abs(old.B - value.B) > 0.003 then
+	if colorGap(object[key], value) > 0.003 then
 		object[key] = value
 	end
 end
@@ -305,7 +312,7 @@ local function ensureEffects()
 end
 
 local function apply(p: Preset)
-	setNumber(Lighting, "ClockTime", p.ClockTime, 0.002)
+	setNumber(Lighting, "ClockTime", p.ClockTime, 0.02) -- (environ une minute de jeu)
 	setNumber(Lighting, "Brightness", p.Brightness, 0.002)
 	setNumber(Lighting, "ExposureCompensation", p.Exposure, 0.002)
 	setColor(Lighting, "Ambient", p.Ambient)
@@ -332,7 +339,7 @@ local function apply(p: Preset)
 	end
 	local sky = e.Sky
 	if sky then
-		setNumber(sky, "StarCount", math.floor(p.Sky.Stars + 0.5), 0.5)
+		setNumber(sky, "StarCount", math.floor(p.Sky.Stars / 100 + 0.5) * 100, 0.5) -- (par centaines)
 		setNumber(sky, "SunAngularSize", p.Sky.Sun, 0.05)
 		setNumber(sky, "MoonAngularSize", p.Sky.Moon, 0.05)
 	end
@@ -358,16 +365,39 @@ end
 
 -- ===================================================================== pièces de l'ambiance (dans la caméra)
 
+-- Oublie toutes les pièces de l'ambiance (leur dossier a été détruit) : elles seront refaites au besoin
+local function forgetPieces()
+	table.clear(motes)
+	table.clear(moteCount)
+	table.clear(panes)
+	table.clear(ribbonTint)
+	table.clear(planet)
+	table.clear(stars)
+	table.clear(birds)
+	auroraShown = false
+	planetShown = false
+end
+
+local function setParent(inst: Instance, parent: Instance)
+	inst.Parent = parent
+end
+
 local function ensureFolder(camera: Camera): Folder
-	local f = folder or Instance.new("Folder")
-	if not folder then
-		f.Name = "Ambience"
-		folder = f
+	local f = folder
+	-- nouvelle caméra, ou dossier sorti de la caméra : on l'y remet ; s'il a été détruit (Parent verrouillé, par
+	-- exemple avec l'ancienne caméra), on en refait un
+	if f and f.Parent ~= camera and not pcall(setParent, f, camera) then
+		f = nil
 	end
-	if f.Parent ~= camera then
-		f.Parent = camera
+	if f then
+		return f
 	end
-	return f
+	forgetPieces()
+	local fresh = Instance.new("Folder")
+	fresh.Name = "Ambience"
+	fresh.Parent = camera
+	folder = fresh
+	return fresh
 end
 
 local function newPart(parent: Instance, size: Vector3, color: Color3, neon: boolean): Part
@@ -385,13 +415,16 @@ local function newPart(parent: Instance, size: Vector3, color: Color3, neon: boo
 	part.Color = color
 	part.Transparency = 1
 	part.Parent = parent
+	alphaOf[part] = 1
 	return part
 end
 
 local function setTransparency(part: BasePart, value: number)
 	local v = math.clamp(value, 0, 1)
-	if math.abs(part.Transparency - v) > 0.01 then
+	local old = alphaOf[part]
+	if not old or math.abs(old - v) > 0.01 then
 		part.Transparency = v
+		alphaOf[part] = v
 	end
 end
 
@@ -464,7 +497,7 @@ local function spawnMote(mote: Mote, kind: string, def: MoteKind, focus: Vector3
 	part.Size = Vector3.new(size, size, size)
 	part.Color = def.Colors[rng:NextInteger(1, #def.Colors)]
 	part.Material = if def.Neon then Enum.Material.Neon else Enum.Material.SmoothPlastic
-	part.Transparency = 1
+	setTransparency(part, 1)
 	moteCount[kind] = (moteCount[kind] or 0) + 1
 end
 
@@ -555,9 +588,17 @@ local function updateAurora(eye: Vector3, parent: Instance)
 	end
 	auroraShown = true
 	local cfg = Ambience.Sky.Aurora
+	for ribbon = 1, cfg.Ribbons do
+		local color = current.AuroraColors[ribbon] or current.AuroraColors[1] or WHITE
+		local old = ribbonTint[ribbon]
+		local changed = not old or colorGap(old, color) > 0.003
+		repaint[ribbon] = changed
+		if changed then
+			ribbonTint[ribbon] = color
+		end
+	end
 	for _, pane in panes do
 		local ribbon, index = pane.Ribbon, pane.Index
-		local color = current.AuroraColors[ribbon] or current.AuroraColors[1] or WHITE
 		local wave = math.sin(clock * cfg.Speed + index * 0.45 + ribbon * 1.7)
 		local heading = pane.Heading + math.rad(math.sin(clock * cfg.Speed * 0.6 + ribbon) * 3)
 		local direction = Vector3.new(math.sin(heading), 0, math.cos(heading))
@@ -566,8 +607,11 @@ local function updateAurora(eye: Vector3, parent: Instance)
 		local base = eye + direction * distance + Vector3.new(0, lift, 0)
 		local look = CFrame.lookAt(base, Vector3.new(eye.X, base.Y, eye.Z))
 		local shimmer = 0.5 + 0.5 * math.sin(clock * 0.9 + index * 0.7 + ribbon * 2.3)
-		setColor(pane.Curtain, "Color", color)
-		setColor(pane.Edge, "Color", color:Lerp(WHITE, 0.35))
+		if repaint[ribbon] then
+			local color = ribbonTint[ribbon]
+			pane.Curtain.Color = color
+			pane.Edge.Color = color:Lerp(WHITE, 0.35)
+		end
 		setTransparency(pane.Curtain, 1 - strength * (0.24 + 0.12 * shimmer))
 		setTransparency(pane.Edge, 1 - strength * (0.5 + 0.25 * shimmer))
 		queue(pane.Curtain, look * CFrame.new(0, cfg.Height / 2, 0))

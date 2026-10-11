@@ -1,8 +1,8 @@
 --!strict
 -- Zone 8 : Meteor Crater. Sol violet sombre, le gardien dort au fond du grand cratère (rebord en escalier, fissures
 -- lumineuses), une météorite géante à demi enterrée, petits cratères, cristaux lumineux, aiguilles et rochers ; éclats
--- de cristal qui flottent au-dessus du grand cratère, flèche de cristaux géants, cristaux de toutes les couleurs et
--- quelques-uns en or au sol, sur les falaises et sortant des parois.
+-- de cristal qui flottent au-dessus du grand cratère, camp des chercheurs (télescope, tente, tableau), éclats de
+-- météorite fendus qui luisent, rochers qui flottent, flèche de cristaux géants et cristaux de toutes les couleurs.
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -27,6 +27,35 @@ local function archTop(info: ZoneBase.Info, beam: CFrame)
 	for _, side in { -1, 1 } do
 		Props.crystals(info.Model, beam * CFrame.new(side * 12, 8.6, 0), 1, info.Rng, { Crystal = PURPLE, Glow = GREEN, Rock = ROCK })
 	end
+end
+
+-- Camp des chercheurs qui étudient la météorite : tente, télescope sur trépied pointé vers le ciel, caisses, tableau
+-- couvert de calculs
+local function researchCamp(info: ZoneBase.Info, spot: Vector3)
+	local rng = info.Rng
+	local m = Kit.group("ResearchCamp")
+	local base = CFrame.new(spot) * CFrame.Angles(0, math.rad(Kit.range(rng, 0, 360)), 0)
+	Props.tent(m, base * CFrame.new(-5, 0, 2), 0.9, rng, { Cloth = rgb(120, 150, 190) })
+	local scope = base * CFrame.new(5, 0, -2)
+	for k = 0, 2 do
+		local leg = scope * CFrame.Angles(0, k * math.pi * 2 / 3, 0) * CFrame.new(0, 2.2, -0.9) * CFrame.Angles(math.rad(20), 0, 0)
+		Kit.prop(m, Vector3.new(0.3, 4.6, 0.3), leg, rgb(70, 70, 80))
+	end
+	local tube = scope * CFrame.new(0, 4.6, 0) * CFrame.Angles(math.rad(40), math.rad(30), 0)
+	Kit.prop(m, Vector3.new(1.3, 1.3, 6), tube, rgb(220, 220, 230))
+	Kit.prop(m, Vector3.new(1.6, 1.6, 0.8), tube * CFrame.new(0, 0, -3), rgb(60, 60, 70))
+	Kit.prop(m, Vector3.new(0.6, 0.6, 1), tube * CFrame.new(0, 0, 3.4), rgb(60, 60, 70))
+	Props.crate(m, base * CFrame.new(1, 0, 5), 0.8, rng, nil)
+	Props.crate(m, base * CFrame.new(2.8, 0, 6.6) * CFrame.Angles(0, 0.4, 0), 0.6, rng, nil)
+	local board = base * CFrame.new(0, 0, -6)
+	for _, x in { -2.4, 2.4 } do
+		Kit.prop(m, Vector3.new(0.4, 5, 0.4), board * CFrame.new(x, 2.5, 0), rgb(110, 80, 50))
+	end
+	Kit.prop(m, Vector3.new(4.6, 3, 0.3), board * CFrame.new(0, 3.6, 0), rgb(40, 50, 46))
+	for k = 0, 2 do
+		glow(m, Vector3.new(3.6 - k * 0.8, 0.2, 0.1), board * CFrame.new(-0.2 + k * 0.2, 4.6 - k * 0.8, -0.2), GREEN)
+	end
+	m.Parent = info.Decor
 end
 
 -- Petit cratère : anneau en escalier et fond brûlé
@@ -113,6 +142,11 @@ local function landmark(info: ZoneBase.Info)
 			Props.glowCrystal(info.Decor, CFrame.new(spire + Vector3.new(math.cos(a) * 9, 0, math.sin(a) * 9)), 1.8, rng, if k == 0 then GOLD else STAR_GLOW)
 		end
 	end
+	-- camp des chercheurs, près de la météorite géante
+	local camp = ZoneBase.Spot(info, 13, 30, 56, 0.62, 0.86, -1)
+	if camp then
+		researchCamp(info, camp)
+	end
 end
 
 local theme: ZoneBase.Theme = {
@@ -131,19 +165,21 @@ local theme: ZoneBase.Theme = {
 	ArchTop = archTop,
 	Landmark = landmark,
 	Scatter = {
-		{ Prop = Props.crystals, Count = 20, Radius = 3.5, Scale = { 0.9, 1.5 }, Pal = { Crystal = PURPLE, Glow = GREEN, Rock = ROCK } },
-		{ Prop = Props.crystals, Count = 6, Radius = 3.5, Pal = { Crystal = rgb(110, 220, 160), Glow = PURPLE, Rock = ROCK } },
-		{ Prop = Props.spike, Count = 12, Radius = 3, Scale = { 1, 1.8 }, Pal = { Ice = rgb(120, 82, 182) } },
-		{ Prop = Props.rock, Count = 22, Radius = 4, Pal = { Rock = rgb(62, 52, 72) } },
+		{ Prop = Props.meteorite, Count = 6, Radius = 4.5, XMin = 30, Scale = { 0.9, 1.3 }, Pal = { Rock = rgb(40, 34, 48), Glow = GREEN } },
+		{ Prop = Props.floatRock, Count = 8, Radius = 3, Scale = { 0.8, 1.3 }, Pal = { Rock = rgb(80, 64, 96), Glow = PURPLE } },
 		{ Prop = Props.boulder, Count = 7, Radius = 6, XMin = 40, Pal = { Rock = rgb(80, 64, 96) } },
-		{ Prop = Props.lavaRock, Count = 10, Radius = 4, Pal = { Rock = rgb(44, 38, 52), Glow = GREEN } },
+		{ Prop = Props.crystals, Count = 16, Radius = 3.5, Scale = { 0.9, 1.5 }, Pal = { Crystal = PURPLE, Glow = GREEN, Rock = ROCK } },
+		{ Prop = Props.crystals, Count = 6, Radius = 3.5, Pal = { Crystal = rgb(110, 220, 160), Glow = PURPLE, Rock = ROCK } },
+		{ Prop = Props.glowCrystal, Count = 6, Radius = 3.5, Scale = { 0.7, 1.2 }, Pal = STAR_GLOW },
+		{ Prop = Props.glowCrystal, Count = 3, Radius = 3.5, Scale = { 0.7, 1 }, Pal = GOLD },
+		{ Prop = Props.glowCrystal, Count = 4, Radius = 4, XMin = 104, XMax = 122, Scale = { 1.3, 1.8 }, Pal = STAR_GLOW },
+		{ Prop = Props.spike, Count = 12, Radius = 3, Scale = { 1, 1.8 }, Pal = { Ice = rgb(120, 82, 182) } },
+		{ Prop = Props.rock, Count = 18, Radius = 4, Pal = { Rock = rgb(62, 52, 72) } },
+		{ Prop = Props.lavaRock, Count = 8, Radius = 4, Pal = { Rock = rgb(44, 38, 52), Glow = GREEN } },
 		{ Prop = Props.crystals, Count = 8, Radius = 4, XMin = 104, XMax = 122, Scale = { 1.4, 2 }, Pal = { Crystal = PURPLE, Glow = GREEN, Rock = ROCK } },
-		{ Prop = Props.glowCrystal, Count = 12, Radius = 3.5, Scale = { 0.7, 1.2 }, Pal = STAR_GLOW },
-		{ Prop = Props.glowCrystal, Count = 4, Radius = 3.5, Scale = { 0.7, 1 }, Pal = GOLD },
-		{ Prop = Props.glowCrystal, Count = 6, Radius = 4, XMin = 104, XMax = 122, Scale = { 1.3, 1.8 }, Pal = STAR_GLOW },
 	},
 	Wall = {
-		{ Prop = Props.glowCrystal, Count = 10, Radius = 0, Scale = { 0.6, 1.1 }, Pal = STAR_GLOW },
+		{ Prop = Props.glowCrystal, Count = 6, Radius = 0, Scale = { 0.6, 1.1 }, Pal = STAR_GLOW },
 	},
 }
 

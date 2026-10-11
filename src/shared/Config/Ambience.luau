@@ -53,15 +53,49 @@ export type MoteKind = {
 local rgb = Color3.fromRGB
 local WHITE = rgb(255, 255, 255)
 
-local function preset(values: { [string]: any }): Preset
-	local p = values :: any
-	p.Motes = p.Motes or {}
-	p.Aurora = p.Aurora or 0
-	p.AuroraColors = p.AuroraColors or { rgb(90, 255, 170), rgb(80, 220, 255), rgb(190, 120, 255) }
-	p.Planet = p.Planet or 0
-	p.ShootingStars = p.ShootingStars or 0
-	p.Birds = p.Birds or 0
-	return p :: Preset
+-- Ce qu'on écrit pour une région : comme Preset, mais particules et ciel animé facultatifs (rien par défaut)
+type PresetInput = {
+	ClockTime: number,
+	Brightness: number,
+	Exposure: number,
+	Ambient: Color3,
+	OutdoorAmbient: Color3,
+	SunTint: Color3,
+	Atmosphere: { Density: number, Offset: number, Color: Color3, Decay: Color3, Glare: number, Haze: number },
+	Clouds: { Cover: number, Density: number, Color: Color3 },
+	Sky: { Stars: number, Sun: number, Moon: number },
+	Grade: { Brightness: number, Contrast: number, Saturation: number, Tint: Color3 },
+	Bloom: { Intensity: number, Size: number, Threshold: number },
+	SunRays: { Intensity: number, Spread: number },
+	Motes: { [string]: number }?,
+	Aurora: number?,
+	AuroraColors: { Color3 }?,
+	Planet: number?,
+	ShootingStars: number?,
+	Birds: number?,
+}
+
+local function preset(v: PresetInput): Preset
+	return {
+		ClockTime = v.ClockTime,
+		Brightness = v.Brightness,
+		Exposure = v.Exposure,
+		Ambient = v.Ambient,
+		OutdoorAmbient = v.OutdoorAmbient,
+		SunTint = v.SunTint,
+		Atmosphere = v.Atmosphere,
+		Clouds = v.Clouds,
+		Sky = v.Sky,
+		Grade = v.Grade,
+		Bloom = v.Bloom,
+		SunRays = v.SunRays,
+		Motes = v.Motes or {},
+		Aurora = v.Aurora or 0,
+		AuroraColors = v.AuroraColors or { rgb(90, 255, 170), rgb(80, 220, 255), rgb(190, 120, 255) },
+		Planet = v.Planet or 0,
+		ShootingStars = v.ShootingStars or 0,
+		Birds = v.Birds or 0,
+	}
 end
 
 local Ambience = {
@@ -382,7 +416,7 @@ local Ambience = {
 		Distance = 260, -- studs entre la caméra et les éléments du ciel
 		Aurora = {
 			Ribbons = 3,
-			Segments = 14,
+			Segments = 10, -- panneaux par ruban
 			Headings = { 0, 140, 235 }, -- direction de chaque ruban (degrés, 0 = vers le bout de la route)
 			Arc = 90, -- largeur de chaque ruban (degrés)
 			Height = 70, -- hauteur du rideau

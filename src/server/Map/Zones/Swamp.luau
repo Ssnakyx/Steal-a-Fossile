@@ -13,7 +13,6 @@ local shade = Kit.shade
 local MURK = rgb(74, 98, 66)
 local MOSS = rgb(96, 136, 62)
 local BARK = rgb(84, 70, 56)
-local BOG = { Crystal = rgb(40, 232, 200), Crystal2 = rgb(160, 255, 80), Crystal3 = rgb(172, 112, 255), Rock = rgb(66, 74, 56) }
 
 local function archTop(info: ZoneBase.Info, beam: CFrame)
 	for k = -5, 5 do
@@ -101,20 +100,18 @@ local theme: ZoneBase.Theme = {
 	Scatter = {
 		{ Prop = Props.deadTree, Count = 16, Radius = 6, XMin = 40, Pal = { Trunk = BARK, Moss = MOSS } },
 		{ Prop = Props.deadTree, Count = 8, Radius = 6, XMin = 104, XMax = 120, Scale = { 1, 1.4 }, Pal = { Trunk = BARK, Moss = MOSS } },
-		{ Prop = Props.glowShroom, Count = 5, Radius = 3.5, Pal = { Cap = rgb(182, 112, 255) } },
-		{ Prop = Props.glowShroom, Count = 4, Radius = 3.5, Pal = { Cap = rgb(60, 240, 212) } },
+		{ Prop = Props.bogPool, Count = 4, Radius = 5, XMin = 30, Scale = { 0.9, 1.3 }, Pal = { Mud = rgb(64, 58, 42) } },
+		{ Prop = Props.flytrap, Count = 6, Radius = 4, XMin = 30, Scale = { 0.9, 1.3 } },
+		{ Prop = Props.glowShroom, Count = 4, Radius = 3.5, Pal = { Cap = rgb(182, 112, 255) } },
+		{ Prop = Props.glowShroom, Count = 3, Radius = 3.5, Pal = { Cap = rgb(60, 240, 212) } },
 		{ Prop = Props.wisp, Count = 6, Radius = 4, Pal = { Glow = rgb(172, 255, 132) } },
 		{ Prop = Props.wisp, Count = 3, Radius = 4, Pal = { Glow = rgb(120, 232, 255) } },
-		{ Prop = Props.glowCrystal, Count = 5, Radius = 3.5, Scale = { 0.7, 1 }, Pal = BOG },
 		{ Prop = Props.reeds, Count = 24, Radius = 3, Pal = { Leaf = rgb(104, 138, 66) } },
 		{ Prop = Props.fern, Count = 16, Radius = 4, Pal = { Leaf = rgb(70, 112, 50) } },
 		{ Prop = Props.bush, Count = 14, Radius = 3.5, Pal = { Leaf = rgb(60, 98, 48) } },
 		{ Prop = Props.log, Count = 5, Radius = 5, Pal = { Trunk = BARK, Moss = MOSS } },
 		{ Prop = Props.mushroom, Count = 12, Radius = 2.5, Pal = { Cap = rgb(150, 92, 200) } },
 		{ Prop = Props.stump, Count = 6, Radius = 3, Pal = { Trunk = BARK, Ring = rgb(130, 110, 86) } },
-	},
-	Wall = {
-		{ Prop = Props.glowCrystal, Count = 4, Radius = 0, Scale = { 0.6, 0.9 }, Pal = BOG },
 	},
 }
 

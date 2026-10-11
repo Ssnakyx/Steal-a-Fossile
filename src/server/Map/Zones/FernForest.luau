@@ -1,7 +1,8 @@
 --!strict
 -- Zone 2 : Fern Forest. Herbe dense, fougères géantes, cycas, grands arbres, champignons et fleurs, troncs moussus,
 -- un ruisseau qui traverse la route (cascade sur la falaise gauche, pierres de gué), un arbre ancien géant, un cercle
--- de pierres moussues autour d'un grand cristal émeraude, champignons lumineux (cyan, rose, vert) et petits cristaux.
+-- de pierres moussues autour d'un grand cristal émeraude, traces de pas d'un gros dino, fleurs géantes qui luisent
+-- (rose, bleu, jaune) et champignons lumineux (cyan, vert).
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -86,16 +87,18 @@ local theme: ZoneBase.Theme = {
 		{ Prop = Props.bigTree, Count = 6, Radius = 8, XMin = 104, XMax = 120, Scale = { 1, 1.3 } },
 		{ Prop = Props.pine, Count = 6, Radius = 5, XMin = 50, Pal = { Leaf = rgb(52, 118, 62) } },
 		{ Prop = Props.pine, Count = 6, Radius = 5, XMin = 104, XMax = 122, Scale = { 1.2, 1.6 } },
+		{ Prop = Props.tracks, Count = 3, Radius = 9, XMin = 30, XMax = 70, Scale = { 1, 1.3 }, Pal = { Mud = rgb(92, 78, 52) } },
+		{ Prop = Props.glowFlower, Count = 3, Radius = 3.5, Pal = { Petal = rgb(255, 112, 202) } },
+		{ Prop = Props.glowFlower, Count = 3, Radius = 3.5, Pal = { Petal = rgb(90, 200, 255) } },
+		{ Prop = Props.glowFlower, Count = 3, Radius = 3.5, Pal = { Petal = rgb(255, 214, 80), Heart = rgb(255, 255, 220) } },
 		{ Prop = Props.glowShroom, Count = 3, Radius = 3.5, Pal = { Cap = rgb(80, 230, 255) } },
-		{ Prop = Props.glowShroom, Count = 3, Radius = 3.5, Pal = { Cap = rgb(255, 112, 202) } },
 		{ Prop = Props.glowShroom, Count = 3, Radius = 3.5, Pal = { Cap = rgb(172, 255, 92) } },
-		{ Prop = Props.glowCrystal, Count = 5, Radius = 3.5, Scale = { 0.6, 0.9 }, Pal = EMERALD },
 		{ Prop = Props.cycad, Count = 10, Radius = 5 },
-		{ Prop = Props.fern, Count = 26, Radius = 4, Scale = { 0.8, 1.4 } },
+		{ Prop = Props.fern, Count = 22, Radius = 4, Scale = { 0.8, 1.4 } },
 		{ Prop = Props.bush, Count = 12, Radius = 3.5 },
 		{ Prop = Props.log, Count = 5, Radius = 5 },
 		{ Prop = Props.mushroom, Count = 10, Radius = 2.5 },
-		{ Prop = Props.flowers, Count = 14, Radius = 2.5 },
+		{ Prop = Props.flowers, Count = 12, Radius = 2.5 },
 		{ Prop = Props.rock, Count = 6, Radius = 4, Pal = { Rock = STONE } },
 	},
 }

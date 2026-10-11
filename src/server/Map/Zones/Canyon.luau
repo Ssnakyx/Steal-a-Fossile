@@ -1,8 +1,8 @@
 --!strict
 -- Zone 4 : Canyon. Roche rouge, hautes mesas en strates, arche naturelle au-dessus de la route, rails de mine qui
 -- longent le bord gauche jusqu'à l'entrée d'une galerie, wagonnet, rochers, aiguilles et herbes sèches ; pont de
--- cordes tendu d'une falaise à l'autre au-dessus de la route, squelette fossile dégagé par les fouilles, géodes et
--- cristaux couleur ambre, orange et or (au sol, sur les falaises et sortant des parois).
+-- cordes tendu d'une falaise à l'autre au-dessus de la route, squelette fossile dégagé par les fouilles, cactus,
+-- boules d'herbes sèches, géodes et quelques cristaux couleur ambre (au sol et sortant des parois).
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -152,16 +152,18 @@ local theme: ZoneBase.Theme = {
 	Scatter = {
 		{ Prop = Props.boulder, Count = 9, Radius = 6, XMin = 40, Pal = { Rock = rgb(190, 108, 68) } },
 		{ Prop = Props.spike, Count = 12, Radius = 4, XMin = 36, Scale = { 1.2, 2 }, Pal = { Ice = rgb(178, 92, 58) } },
-		{ Prop = Props.geode, Count = 6, Radius = 5, XMin = 36, Scale = { 0.9, 1.3 }, Pal = { Rock = rgb(176, 96, 60), Crystal = AMBER.Crystal, Crystal2 = AMBER.Crystal2, Crystal3 = AMBER.Crystal3 } },
-		{ Prop = Props.glowCrystal, Count = 6, Radius = 3.5, Scale = { 0.7, 1.1 }, Pal = AMBER },
-		{ Prop = Props.glowCrystal, Count = 4, Radius = 4, XMin = 104, XMax = 122, Scale = { 1.1, 1.5 }, Pal = AMBER },
-		{ Prop = Props.rock, Count = 28, Radius = 4, Pal = { Rock = rgb(172, 94, 60) } },
-		{ Prop = Props.bush, Count = 18, Radius = 3, Scale = { 0.6, 0.9 }, Pal = { Leaf = rgb(140, 140, 72) } },
-		{ Prop = Props.reeds, Count = 16, Radius = 3, Pal = { Leaf = rgb(204, 172, 92), Tip = rgb(170, 130, 70) } },
-		{ Prop = Props.rock, Count = 8, Radius = 5, XMin = 104, XMax = 122, Scale = { 1.2, 1.6 }, Pal = { Rock = rgb(214, 146, 90) } },
+		{ Prop = Props.cactus, Count = 10, Radius = 3.5, XMin = 30, Scale = { 0.9, 1.3 } },
+		{ Prop = Props.cactus, Count = 5, Radius = 4, XMin = 104, XMax = 122, Scale = { 1.1, 1.5 } },
+		{ Prop = Props.geode, Count = 5, Radius = 5, XMin = 36, Scale = { 0.9, 1.3 }, Pal = { Rock = rgb(176, 96, 60), Crystal = AMBER.Crystal, Crystal2 = AMBER.Crystal2, Crystal3 = AMBER.Crystal3 } },
+		{ Prop = Props.tumbleweed, Count = 7, Radius = 3, Scale = { 0.8, 1.2 } },
+		{ Prop = Props.glowCrystal, Count = 3, Radius = 3.5, Scale = { 0.7, 1.1 }, Pal = AMBER },
+		{ Prop = Props.rock, Count = 24, Radius = 4, Pal = { Rock = rgb(172, 94, 60) } },
+		{ Prop = Props.bush, Count = 14, Radius = 3, Scale = { 0.6, 0.9 }, Pal = { Leaf = rgb(140, 140, 72) } },
+		{ Prop = Props.reeds, Count = 14, Radius = 3, Pal = { Leaf = rgb(204, 172, 92), Tip = rgb(170, 130, 70) } },
+		{ Prop = Props.rock, Count = 6, Radius = 5, XMin = 104, XMax = 122, Scale = { 1.2, 1.6 }, Pal = { Rock = rgb(214, 146, 90) } },
 	},
 	Wall = {
-		{ Prop = Props.glowCrystal, Count = 10, Radius = 0, Scale = { 0.6, 1 }, Pal = AMBER },
+		{ Prop = Props.glowCrystal, Count = 6, Radius = 0, Scale = { 0.6, 1 }, Pal = AMBER },
 	},
 }
 

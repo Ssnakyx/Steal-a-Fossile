@@ -363,17 +363,21 @@ end
 -- Décor accroché aux parois des falaises (Theme.Wall) : trouvé par un raycast horizontal depuis le couloir, penché
 -- vers la route et un peu vers le haut, entre 3 et 12 studs au-dessus du sol. Côté Side seulement s'il est donné.
 function ZoneBase.WallScatter(info: Info, entry: Scatter): number
-	local rng, gt = info.Rng, info.GroundTop
+	local rng, gt, hw = info.Rng, info.GroundTop, info.HalfWidth
 	local scale = entry.Scale or { 0.85, 1.25 }
-	local placed = 0
-	for _ = 1, entry.Count do
+	local placed, attempts = 0, entry.Count * 4
+	while placed < entry.Count and attempts > 0 do
+		attempts -= 1
 		local side = entry.Side or (if rng:NextNumber() < 0.5 then -1 else 1)
 		local z = Kit.range(rng, info.Z0 + 12, info.Z1 - 8)
 		local y = gt + Kit.range(rng, 3, 12)
-		local x = Kit.wallAt(info.Ctx, side, info.HalfWidth - 24, y, z, side * (info.HalfWidth + 1))
-		local cf = CFrame.new(x + side * 0.5, y, z) * CFrame.Angles(0, 0, side * math.rad(Kit.range(rng, 62, 74))) * CFrame.Angles(0, rng:NextNumber() * math.pi * 2, 0)
-		entry.Prop(info.Decor, cf, Kit.range(rng, scale[1], scale[2]), rng, entry.Pal)
-		placed += 1
+		-- pas devant un lieu marquant (cascade, galerie de mine...) ni sur un gros volume entre le couloir et la paroi
+		local x = if Kit.isFree(info.Grid, side * (hw - 1), z, 2) then Kit.wallAt(info.Ctx, side, hw - 24, y, z, side * (hw + 1), hw - 1) else nil
+		if x then
+			local cf = CFrame.new(x + side * 0.5, y, z) * CFrame.Angles(0, 0, side * math.rad(Kit.range(rng, 62, 74))) * CFrame.Angles(0, rng:NextNumber() * math.pi * 2, 0)
+			entry.Prop(info.Decor, cf, Kit.range(rng, scale[1], scale[2]), rng, entry.Pal)
+			placed += 1
+		end
 	end
 	return placed
 end

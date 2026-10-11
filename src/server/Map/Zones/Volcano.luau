@@ -1,8 +1,8 @@
 --!strict
 -- Zone 6 : Volcano. Basalte sombre, deux coulées de lave le long de la route, falaises noires avec des traînées de
 -- lave, roches fissurées, souches calcinées, aiguilles d'obsidienne et le grand volcan derrière la falaise droite, avec
--- son panache de fumée ; mares de lave, géodes et cristaux couleur braise (rouge, orange, jaune) au sol, sur les
--- falaises et sortant des parois.
+-- son panache de fumée ; mares et fontaines de lave, fumerolles qui crachent de la vapeur, géodes et cristaux couleur
+-- braise (rouge, orange, jaune).
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -102,18 +102,20 @@ local theme: ZoneBase.Theme = {
 	Landmark = landmark,
 	Scatter = {
 		{ Prop = Props.lavaPool, Count = 4, Radius = 6, XMin = 34, XMax = 70, Scale = { 0.9, 1.3 }, Pal = { Glow = LAVA, Rock = BASALT } },
+		{ Prop = Props.lavaGeyser, Count = 3, Radius = 5, XMin = 34, XMax = 70, Scale = { 0.9, 1.2 }, Pal = { Glow = LAVA, Rock = BASALT } },
+		{ Prop = Props.steamVent, Count = 6, Radius = 4, Scale = { 0.9, 1.3 }, Pal = { Rock = rgb(64, 54, 56), Glow = LAVA } },
 		{ Prop = Props.geode, Count = 3, Radius = 5, XMin = 36, XMax = 70, Scale = { 0.9, 1.2 }, Pal = { Rock = rgb(64, 54, 56), Crystal = EMBER_GLOW.Crystal, Crystal2 = EMBER_GLOW.Crystal2, Crystal3 = EMBER_GLOW.Crystal3 } },
-		{ Prop = Props.glowCrystal, Count = 10, Radius = 3.5, Scale = { 0.7, 1.1 }, Pal = EMBER_GLOW },
+		{ Prop = Props.glowCrystal, Count = 5, Radius = 3.5, Scale = { 0.7, 1.1 }, Pal = EMBER_GLOW },
 		{ Prop = Props.glowCrystal, Count = 4, Radius = 4, XMin = 104, XMax = 122, Scale = { 1.1, 1.5 }, Pal = EMBER_GLOW },
-		{ Prop = Props.lavaRock, Count = 26, Radius = 4 },
+		{ Prop = Props.lavaRock, Count = 24, Radius = 4 },
 		{ Prop = Props.deadTree, Count = 12, Radius = 5, XMin = 30, Pal = { Trunk = rgb(40, 34, 34) } },
-		{ Prop = Props.stump, Count = 14, Radius = 3, Pal = { Trunk = rgb(36, 32, 32), Ring = rgb(255, 120, 40) } },
-		{ Prop = Props.rock, Count = 16, Radius = 4, Pal = { Rock = rgb(72, 64, 64) } },
+		{ Prop = Props.stump, Count = 12, Radius = 3, Pal = { Trunk = rgb(36, 32, 32), Ring = rgb(255, 120, 40) } },
+		{ Prop = Props.rock, Count = 14, Radius = 4, Pal = { Rock = rgb(72, 64, 64) } },
 		{ Prop = Props.spike, Count = 14, Radius = 3, Scale = { 1, 1.6 }, Pal = { Ice = rgb(40, 30, 52) } },
 		{ Prop = Props.lavaRock, Count = 8, Radius = 5, XMin = 104, XMax = 122, Scale = { 1.2, 1.6 } },
 	},
 	Wall = {
-		{ Prop = Props.glowCrystal, Count = 8, Radius = 0, Scale = { 0.6, 1 }, Pal = EMBER_GLOW },
+		{ Prop = Props.glowCrystal, Count = 5, Radius = 0, Scale = { 0.6, 1 }, Pal = EMBER_GLOW },
 	},
 }
 

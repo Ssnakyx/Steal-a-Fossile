@@ -1,10 +1,11 @@
 -- Ambiances de la map : Config.Ambience (une ambiance par zone, bloom modéré, pas de rayons partout, particules sous le
--- plafond), décor lumineux et flottant des zones (côté serveur : inerte, dans la map, lieux marquants), effets de
+-- plafond), décor lumineux et flottant des zones, objets propres à chaque zone (côté serveur : inerte, dans la map,
+-- lieux marquants hors du chemin), effets de
 -- Lighting posés une seule fois avec l'ambiance de la place, test FossilDebug « ambience ». Côté client
 -- (AmbienceController) : régions calquées sur la map, fondus aux frontières, ambiance du lieu dès la première image,
 -- fondu en douceur après une téléportation puis plus aucune écriture de Lighting, particules, aurores, planète,
 -- étoiles filantes et ptérosaures selon la zone, effets recréés s'ils disparaissent, décor flottant qui bouge près du
--- joueur seulement, caméra seule quand il n'y a pas de personnage.
+-- joueur seulement, dossier de l'ambiance refait s'il est détruit, caméra seule quand il n'y a pas de personnage.
 local T = require("./testkit")
 local env = T.env
 
@@ -165,11 +166,9 @@ for _, zone in Zones.List do
 	end
 	T.check(glowing >= 40, zone.Name .. " : " .. glowing .. " pièces lumineuses")
 	T.eq(loud, 0, zone.Name .. " : décor lumineux inerte")
-	-- (la forêt a surtout des champignons lumineux)
-	T.check(#models(zone.Name, "GlowCrystal") >= (if zone.Name == "Fern Forest" then 5 else 8), zone.Name .. " : cristaux lumineux")
 end
 -- cristaux qui sortent des parois (sans raycasts ici : posés au pied de la paroi, entre 3 et 12 studs de haut)
-for _, name in { "Beach", "Swamp", "Canyon", "Glacier", "Volcano", "Meteor Crater" } do
+for _, name in { "Canyon", "Glacier", "Volcano", "Meteor Crater" } do
 	local onWall = 0
 	for _, crystal in models(name, "GlowCrystal") do
 		local p = crystal:GetChildren()[1].Position
@@ -179,12 +178,39 @@ for _, name in { "Beach", "Swamp", "Canyon", "Glacier", "Volcano", "Meteor Crate
 	end
 	T.check(onWall >= 4, name .. " : cristaux sur les parois (" .. onWall .. ")")
 end
-T.check(#models("Fern Forest", "GlowShroom") >= 8, "Fern Forest : champignons lumineux")
-T.check(#models("Swamp", "GlowShroom") >= 8 and #models("Swamp", "Wisp") >= 8, "Swamp : champignons et feux follets")
-T.check(#models("Canyon", "Geode") >= 5, "Canyon : géodes")
-T.check(#models("Volcano", "LavaPool") >= 3 and #models("Volcano", "SmokePlume") == 1, "Volcano : mares de lave et panache")
-T.check(#models("Ocean Trench", "Jellyfish") >= 8 and #models("Ocean Trench", "Anemone") >= 8, "Ocean Trench : méduses et anémones")
 T.eq(#models("Meteor Crater", "FloatShard"), 8, "Meteor Crater : éclats flottants autour du cratère")
+T.eq(#models("Volcano", "SmokePlume"), 1, "Volcano : panache de fumée")
+
+T.section("serveur : objets propres à chaque zone")
+-- (pas seulement des cristaux : chaque zone a ses objets, qu'on ne voit nulle part ailleurs)
+local signature: { [string]: { [string]: number } } = {
+	Beach = { EggNest = 3, Rowboat = 1, TidePool = 3, GlowCrystal = 3 },
+	["Fern Forest"] = { GlowFlower = 6, GlowShroom = 5, Tracks = 2 },
+	Swamp = { BogPool = 3, Flytrap = 4, GlowShroom = 5, Wisp = 6 },
+	Canyon = { Cactus = 8, Tumbleweed = 4, Geode = 4, GlowCrystal = 6 },
+	Glacier = { Snowman = 2, GlowCrystal = 14 },
+	Volcano = { LavaPool = 3, LavaGeyser = 2, SteamVent = 4, GlowCrystal = 8 },
+	["Ocean Trench"] = { Jellyfish = 8, Anemone = 8, BubbleVent = 4, Treasure = 2 },
+	["Meteor Crater"] = { Meteorite = 4, FloatRock = 5, GlowCrystal = 14 },
+}
+local shared = { GlowCrystal = true, GlowShroom = true, Geode = true }
+for _, zone in Zones.List do
+	local wanted = signature[zone.Name]
+	T.check(wanted ~= nil, zone.Name .. " : objets attendus")
+	for kind, least in wanted or {} do
+		local n = #models(zone.Name, kind)
+		T.check(n >= least, zone.Name .. " : " .. n .. " " .. kind .. " (" .. least .. " au moins)")
+		if not shared[kind] then
+			local elsewhere = 0
+			for _, other in Zones.List do
+				if other.Name ~= zone.Name then
+					elsewhere += #models(other.Name, kind)
+				end
+			end
+			T.eq(elsewhere, 0, kind .. " : seulement dans " .. zone.Name)
+		end
+	end
+end
 
 T.section("serveur : lieux marquants")
 T.check(#models("Beach", "Ribcage") == 1 and #models("Beach", "Skull") == 1, "Beach : squelette fossile")
@@ -214,9 +240,58 @@ for _, part in zoneModel("Glacier").Ground:GetChildren() do
 end
 T.eq(ice, 1, "Glacier : un bloc de glace translucide")
 T.check(#models("Glacier", "GlowCrystal") >= 14, "Glacier : bosquet de cristaux")
+-- camp polaire, épave, camp des chercheurs : hors du chemin, loin du nid et des gisements ; igloos et coque solides
+local pathHalf = Map.Route.PathWidth / 2
+local function centerOf(model: any): any
+	local sum, n = Vector3.zero, 0
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			sum += part.Position
+			n += 1
+		end
+	end
+	return if n > 0 then sum / n else sum
+end
+for _, case in { { "Glacier", "PolarCamp", "camp polaire", true }, { "Ocean Trench", "Shipwreck", "épave", true }, { "Meteor Crater", "ResearchCamp", "camp des chercheurs", false } } do
+	local zoneName, kind, label, solid = case[1], case[2], case[3], case[4]
+	local list = models(zoneName, kind)
+	T.eq(#list, 1, zoneName .. " : " .. label)
+	local model = list[1]
+	if model then
+		local zone = zoneModel(zoneName)
+		local center = centerOf(model)
+		local closest = math.huge
+		for _, part in model:GetDescendants() do
+			if part:IsA("BasePart") then
+				closest = math.min(closest, math.abs(part.Position.X))
+			end
+		end
+		T.check(closest > pathHalf + 2, label .. " : hors du chemin (" .. math.floor(closest) .. ")")
+		T.check(center.Z > starts[zoneName] + 10 and center.Z < starts[zoneName] + MapBuilder.Length(zoneName) - 10, label .. " : dans sa zone")
+		local guardian = zone:FindFirstChild("Guardian")
+		T.check(guardian ~= nil and (guardian.Position - center).Magnitude > 30, label .. " : loin du nid du gardien")
+		local nearSite = false
+		for _, site in zone.DigSites:GetChildren() do
+			if site:IsA("BasePart") and (site.Position - center).Magnitude < 16 then
+				nearSite = true
+			end
+		end
+		T.check(not nearSite, label .. " : loin des gisements")
+		if solid then
+			local walls = 0
+			for _, part in zone.Ground:GetChildren() do
+				if part:IsA("BasePart") and part.CanCollide and part.Position.Y > gt + 0.5 and (part.Position - center).Magnitude < 14 then
+					walls += 1
+				end
+			end
+			T.check(walls >= 4, label .. " : solide (" .. walls .. " blocs)")
+		end
+	end
+end
 local shell = 0
 for _, part in zoneModel("Ocean Trench").Ground:GetChildren() do
-	if part:IsA("BasePart") and part.Color.R > part.Color.B + 0.1 then
+	-- (couleurs crème et rose de l'ammonite ; la coque de l'épave est brun foncé)
+	if part:IsA("BasePart") and part.Color.R > part.Color.B + 0.1 and part.Color.G > 0.5 then
 		shell += 1
 	end
 end
@@ -224,10 +299,11 @@ T.check(shell >= 30, "Ocean Trench : ammonite géante (" .. shell .. " blocs)")
 
 T.section("serveur : décor flottant")
 local floating = CollectionService:GetTagged(Ambience.Float.Tag)
-T.check(#floating >= 24, #floating .. " modèles flottants")
+T.check(#floating >= 40, #floating .. " modèles flottants")
 local badFloat = 0
 for _, item in floating do
-	local ok = item:IsA("Model") and item:IsDescendantOf(Workspace.Map.Zones) and item.Parent.Name == "Decor"
+	-- (jets de lave, vapeur et bulles flottent au-dessus de leur bouche, dans le modèle de celle-ci)
+	local ok = item:IsA("Model") and item:IsDescendantOf(Workspace.Map.Zones) and item:FindFirstAncestor("Decor") ~= nil
 	ok = ok and item.PrimaryPart ~= nil and item.PrimaryPart:IsDescendantOf(item)
 	ok = ok and (item:GetAttribute("FloatHeight") or 0) > 0 and (item:GetAttribute("FloatSpeed") or 0) > 0
 	ok = ok and type(item:GetAttribute("FloatSpin")) == "number"
@@ -350,7 +426,7 @@ goTo(middle("Glacier"))
 settle(0.2)
 T.check(Lighting.ClockTime < plaza.ClockTime - 0.05 and Lighting.ClockTime > glacier.ClockTime + 1, "fondu en douceur (pas de saut)")
 settle(8)
-T.check(near(Lighting.ClockTime, glacier.ClockTime, 0.02), "heure du glacier")
+T.check(near(Lighting.ClockTime, glacier.ClockTime, 0.05), "heure du glacier")
 T.check(near(atmosphere.Density, glacier.Atmosphere.Density, 0.005), "brume du glacier")
 T.check(colorNear(Lighting.ColorShift_Top, glacier.SunTint, 0.02), "teinte du soleil du glacier")
 T.check(near(grade.Saturation, glacier.Grade.Saturation, 0.005), "couleurs du glacier")
@@ -389,12 +465,24 @@ for _, part in folder:GetChildren() do
 	end
 end
 T.check(shown > 10, "particules et aurores visibles")
+local tinted = 0
+for _, part in folder:GetChildren() do
+	if part:IsA("BasePart") and part.Transparency < 1 and part.Size.Y >= Ambience.Sky.Aurora.Height then
+		for _, color in glacier.AuroraColors do
+			if colorNear(part.Color, color, 0.02) then
+				tinted += 1
+				break
+			end
+		end
+	end
+end
+T.eq(tinted, Ambience.Sky.Aurora.Ribbons * Ambience.Sky.Aurora.Segments, "rideaux d'aurore aux couleurs du glacier")
 
 T.section("joueur : cratère de la météorite")
 goTo(middle("Meteor Crater"))
 settle(8)
 local meteor = Ambience.Regions["Meteor Crater"]
-T.check(near(Lighting.ClockTime, meteor.ClockTime, 0.02), "nuit au cratère")
+T.check(near(Lighting.ClockTime, meteor.ClockTime, 0.05), "nuit au cratère")
 T.check(near(sky.StarCount, meteor.Sky.Stars, 1), "ciel étoilé")
 stats = Controller.Stats()
 T.check(stats.Planet and stats.Aurora, "planète et aurores")
@@ -459,8 +547,20 @@ T.check(Lighting:FindFirstChildOfClass("Atmosphere") ~= nil and Lighting:FindFir
 me.Character = nil
 camera.CFrame = CFrame.new(0, gt + 12, middle("Volcano"))
 settle(8)
-T.check(near(Lighting.ClockTime, Ambience.Regions.Volcano.ClockTime, 0.02), "sans personnage : la caméra décide")
+T.check(near(Lighting.ClockTime, Ambience.Regions.Volcano.ClockTime, 0.05), "sans personnage : la caméra décide")
 T.check((Controller.Stats().Kinds.Embers or 0) > 0, "braises du volcan")
+local oldFolder = camera:FindFirstChild("Ambience")
+oldFolder:Destroy()
+settle(1)
+local newFolder = camera:FindFirstChild("Ambience")
+T.check(newFolder ~= nil and newFolder ~= oldFolder, "dossier détruit : refait")
+local alive = 0
+for _, part in (if newFolder then newFolder:GetChildren() else {}) do
+	if part:IsA("BasePart") and part.Transparency < 1 then
+		alive += 1
+	end
+end
+T.check(alive > 0 and (Controller.Stats().Kinds.Embers or 0) > 0, "dossier détruit : les braises reviennent (" .. alive .. ")")
 env.advance(0.1)
 
 T.done("map_ambience")

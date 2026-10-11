@@ -1,7 +1,8 @@
 --!strict
 -- Zone 7 : Ocean Trench. Fond marin bleu, la mer ouverte de part et d'autre en hauts murs d'eau (poissons, écume en
 -- haut), récifs de corail, algues hautes, coquillages, colonnes en ruine et un bénitier géant avec sa perle ; ammonite
--- fossile géante, méduses lumineuses qui flottent, anémones et cristaux des abysses (cyan, bleu, rose).
+-- fossile géante, épave d'un vieux navire, coffres au trésor, cheminées qui crachent des bulles, méduses lumineuses qui
+-- flottent, anémones et quelques cristaux des abysses (cyan, bleu, rose).
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -42,6 +43,41 @@ local function ammonite(info: ZoneBase.Info, spot: Vector3)
 	Kit.disc(info.Decor, base * CFrame.new(0, 0.05, 0), 9, 0.25, rgb(176, 190, 196))
 	Props.anemone(info.Decor, base * CFrame.new(6, 0, 4), 1, rng, { Glow = DEEP_GLOW.Crystal3, Coral = rgb(70, 60, 140) })
 	Props.glowCrystal(info.Decor, base * CFrame.new(-6, 0, -4), 1.2, rng, DEEP_GLOW)
+end
+
+-- Épave d'un vieux navire couchée sur le fond : coque en planches (solide), pont, cabine aux hublots qui luisent,
+-- mât cassé et voile déchirée, coffre au trésor à côté
+local function shipwreck(info: ZoneBase.Info, spot: Vector3)
+	local rng = info.Rng
+	local m = Kit.group("Shipwreck")
+	local hull = rgb(96, 70, 52)
+	local trim = rgb(180, 150, 90)
+	local length = 24
+	local base = CFrame.new(spot) * CFrame.Angles(0, math.rad(Kit.range(rng, -30, 30)), 0) * CFrame.Angles(0, 0, math.rad(12))
+	Kit.solid(Kit.block(info.Ground, Vector3.new(6, 1.2, length), base * CFrame.new(0, 0.6, 0), shade(hull, 0.1)))
+	for _, side in { -1, 1 } do
+		local wall = base * CFrame.new(side * 3.6, 2.6, 0) * CFrame.Angles(0, 0, -side * math.rad(14))
+		Kit.solid(Kit.block(info.Ground, Vector3.new(1, 4.4, length - 2), wall, hull))
+		Kit.prop(m, Vector3.new(1.1, 0.5, length - 2.2), wall * CFrame.new(0, 1.6, 0), trim)
+	end
+	Kit.solid(Kit.block(info.Ground, Vector3.new(5, 4.4, 5), base * CFrame.new(0, 2.6, -length / 2 - 1) * CFrame.Angles(0, math.pi / 4, 0), hull))
+	Kit.solid(Kit.block(info.Ground, Vector3.new(8, 7, 5), base * CFrame.new(0, 3.5, length / 2 - 1.5), shade(hull, -0.05)))
+	Kit.prop(m, Vector3.new(8.4, 0.6, 5.4), base * CFrame.new(0, 7.2, length / 2 - 1.5), trim)
+	for _, x in { -2, 2 } do
+		local window = Kit.prop(m, Vector3.new(1.2, 1.2, 0.2), base * CFrame.new(x, 4.6, length / 2 - 4.05), rgb(255, 220, 120), Enum.Material.Neon)
+		window.Transparency = 0.15
+	end
+	for k = 0, 4 do
+		Kit.prop(m, Vector3.new(6.4, 0.3, 2.6), base * CFrame.new(0, 3.4, -length / 2 + 3 + k * 3.3), shade(hull, if k % 2 == 0 then -0.2 else -0.28))
+	end
+	local mast = base * CFrame.new(0, 3.4, -2) * CFrame.Angles(math.rad(-18), 0, math.rad(8))
+	Kit.prop(m, Vector3.new(1, 16, 1), mast * CFrame.new(0, 8, 0), shade(hull, -0.1))
+	Kit.prop(m, Vector3.new(9, 0.6, 0.6), mast * CFrame.new(0, 13, 0), shade(hull, -0.1))
+	Kit.prop(m, Vector3.new(8, 7, 0.2), mast * CFrame.new(0.6, 9, 0.5) * CFrame.Angles(0, 0, math.rad(6)), rgb(230, 222, 200)).Transparency = 0.2
+	Kit.prop(m, Vector3.new(3, 2.5, 0.25), mast * CFrame.new(-2.5, 5.2, 0.5), rgb(230, 222, 200)).Transparency = 0.35
+	Props.kelp(m, base * CFrame.new(5.5, 0, -6), 0.8, rng, nil)
+	Props.treasure(m, CFrame.new(spot) * CFrame.new(-9, 0, 5), 1.1, rng, nil)
+	m.Parent = info.Decor
 end
 
 -- Bords : murs d'eau (décor) sur un récif bas, le mur invisible de la route garde les joueurs
@@ -121,6 +157,11 @@ local function landmark(info: ZoneBase.Info)
 	if spot then
 		ammonite(info, spot)
 	end
+	-- épave d'un vieux navire
+	local wreck = ZoneBase.Spot(info, 18, 44, 72, 0.05, 0.45, nil)
+	if wreck then
+		shipwreck(info, wreck)
+	end
 end
 
 local theme: ZoneBase.Theme = {
@@ -139,17 +180,19 @@ local theme: ZoneBase.Theme = {
 	ArchTop = archTop,
 	Landmark = landmark,
 	Scatter = {
-		{ Prop = Props.coral, Count = 30, Radius = 3.5, Scale = { 0.9, 1.5 } },
+		{ Prop = Props.bubbleVent, Count = 6, Radius = 3, Scale = { 0.9, 1.3 } },
+		{ Prop = Props.treasure, Count = 3, Radius = 3.5, XMin = 30, Scale = { 0.9, 1.1 } },
+		{ Prop = Props.coral, Count = 28, Radius = 3.5, Scale = { 0.9, 1.5 } },
 		{ Prop = Props.kelp, Count = 22, Radius = 3, Scale = { 0.9, 1.4 } },
-		{ Prop = Props.shell, Count = 14, Radius = 2.5, Scale = { 1.2, 2 } },
-		{ Prop = Props.starfish, Count = 10, Radius = 2, Scale = { 1, 1.5 } },
-		{ Prop = Props.rock, Count = 12, Radius = 4, Pal = { Rock = rgb(100, 112, 122) } },
 		{ Prop = Props.jellyfish, Count = 4, Radius = 3, Scale = { 0.8, 1.3 }, Pal = { Glow = rgb(255, 130, 220) } },
 		{ Prop = Props.jellyfish, Count = 4, Radius = 3, Scale = { 0.8, 1.3 }, Pal = { Glow = rgb(100, 200, 255) } },
 		{ Prop = Props.jellyfish, Count = 2, Radius = 3, Scale = { 1, 1.4 }, Pal = { Glow = rgb(180, 120, 255) } },
 		{ Prop = Props.anemone, Count = 5, Radius = 2.5, Scale = { 0.8, 1.2 }, Pal = { Glow = rgb(90, 240, 255), Coral = rgb(120, 60, 140) } },
 		{ Prop = Props.anemone, Count = 5, Radius = 2.5, Scale = { 0.8, 1.2 }, Pal = { Glow = rgb(255, 140, 200), Coral = rgb(70, 60, 140) } },
-		{ Prop = Props.glowCrystal, Count = 10, Radius = 3.5, Scale = { 0.7, 1.1 }, Pal = DEEP_GLOW },
+		{ Prop = Props.glowCrystal, Count = 4, Radius = 3.5, Scale = { 0.7, 1.1 }, Pal = DEEP_GLOW },
+		{ Prop = Props.shell, Count = 12, Radius = 2.5, Scale = { 1.2, 2 } },
+		{ Prop = Props.starfish, Count = 10, Radius = 2, Scale = { 1, 1.5 } },
+		{ Prop = Props.rock, Count = 10, Radius = 4, Pal = { Rock = rgb(100, 112, 122) } },
 	},
 }
 
