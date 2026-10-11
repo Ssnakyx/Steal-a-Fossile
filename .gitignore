@@ -1,0 +1,16 @@
+# Fichiers de Studio
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+
+# Générés (tools/setup_tools.py, tools/check.py, rojo, selene)
+sourcemap.json
+globalTypes.d.luau
+roblox.yml
+tools/.bin/
+tools/.cache/
+__pycache__/
+
+# Clones de travail des threads sur le PC de Snaky
+SAF-*/
