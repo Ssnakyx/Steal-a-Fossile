@@ -92,7 +92,7 @@ Mutations Amber, Crystal, Lava et niveaux Golden, Diamond : couleurs et matière
 Diamond un cristal cyan à reflet avec un tiers de facettes en verre et quelques petits éclats Neon. Planche :
 `python models/hybrids/render.py --levels`.
 
-Blocs de fossiles (un bloc de roche en briques par rareté, décor du biome) : `models/blocks/README.md`. Chimères de la
+Blocs de fossiles (une forme en briques par biome, la couleur et les signes de la rareté) : `models/blocks/README.md`. Chimères de la
 fusion : `models/hybrids/README.md`.
 
 Ajouter une espèce : voir `models/BRIEF.md`.

@@ -1,16 +1,18 @@
 """Blocs de fossiles (brief 9) : modèles voxel (models/blocks/blocks.py), export Luau et rendus de contrôle.
 
-    python models/blocks/build.py              export Luau + rendus de contrôle (Blender)
-    python models/blocks/build.py --export     seulement l'export Luau (sans Blender)
-    python models/blocks/build.py --stills     seulement les rendus de contrôle
+    python models/blocks/build.py                  export Luau + rendus de contrôle (Blender)
+    python models/blocks/build.py --export         seulement l'export Luau (sans Blender)
+    python models/blocks/build.py --stills         seulement les rendus de contrôle
+    python models/blocks/build.py --stills Beach   rendus d'une seule zone (nom ou début du nom)
 
 Sorties :
-  src/shared/BlockModels.luau          section des données entre les lignes « >>> » et « <<< » (blocs des raretés,
-                                       décors des biomes, tailles) ; le reste du module est écrit à la main
-  models/previews/blocks/<Rareté>.jpg  face, trois-quarts gauche et droit, dos, dessus (sans décor)
-  models/previews/blocks/_blocs.jpg    les 7 raretés à leur taille en jeu, à côté de l'avatar de 5 studs
-  models/previews/blocks/_biomes.jpg   le décor de chacun des 8 biomes : un bloc Rare de dos et de face, puis les 7
-                                       raretés de dos
+  src/shared/BlockModels/Data.luau       données générées (blocs de chaque biome et de chaque rareté, cubes sans
+                                         biome, tailles) ; BlockModels/init.luau (écrit à la main) les assemble
+  models/previews/blocks/_formes.jpg     les 56 blocs (8 biomes x 7 raretés) et les cubes sans biome, de trois-quarts
+                                         avant, à la même échelle : aucun ne doit ressembler à un autre
+  models/previews/blocks/_formes_dos.jpg les mêmes de trois-quarts arrière (décor du biome)
+  models/previews/blocks/<Zone>.jpg      les 7 raretés d'une zone à leur taille en jeu à côté de l'avatar de 5 studs,
+                                         puis de face et de dos
 Il faut Blender 5.2 (variable BLENDER sinon) et Pillow dans le Python du système."""
 import argparse
 import json
@@ -29,11 +31,10 @@ sys.path.insert(0, os.path.join(MODELS, "lib"))
 import blocks  # noqa: E402
 
 BLENDER = os.environ.get("BLENDER", r"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe")
-LUAU = os.path.join(ROOT, "src", "shared", "BlockModels.luau")
+LUAU = os.path.join(ROOT, "src", "shared", "BlockModels", "Data.luau")
 PREVIEWS = os.path.join(MODELS, "previews", "blocks")
-BEGIN = "-- >>> données générées par models/blocks/build.py"
-END = "-- <<< fin des données générées"
 TAB = "\t"
+GENERIC = ""  # clé des cubes sans biome dans blocks.models()
 
 
 def n(x, d=3):
@@ -45,9 +46,9 @@ def key(name):
     return name if name.isidentifier() else '["%s"]' % name
 
 
-def luau_model(L, name, m):
-    """Un modèle (bloc d'une rareté ou décor d'un biome) au format Raw de BlockModels."""
-    t1, t2, t3 = TAB, TAB * 2, TAB * 3
+def luau_model(L, name, m, indent):
+    """Un modèle au format Raw de BlockModels."""
+    t1, t2, t3 = TAB * indent, TAB * (indent + 1), TAB * (indent + 2)
     paints = []
     for bx in m["boxes"]:
         k = (tuple(bx["col"]), bx["mat"])
@@ -77,45 +78,71 @@ def luau_model(L, name, m):
     L.append(f"{t1}}},")
 
 
-def luau_data(models, biomes):
-    """Section Luau : blocs des raretés (DATA), décors des biomes (BIOMES), tailles (SCALES). Boîtes en voxels comme
-    src/shared/DinoModels, une boîte par ligne d'un texte (le module reste en --!strict : pas de tableaux mélangés)."""
-    L = [BEGIN + " (python models/blocks/build.py --export) : ne pas modifier à la main.",
-         "-- Boxes : une boîte par ligne « rôle x0 y0 z0 x1 y1 z1 peinture » (cases incluses) ; centre en studs =",
-         "-- ((x0 + x1 + 1) / 2 - Origin) * Voxel, taille = (x1 - x0 + 1) * Voxel ; peinture = Colors[i], Materials[i].",
-         "-- Bones : rôles qui ont un pivot et une rotation de repos (cristaux, feuilles), en studs depuis le centre.",
+def luau_data(models):
+    """Module Data : boîtes en voxels comme src/shared/DinoModels, une boîte par ligne d'un texte (le module reste en
+    --!strict : pas de tableaux mélangés)."""
+    L = ["--!strict",
+         "-- Données des blocs de fossiles, générées par models/blocks/build.py --export : ne pas modifier à la main.",
+         "-- Lues par BlockModels (init.luau). Boxes : une boîte par ligne « rôle x0 y0 z0 x1 y1 z1 peinture » (cases",
+         "-- incluses) ; centre en studs = ((x0 + x1 + 1) / 2 - Origin) * Voxel, taille = (x1 - x0 + 1) * Voxel ;",
+         "-- peinture = Colors[i], Materials[i]. Bones : rôles qui ont un pivot et une rotation de repos (cristaux,",
+         "-- feuilles, morceaux qui flottent), en studs depuis le centre.",
+         "",
+         "export type Raw = {",
+         "\tVoxel: number,",
+         "\tOrigin: number,",
+         "\tBones: { [string]: { Pivot: Vector3, Rest: Vector3 } },",
+         "\tColors: { Color3 },",
+         "\tMaterials: { string },",
+         "\tBoxes: string,",
+         "}",
+         "",
          "local V = Vector3.new",
          "local C = Color3.fromRGB",
-         "-- blocs de chaque rareté",
-         "local DATA: { [string]: Raw } = {"]
-    for rarity, m in models.items():
-        luau_model(L, rarity, m)
+         "",
+         "-- taille en jeu par rapport à un bloc Common (les plus rares sont beaucoup plus gros)",
+         "local Scales: { [string]: number } = { "
+         + ", ".join(f"{r} = {n(s)}" for r, s in blocks.SCALES.items()) + " }",
+         "",
+         "-- forme de chaque biome (nom de la zone de Config.Zones)",
+         "local Forms: { [string]: string } = {"]
+    for zone in blocks.BIOMES:
+        L.append(f'\t{key(zone)} = "{blocks.FORMS[zone]().name}",')
     L.append("}")
-    L.append("-- décor de chaque biome (nom de la zone, Config.Zones), posé autour du bloc")
-    L.append("local BIOMES: { [string]: Raw } = {")
-    for zone, m in biomes.items():
-        luau_model(L, zone, m)
+    L.append("")
+    L.append("-- cubes sans biome (zone inconnue), par rareté")
+    L.append("local Generic: { [string]: Raw } = {")
+    for rarity, m in models[GENERIC].items():
+        luau_model(L, rarity, m, 1)
     L.append("}")
-    L.append("-- taille en jeu par rapport à un bloc Common (les plus rares sont beaucoup plus gros)")
-    L.append("local SCALES: { [string]: number } = { "
-             + ", ".join(f"{r} = {n(s)}" for r, s in blocks.SCALES.items()) + " }")
-    L.append(END)
-    return "\n".join(L)
+    L.append("")
+    L.append("-- blocs de chaque biome, par rareté")
+    L.append("local Zones: { [string]: { [string]: Raw } } = {")
+    for zone, row in models.items():
+        if zone == GENERIC:
+            continue
+        L.append(f"\t{key(zone)} = {{")
+        for rarity, m in row.items():
+            luau_model(L, rarity, m, 2)
+        L.append("\t},")
+    L.append("}")
+    L.append("")
+    L.append("return { Scales = Scales, Forms = Forms, Generic = Generic, Zones = Zones }")
+    return "\n".join(L) + "\n"
 
 
-def export(models, biomes):
-    text = open(LUAU, encoding="utf-8").read()
-    start = text.index(BEGIN)
-    stop = text.index(END) + len(END)
-    new = text[:start] + luau_data(models, biomes) + text[stop:]
-    if new != text:
+def export(models):
+    text = luau_data(models)
+    old = open(LUAU, encoding="utf-8").read() if os.path.exists(LUAU) else None
+    if text != old:
+        os.makedirs(os.path.dirname(LUAU), exist_ok=True)
         with open(LUAU, "w", encoding="utf-8", newline="\n") as f:
-            f.write(new)
-    total = sum(len(m["boxes"]) for m in models.values()) + sum(len(m["boxes"]) for m in biomes.values())
-    print("[blocs] export : %s (%d pièces au total)" % (os.path.relpath(LUAU, ROOT), total))
+            f.write(text)
+    total = sum(len(m["boxes"]) for row in models.values() for m in row.values())
+    print("[blocs] export : %s (%d pièces au total, %d Ko)" % (os.path.relpath(LUAU, ROOT), total, len(text) // 1024))
 
 
-def stills(models, biomes):
+def stills(models, only=None):
     from PIL import Image, ImageDraw
     from post import font, save_jpg
 
@@ -123,7 +150,9 @@ def stills(models, biomes):
     shutil.rmtree(tmp, ignore_errors=True)
     os.makedirs(tmp, exist_ok=True)
     path = os.path.join(tmp, "models.json")
-    json.dump({"bases": models, "biomes": biomes, "scales": blocks.SCALES}, open(path, "w", encoding="utf-8"))
+    order = list(models)
+    picked = [z for z in order if only is None or (z and z.lower().startswith(only.lower()))]
+    json.dump({"zones": models, "scales": blocks.SCALES, "only": picked}, open(path, "w", encoding="utf-8"))
     t0 = time.time()
     cmd = [BLENDER, "--background", "--factory-startup", "--python", os.path.join(HERE, "blender_blocks.py"), "--",
            path, tmp]
@@ -135,50 +164,49 @@ def stills(models, biomes):
         print(proc.stderr[-4000:])
         raise SystemExit("Blender a échoué")
     os.makedirs(PREVIEWS, exist_ok=True)
-    views = ["face", "gauche", "droite", "dos", "dessus"]
-    title_font, small = font(26, True), font(17)
-    tile = 360
-    for rarity, m in models.items():
-        img = Image.new("RGB", (tile * len(views), tile + 46), (246, 244, 238))
-        draw = ImageDraw.Draw(img)
-        draw.text((12, 8), "%s : %d pièces (x%s en jeu)" % (m["display"], len(m["boxes"]), n(blocks.SCALES[rarity], 2)),
-                  fill=(30, 30, 30), font=title_font)
-        for i, v in enumerate(views):
-            shot = Image.open(os.path.join(tmp, "%s_%s.png" % (rarity, v))).convert("RGB")
-            img.paste(shot.resize((tile, tile), Image.LANCZOS), (i * tile, 46))
-            draw.text((i * tile + 10, 50), v, fill=(60, 60, 60), font=small)
-        save_jpg(img, os.path.join(PREVIEWS, rarity + ".jpg"))
-    # planche des tailles : le rang avec l'avatar, puis la vue trois-quarts de chaque bloc
-    rang = Image.open(os.path.join(tmp, "rang.png")).convert("RGB")
-    w = rang.width // len(models)
-    board = Image.new("RGB", (rang.width, rang.height + w + 40), (246, 244, 238))
-    board.paste(rang, (0, 0))
-    draw = ImageDraw.Draw(board)
-    for i, (rarity, m) in enumerate(models.items()):
-        shot = Image.open(os.path.join(tmp, "%s_gauche.png" % rarity)).convert("RGB")
-        board.paste(shot.resize((w, w), Image.LANCZOS), (i * w, rang.height))
-        draw.text((i * w + 10, rang.height + w + 6), "%s (%d, x%s)" % (rarity, len(m["boxes"]), n(blocks.SCALES[rarity], 2)),
-                  fill=(40, 40, 40), font=small)
-    save_jpg(board, os.path.join(PREVIEWS, "_blocs.jpg"), limit_kb=900)
-    # planche des biomes : par biome, un bloc Rare de dos et de face, puis le rang des 7 raretés vu de dos
-    rows = []
-    for k, (zone, m) in enumerate(biomes.items()):
-        shot = Image.open(os.path.join(tmp, "biome_%d.png" % k)).convert("RGB")
-        h = 300
-        shot = shot.resize((int(shot.width * h / shot.height), h), Image.LANCZOS)
-        closes = [Image.open(os.path.join(tmp, "biome_%d_%s.png" % (k, side))).convert("RGB").resize((h, h), Image.LANCZOS)
-                  for side in ("dos", "face")]
-        row = Image.new("RGB", (2 * h + shot.width, h + 30), (246, 244, 238))
-        for i, c in enumerate(closes):
-            row.paste(c, (i * h, 30))
-        row.paste(shot, (2 * h, 30))
-        ImageDraw.Draw(row).text((10, 5), "%s : décor de %d pièces (bloc Rare de dos et de face, puis les 7 raretés de dos)"
-                                 % (zone, len(m["boxes"])), fill=(30, 30, 30), font=small)
-        rows.append(row)
-    sheet = Image.new("RGB", (rows[0].width, len(rows) * rows[0].height), (246, 244, 238))
-    for k, row in enumerate(rows):
-        sheet.paste(row, (0, k * row.height))
-    save_jpg(sheet, os.path.join(PREVIEWS, "_biomes.jpg"), limit_kb=1200)
+    title_font, small = font(24, True), font(16)
+    tile = 260
+
+    def label(zone):
+        return ("%s (%s)" % (zone, blocks.FORMS[zone]().name)) if zone else "Sans biome (cube)"
+
+    # planches des 56 blocs : une ligne par zone, une colonne par rareté, de face puis de dos
+    if only is None:
+        for view, out in (("face", "_formes.jpg"), ("dos", "_formes_dos.jpg")):
+            head, side = 40, 200
+            sheet = Image.new("RGB", (side + tile * len(blocks.RARITIES), head + tile * len(order)), (246, 244, 238))
+            draw = ImageDraw.Draw(sheet)
+            for j, rarity in enumerate(blocks.RARITIES):
+                draw.text((side + j * tile + 10, 10), "%s x%s" % (rarity, n(blocks.SCALES[rarity], 2)),
+                          fill=(30, 30, 30), font=title_font)
+            for i, zone in enumerate(order):
+                y = head + i * tile
+                draw.text((10, y + tile // 2 - 20), label(zone), fill=(30, 30, 30), font=small)
+                for j, rarity in enumerate(blocks.RARITIES):
+                    shot = Image.open(os.path.join(tmp, "%d_%s_%s.png" % (i, rarity, view))).convert("RGB")
+                    sheet.paste(shot.resize((tile, tile), Image.LANCZOS), (side + j * tile, y))
+                    draw.text((side + j * tile + 8, y + tile - 22), "%d pièces" % len(models[zone][rarity]["boxes"]),
+                              fill=(50, 50, 50), font=small)
+            save_jpg(sheet, os.path.join(PREVIEWS, out), limit_kb=2400)
+    # une planche par zone : le rang à la taille du jeu avec l'avatar, puis chaque bloc de face et de dos
+    for i, zone in enumerate(order):
+        if zone not in picked:
+            continue
+        rang = Image.open(os.path.join(tmp, "rang_%d.png" % i)).convert("RGB")
+        w = rang.width // len(blocks.RARITIES)
+        board = Image.new("RGB", (rang.width, 44 + rang.height + 2 * w), (246, 244, 238))
+        draw = ImageDraw.Draw(board)
+        draw.text((12, 8), "%s : les 7 raretés à leur taille en jeu (avatar gris = 5 studs), de face puis de dos"
+                  % label(zone), fill=(30, 30, 30), font=title_font)
+        board.paste(rang, (0, 44))
+        for j, rarity in enumerate(blocks.RARITIES):
+            for k, view in enumerate(("face", "dos")):
+                shot = Image.open(os.path.join(tmp, "%d_%s_%s.png" % (i, rarity, view))).convert("RGB")
+                board.paste(shot.resize((w, w), Image.LANCZOS), (j * w, 44 + rang.height + k * w))
+            draw.text((j * w + 8, 44 + rang.height + 4), "%s (%d)" % (rarity, len(models[zone][rarity]["boxes"])),
+                      fill=(40, 40, 40), font=small)
+        name = (zone or "_sans_biome").replace(" ", "")
+        save_jpg(board, os.path.join(PREVIEWS, name + ".jpg"), limit_kb=900)
     print("[blocs] rendus en %.0f s -> %s" % (time.time() - t0, os.path.relpath(PREVIEWS, ROOT)))
 
 
@@ -186,17 +214,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--export", action="store_true", help="seulement l'export Luau")
     ap.add_argument("--stills", action="store_true", help="seulement les rendus de contrôle")
+    ap.add_argument("zone", nargs="?", help="rendus d'une seule zone (nom ou début du nom)")
     a = ap.parse_args()
     models = blocks.models()
-    biomes = blocks.biomes()
-    for rarity, m in models.items():
-        print("[blocs] %-14s %3d pièces" % (rarity, len(m["boxes"])))
-    for zone, m in biomes.items():
-        print("[blocs] %-14s %3d pièces (décor)" % (zone, len(m["boxes"])))
+    for zone, row in models.items():
+        print("[blocs] %-14s" % (zone or "(sans biome)") + " ".join("%4d" % len(m["boxes"]) for m in row.values()))
+    worst = max(len(m["boxes"]) for row in models.values() for m in row.values())
+    if worst > blocks.BUDGET:
+        raise SystemExit("[blocs] trop de pièces : %d (budget %d)" % (worst, blocks.BUDGET))
     if not a.stills:
-        export(models, biomes)
+        export(models)
     if not a.export:
-        stills(models, biomes)
+        stills(models, a.zone)
 
 
 if __name__ == "__main__":
