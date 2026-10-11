@@ -20,13 +20,17 @@
 --   Secret     étoile à 12 branches, 3 cercles au-dessus de la tête, poussière arc-en-ciel, tout en arc-en-ciel
 -- Couleur : Config.Rarity.Info[rareté].Color (la même que les blocs de fossiles).
 --
--- Rendu : cercles dessinés en SurfaceGui (anneaux UIStroke, traits, runes en texte) sur une pièce plate invisible,
+-- Rendu : cercles dessinés en SurfaceGui (anneaux UIStroke, traits, runes en texte) sur des pièces plates invisibles,
 -- particules, voile et rayons avec les textures intégrées de Roblox (rbxasset://textures/particles/...) : aucun asset
 -- uploadé.
+-- Fluidité : chaque calque qui tourne est une pièce avec son propre dessin, et c'est la pièce qui tourne (BulkMoveTo à
+-- chaque image) : aucun SurfaceGui n'est redessiné en jeu (sauf l'onde de choc, le temps de l'onde), le dessin ne
+-- scintille pas en tournant. Rayons, volutes et particules sont animés par la carte graphique.
 -- Une seule boucle (RenderStepped) pour toutes les auras, niveau de détail selon la distance à la caméra (tout de près,
--- moins de particules à mi-distance, cercle et rayon seuls au loin, rien au-delà de la portée de la rareté), pas
--- d'animation hors de l'écran. Contours (Highlight) et lumières (PointLight) prêtés seulement aux auras les plus proches
--- (MAX_OUTLINES et MAX_LIGHTS au plus).
+-- moins de particules à mi-distance, cercle et rayon seuls au loin, rien au-delà de la portée de la rareté), avec une
+-- marge pour ne pas clignoter d'un niveau à l'autre, pas d'animation hors de l'écran, moins de particules par aura quand
+-- beaucoup sont proches (CROWD). Contours (Highlight) et lumières (PointLight) prêtés seulement aux auras les plus
+-- proches (MAX_OUTLINES et MAX_LIGHTS au plus).
 -- ViewportFrame (Viewport = true) : ni SurfaceGui, ni particules, ni Beam n'y sont rendus, l'aura y est un anneau de
 -- briques.
 
@@ -139,6 +143,10 @@ local WHITE = Color3.new(1, 1, 1)
 local CANVAS = 512 -- pixels de la SurfaceGui d'un cercle (étirée sur la pièce)
 local MARGIN = 1.45 -- la pièce du cercle au sol fait MARGIN x son diamètre (place pour l'onde de choc)
 local LIFT = 0.07 -- hauteur du cercle au-dessus du sol (studs)
+local LAYER_GAP = 0.012 -- studs entre deux calques du cercle au sol (le plus haut est dessiné par-dessus)
+local LOD_MARGIN = 1.08 -- pour repasser à un niveau de détail plus proche, il faut être 8 % plus près que la limite
+local CROWD = 14 -- auras proches et à l'écran au-delà desquelles chacune émet moins de particules
+local CROWD_MIN = 0.35 -- part des particules gardée au plus fort de la foule
 local HALO_TILT = math.rad(24) -- cercles au-dessus de la tête penchés vers la caméra
 local MAX_OUTLINES, MAX_LIGHTS = 6, 8
 local OUTLINE_DIST, LIGHT_DIST = 90, 70 -- studs (multipliés par la taille de l'aura)
@@ -155,8 +163,8 @@ local VEIL_STEP = 1.6 -- studs entre deux rubans du voile
 local RUNES = { "Γ", "Δ", "Θ", "Λ", "Ξ", "Π", "Σ", "Φ", "Ψ", "Ω", "δ", "ζ", "θ", "λ", "ξ", "π", "φ", "ψ", "ω", "β" }
 
 type Palette = { Main: Color3, Light: Color3, Hot: Color3, Accent: Color3 }
-type Layer = { Gui: Frame, Speed: number }
-type Halo = { Part: Part, Radius: number, Lift: number }
+type Layer = { Part: Part, Speed: number, Lift: number } -- calque du cercle au sol : une pièce qui tourne sur elle-même
+type Halo = { Part: Part, Radius: number, Lift: number, Speed: number }
 type Orbiter = { Part: Part, Trail: Trail, Tilt: CFrame, Phase: number, Speed: number, Wobble: number }
 
 export type Handle = {
@@ -179,7 +187,8 @@ export type Handle = {
 	Intensity: number,
 	Lit: boolean, -- lumière colorée prêtée quand l'aura est proche
 	Layers: { Layer },
-	Sigil: Part?,
+	ShockPart: Part?, -- onde de choc dessinée : sa propre pièce, son dessin montré seulement pendant l'onde
+	ShockGui: SurfaceGui?,
 	ShockRing: Frame?,
 	ShockStroke: UIStroke?,
 	ShockT: number, -- temps depuis la dernière onde (> 1 : rien en cours)
@@ -217,6 +226,7 @@ local outlines: { Highlight } = {}
 local lights: { PointLight } = {}
 local seed = 0
 local poolClock = 0
+local crowd = 1 -- part des particules émises (1, ou moins quand beaucoup d'auras sont proches)
 local started = false
 
 -- ====================================================================== couleurs
@@ -408,8 +418,9 @@ type Spec = {
 	Rng: Random,
 }
 
--- Dessine un cercle magique dans `gui` ; renvoie ses calques qui tournent
-local function drawCircle(gui: SurfaceGui, spec: Spec): { Layer }
+-- Dessine un cercle magique : chaque calque (Outer, Inner, Crown) va dans le SurfaceGui que renvoie canvas(nom, vitesse)
+-- (le même pour tous, ou un par calque quand chacun tourne à sa vitesse sur sa propre pièce)
+local function drawCircle(spec: Spec, canvas: (name: string, speed: number) -> Instance)
 	local tier, c = spec.Tier, spec.Colors
 	local rc, pps = spec.Radius, spec.Pps
 	local center = Vector2.new(CANVAS / 2, CANVAS / 2)
@@ -424,11 +435,9 @@ local function drawCircle(gui: SurfaceGui, spec: Spec): { Layer }
 	local function tint(angle: number, color: Color3): Color3
 		return if tier.Rainbow then hue(angle / (2 * math.pi)):Lerp(WHITE, 0.25) else color
 	end
-	local layers: { Layer } = {}
 	local spin = tier.Spin
 
-	local outer = layer(gui, "Outer")
-	table.insert(layers, { Gui = outer, Speed = spin })
+	local outer = layer(canvas("Outer", spin), "Outer")
 	-- voile coloré sous tout le cercle : il se lit de loin, même quand les traits sont trop fins pour l'écran
 	disc(outer, center, rc, c.Main, spec.Fill, 0)
 	ring(outer, rc, px(0.085, 0.3), c.Main, 0.62, 1, bow)
@@ -453,8 +462,7 @@ local function drawCircle(gui: SurfaceGui, spec: Spec): { Layer }
 	end
 
 	if spec.Rings >= 3 then
-		local inner = layer(gui, "Inner")
-		table.insert(layers, { Gui = inner, Speed = -1.6 * spin })
+		local inner = layer(canvas("Inner", -1.6 * spin), "Inner")
 		local ri = rc * 0.6
 		ring(inner, ri, px(0.07, 0.26), c.Main, 0.66, 1, bow)
 		ring(inner, ri, px(0.02, 0.09), c.Light, 0, 3, bow)
@@ -476,8 +484,7 @@ local function drawCircle(gui: SurfaceGui, spec: Spec): { Layer }
 	end
 
 	if spec.Crown > 0 then
-		local crown = layer(gui, "Crown")
-		table.insert(layers, { Gui = crown, Speed = -0.7 * spin })
+		local crown = layer(canvas("Crown", -0.7 * spin), "Crown")
 		local rr = rc * 1.12
 		ring(crown, rr, px(0.01, 0.05), c.Light, 0.3, 1, bow)
 		for i = 1, spec.Crown do
@@ -496,7 +503,6 @@ local function drawCircle(gui: SurfaceGui, spec: Spec): { Layer }
 			f.Parent = crown
 		end
 	end
-	return layers
 end
 
 -- ====================================================================== particules et rayons
@@ -702,35 +708,46 @@ local function flatCFrame(position: Vector3): CFrame
 	return CFrame.new(position)
 end
 
+-- Pièce à plat en `at`, tournée de `angle` autour de la verticale (= CFrame.new(at) * CFrame.Angles(0, angle, 0), en
+-- une seule construction : appelé pour chaque calque à chaque image)
+local function spun(at: Vector3, angle: number): CFrame
+	local c, s = math.cos(angle), math.sin(angle)
+	return CFrame.new(at.X, at.Y, at.Z, c, 0, s, 0, 1, 0, -s, 0, c)
+end
+
+-- Cercle au sol : un calque par pièce (« Circle » dessous, puis « CircleInner » et « CircleCrown »), chacun tourne à sa
+-- vitesse ; l'onde de choc a la sienne, par-dessus
 local function buildSigil(a: Handle)
 	local tier = a.Tier
 	local size = 2 * a.Radius * MARGIN
-	local part = newPart("Circle", Vector3.new(size, 0.05, size), a.Folder)
-	local gui = surface(part, Enum.NormalId.Top, tier.Bright, a.Range)
 	seed += 1
-	for _, l in
-		drawCircle(gui, {
-			Tier = tier,
-			Colors = a.Colors,
-			Radius = CANVAS / 2 / MARGIN,
-			Pps = CANVAS / size,
-			Runes = tier.Runes,
-			Star = tier.Star,
-			Crown = tier.Crown,
-			Rings = tier.Rings,
-			Dots = tier.Dots,
-			Fill = 0.88 - 0.02 * tier.Rank,
-			Rng = Random.new(seed),
-		})
-	do
-		table.insert(a.Layers, l)
-	end
+	drawCircle({
+		Tier = tier,
+		Colors = a.Colors,
+		Radius = CANVAS / 2 / MARGIN,
+		Pps = CANVAS / size,
+		Runes = tier.Runes,
+		Star = tier.Star,
+		Crown = tier.Crown,
+		Rings = tier.Rings,
+		Dots = tier.Dots,
+		Fill = 0.88 - 0.02 * tier.Rank,
+		Rng = Random.new(seed),
+	}, function(name: string, speed: number): Instance
+		local part = newPart(if name == "Outer" then "Circle" else "Circle" .. name, Vector3.new(size, 0.05, size), a.Folder)
+		table.insert(a.Layers, { Part = part, Speed = speed, Lift = LIFT + #a.Layers * LAYER_GAP })
+		return surface(part, Enum.NormalId.Top, tier.Bright, a.Range)
+	end)
 	-- onde de choc dessinée (avec l'anneau doux en particules)
+	local shockPart = newPart("Shock", Vector3.new(size, 0.05, size), a.Folder)
+	local gui = surface(shockPart, Enum.NormalId.Top, tier.Bright, a.Range)
+	gui.Enabled = false
 	local shock = ring(gui, CANVAS / 2 / MARGIN, 10, a.Colors.Hot, 1, 5, if tier.Rainbow then rainbow() else nil)
 	shock.Name = "Shock"
+	a.ShockPart = shockPart
+	a.ShockGui = gui
 	a.ShockRing = shock
 	a.ShockStroke = shock:FindFirstChildOfClass("UIStroke")
-	a.Sigil = part
 end
 
 local function buildHalos(a: Handle, count: number)
@@ -754,14 +771,20 @@ local function buildHalos(a: Handle, count: number)
 			Fill = 0.8,
 			Rng = Random.new(seed + 100 + i),
 		}
-		-- visible de dessus et de dessous (la caméra passe souvent sous les cercles)
+		-- visible de dessus et de dessous (la caméra passe souvent sous les cercles) ; c'est la pièce qui tourne, un
+		-- cercle sur deux dans l'autre sens
 		for _, face in { Enum.NormalId.Top, Enum.NormalId.Bottom } do
 			local gui = surface(part, face, tier.Bright, a.Range)
-			for _, l in drawCircle(gui, spec) do
-				table.insert(a.Layers, { Gui = l.Gui, Speed = l.Speed * (if i % 2 == 0 then -1.3 else 1.5) })
-			end
+			drawCircle(spec, function(): Instance
+				return gui
+			end)
 		end
-		table.insert(a.Halos, { Part = part, Radius = radius, Lift = math.clamp(0.14 * h, 0.8, 4) + i * math.clamp(0.22 * h, 0.9, 5) })
+		table.insert(a.Halos, {
+			Part = part,
+			Radius = radius,
+			Lift = math.clamp(0.14 * h, 0.8, 4) + i * math.clamp(0.22 * h, 0.9, 5),
+			Speed = tier.Spin * (if i % 2 == 0 then -1.3 else 1.5),
+		})
 	end
 end
 
@@ -875,22 +898,30 @@ end
 
 -- ====================================================================== niveau de détail
 
+-- Débit des particules selon le niveau de détail (et la foule d'auras proches)
+local function lodRate(lod: number): number
+	return if lod == 0 then 1 elseif lod == 1 then 0.5 else 0
+end
+
 local function setEmitters(a: Handle, factor: number)
 	for i, e in a.Emitters do
-		local rate = a.Rates[i] * factor
+		local rate = a.Rates[i] * factor * crowd
 		e.Enabled = rate > 0 or e == a.Shock
 		e.Rate = rate
 	end
 end
 
 local function setVisible(a: Handle, sigil: boolean, halos: boolean, beams: boolean)
-	local sigilPart = a.Sigil
-	if sigilPart then
-		for _, gui in sigilPart:GetChildren() do
+	for _, l in a.Layers do
+		for _, gui in l.Part:GetChildren() do
 			if gui:IsA("SurfaceGui") then
 				gui.Enabled = sigil
 			end
 		end
+	end
+	local shockGui = a.ShockGui
+	if shockGui and not sigil then
+		shockGui.Enabled = false
 	end
 	for _, halo in a.Halos do
 		for _, gui in halo.Part:GetChildren() do
@@ -918,17 +949,12 @@ end
 
 local function applyLod(a: Handle, lod: number)
 	a.Lod = lod
-	if lod == 0 then
-		setEmitters(a, 1)
-		setVisible(a, true, true, true)
-	elseif lod == 1 then
-		setEmitters(a, 0.5)
+	setEmitters(a, lodRate(lod))
+	if lod <= 1 then
 		setVisible(a, true, true, true)
 	elseif lod == 2 then
-		setEmitters(a, 0)
 		setVisible(a, true, false, true)
 	else
-		setEmitters(a, 0)
 		setVisible(a, false, false, false)
 	end
 	-- voile : de près et à mi-distance, ses volutes de près seulement
@@ -952,8 +978,8 @@ local function startShock(a: Handle)
 end
 
 local function stepShock(a: Handle, dt: number)
-	local frame, stroke = a.ShockRing, a.ShockStroke
-	if not (frame and stroke) or a.ShockT > 1 then
+	local frame, stroke, gui = a.ShockRing, a.ShockStroke, a.ShockGui
+	if not (frame and stroke and gui) or a.ShockT > 1 then
 		return
 	end
 	a.ShockT += dt / 0.85
@@ -966,6 +992,8 @@ local function stepShock(a: Handle, dt: number)
 	frame.Size = UDim2.fromOffset(d, d)
 	stroke.Thickness = thick
 	stroke.Transparency = if k >= 1 then 1 else 0.1 + 0.9 * k * k
+	-- (le seul dessin refait en jeu : seulement le temps de l'onde, caché le reste du temps)
+	gui.Enabled = k < 1 and a.Lod <= 2
 end
 
 local function pivotOf(a: Handle): CFrame?
@@ -979,6 +1007,18 @@ end
 local moveParts: { BasePart } = {}
 local moveCFrames: { CFrame } = {}
 
+-- Niveau de détail à `dist` studs de la caméra : 0 tout, 1 moins de particules, 2 cercle et rayon, 3 rien
+local function lodAt(dist: number, range: number): number
+	if dist > range then
+		return 3
+	elseif dist > range * 0.7 then
+		return 2
+	elseif dist > range * 0.38 then
+		return 1
+	end
+	return 0
+end
+
 local function stepAura(a: Handle, dt: number, camPos: Vector3, cam: Camera?)
 	local pivot = pivotOf(a)
 	if not pivot then
@@ -991,12 +1031,10 @@ local function stepAura(a: Handle, dt: number, camPos: Vector3, cam: Camera?)
 	if not a.Viewport then
 		local dist = (ground - camPos).Magnitude
 		a.Dist = dist
-		if dist > a.Range then
-			lod = 3
-		elseif dist > a.Range * 0.7 then
-			lod = 2
-		elseif dist > a.Range * 0.38 then
-			lod = 1
+		lod = lodAt(dist, a.Range)
+		-- (pour se rapprocher, une marge : une aura juste à la limite ne clignote pas d'un niveau à l'autre)
+		if lod < a.Lod then
+			lod = math.max(lod, lodAt(dist * LOD_MARGIN, a.Range))
 		end
 		local onScreen = true
 		if cam and lod < 3 then
@@ -1015,26 +1053,39 @@ local function stepAura(a: Handle, dt: number, camPos: Vector3, cam: Camera?)
 	if lod == 3 then
 		return
 	end
-	-- cercles qui tournent, onde de choc
-	if a.OnScreen then
-		local t = a.Clock
+	local t = a.Clock
+	local moved = a.Moved
+	local follow = not moved or (moved - ground).Magnitude > 0.01
+	if follow then
+		a.Moved = ground
+	end
+	-- calques du cercle au sol : chaque pièce tourne sur elle-même (à l'écran, à chaque image ; hors de l'écran,
+	-- seulement pour suivre la cible)
+	if a.OnScreen or follow then
 		for _, l in a.Layers do
-			l.Gui.Rotation = math.deg(t * l.Speed) % 360
+			table.insert(moveParts, l.Part)
+			table.insert(moveCFrames, spun(ground + Vector3.new(0, l.Lift, 0), t * l.Speed))
 		end
+	end
+	-- onde de choc ; contour arc-en-ciel (à chaque image : pas de saut de couleur)
+	if a.OnScreen then
 		if a.Tier.Shock > 0 and t >= a.NextShock then
 			a.NextShock = t + a.Tier.Shock
 			startShock(a)
 		end
 		stepShock(a, dt)
+		local outline = a.Outline
+		if outline and a.Tier.Rainbow then
+			outline.FillColor = hue(t * 0.15)
+			outline.OutlineColor = hue(t * 0.15 + 0.5):Lerp(WHITE, 0.3)
+		end
 	end
-	-- cercle au sol et cœur des particules : suivent le pivot
-	local moved = a.Moved
-	if not moved or (moved - ground).Magnitude > 0.01 then
-		a.Moved = ground
-		local sigil = a.Sigil
-		if sigil then
-			table.insert(moveParts, sigil)
-			table.insert(moveCFrames, flatCFrame(ground + Vector3.new(0, LIFT, 0)))
+	-- onde de choc et cœur des particules : suivent le pivot
+	if follow then
+		local shockPart = a.ShockPart
+		if shockPart then
+			table.insert(moveParts, shockPart)
+			table.insert(moveCFrames, flatCFrame(ground + Vector3.new(0, LIFT + 3.5 * LAYER_GAP, 0)))
 		end
 		if a.Viewport then
 			-- (ViewportFrame : hors de Workspace, pas de BulkMoveTo)
@@ -1091,7 +1142,7 @@ local function stepAura(a: Handle, dt: number, camPos: Vector3, cam: Camera?)
 			end
 			for _, halo in a.Halos do
 				table.insert(moveParts, halo.Part)
-				table.insert(moveCFrames, CFrame.new(smooth + Vector3.new(0, halo.Lift, 0)) * tilt)
+				table.insert(moveCFrames, CFrame.new(smooth + Vector3.new(0, halo.Lift, 0)) * tilt * CFrame.Angles(0, t * halo.Speed, 0))
 			end
 		end
 		local root = a.PillarRoot
@@ -1109,7 +1160,6 @@ local function stepAura(a: Handle, dt: number, camPos: Vector3, cam: Camera?)
 			local look = pivot.LookVector
 			local frame = CFrame.new(ground + Vector3.new(0, a.Height * 0.5, 0)) * CFrame.Angles(0, math.atan2(-look.X, -look.Z), 0)
 			local fx, fz = a.Footprint.X, a.Footprint.Y
-			local t = a.Clock
 			for _, o in a.Orbiters do
 				local angle = o.Phase + t * o.Speed
 				local offset = Vector3.new(math.cos(angle) * fx, math.sin(t * 1.7 + o.Wobble) * 0.15 * a.Height, math.sin(angle) * fz)
@@ -1204,12 +1254,20 @@ local function assignPools()
 			a.Light = l
 		end
 	end
-	-- arc-en-ciel : le contour change de couleur
+	-- foule : au-delà de CROWD auras proches à l'écran, chacune émet moins (le total de particules reste borné)
+	local near = 0
 	for _, a in auras do
-		local outline = a.Outline
-		if outline and a.Tier.Rainbow then
-			outline.FillColor = hue(a.Clock * 0.15)
-			outline.OutlineColor = hue(a.Clock * 0.15 + 0.5):Lerp(WHITE, 0.3)
+		if not a.Dead and not a.Viewport and a.Lod >= 0 and a.Lod <= 1 and a.OnScreen then
+			near += 1
+		end
+	end
+	local target = math.clamp(CROWD / math.max(near, 1), CROWD_MIN, 1)
+	if math.abs(target - crowd) > 0.04 or (target == 1 and crowd ~= 1) then
+		crowd = target
+		for _, a in auras do
+			if not a.Dead and a.Lod >= 0 and a.Lod <= 1 then
+				setEmitters(a, lodRate(a.Lod))
+			end
 		end
 	end
 end
@@ -1325,7 +1383,8 @@ function Aura.Attach(model: Instance, options: Options): Handle?
 		Intensity = math.clamp(options.Intensity or 1, 0, 1),
 		Lit = tier.Light > 0 and options.Light ~= false,
 		Layers = {},
-		Sigil = nil,
+		ShockPart = nil,
+		ShockGui = nil,
 		ShockRing = nil,
 		ShockStroke = nil,
 		ShockT = 2,

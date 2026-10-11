@@ -1,7 +1,9 @@
 -- Auras de rareté (src/client/Aura) : cercles magiques des dinos (DinoAnimController) et des blocs de fossiles
 -- (AuraController, branché sur FossilBlockController.SetAura). Ce que montre chaque rareté, l'aura qui suit sa cible,
--- niveau de détail selon la distance, contours et lumières prêtés (plafonnés), onde de choc, ViewportFrame, nettoyage ;
--- valeurs hostiles (rareté inconnue, rien pour placer l'aura, pivot qui plante, tailles absurdes).
+-- niveau de détail selon la distance (avec marge), contours et lumières prêtés (plafonnés), onde de choc, fluidité (les
+-- pièces tournent, jamais les dessins ; contour arc-en-ciel à chaque image ; moins de particules dans la foule),
+-- ViewportFrame, nettoyage ; valeurs hostiles (rareté inconnue, rien pour placer l'aura, pivot qui plante, tailles
+-- absurdes).
 local T = require("./testkit")
 local env = T.env
 
@@ -91,6 +93,9 @@ for i, rarity in RARITIES do
 		T.check(circle ~= nil and count(circle, "SurfaceGui") == 1, rarity .. " : cercle magique au sol")
 		T.check(circle ~= nil and count(circle, "UIStroke") >= tier.Rings, rarity .. " : anneaux du cercle")
 		T.eq(circle and count(circle, "TextLabel", "Rune"), tier.Runes, rarity .. " : runes du cercle au sol")
+		T.eq(folder:FindFirstChild("CircleInner") ~= nil, tier.Rings >= 3, rarity .. " : calque intérieur sur sa propre pièce")
+		T.eq(folder:FindFirstChild("CircleCrown") ~= nil, tier.Crown > 0, rarity .. " : couronne sur sa propre pièce")
+		T.check(folder:FindFirstChild("Shock") ~= nil, rarity .. " : onde de choc sur sa propre pièce")
 		T.eq(count(folder, "BasePart", "HeadCircle"), tier.Halos, rarity .. " : cercles au-dessus de la tête")
 		T.eq(count(folder, "BasePart", "Comet"), tier.Orbiters, rarity .. " : comètes")
 		T.eq(count(folder, "Beam", "Pillar"), if tier.Pillar then 1 else 0, rarity .. " : rayon de lumière")
@@ -168,6 +173,23 @@ T.check(guisEnabled(common.Circle), "de près : cercle visible")
 T.eq(secretPillar.Enabled, true, "de près : rayon visible")
 T.eq(find(secret.Aura, "ParticleEmitter", "Motes").Enabled, true, "de près : particules")
 T.eq(secretWisp.Enabled, true, "de près : volutes du voile")
+-- marge (Secret : volutes de près seulement, limite à 38 % de 332,5 = 126 studs)
+local function cameraAt(dist: number)
+	camera.CFrame = CFrame.new(roots.Secret.Position + Vector3.new(0, 0, dist))
+	env.advance(0.1)
+end
+cameraAt(130)
+T.eq(secretWisp.Enabled, false, "juste au-delà de la limite : volutes cachées")
+cameraAt(122)
+T.eq(secretWisp.Enabled, false, "juste en deçà : pas encore (marge, l'aura ne clignote pas à la limite)")
+cameraAt(112)
+T.eq(secretWisp.Enabled, true, "8 % plus près que la limite : volutes montrées")
+cameraAt(124)
+T.eq(secretWisp.Enabled, true, "en reculant jusqu'à la limite : toujours montrées")
+cameraAt(129)
+T.eq(secretWisp.Enabled, false, "passé la limite en reculant : cachées")
+camera.CFrame = CFrame.new(0, 12, 40)
+env.advance(0.3)
 
 T.section("voile qui suit sa cible")
 local veilFoot = secret.Aura:FindFirstChild("Veil")
@@ -186,8 +208,54 @@ T.check((env.particlesEmitted[motes] or 0) > emitted, "Pulse : gerbe d'étincell
 env.advance(0.3)
 local shockRing = find(secret.Aura, "Frame", "Shock")
 T.check(shockRing ~= nil, "onde de choc dessinée dans le cercle")
+-- (Legendary : pas d'onde régulière, seulement sur Pulse)
+local legendShock = models.Legendary.Aura.Shock:FindFirstChildOfClass("SurfaceGui")
+T.eq(legendShock.Enabled, false, "au repos : dessin de l'onde caché (rien à redessiner)")
+Aura.Pulse(handles.Legendary)
+env.advance(0.3)
+T.eq(legendShock.Enabled, true, "pendant l'onde : dessin montré")
+env.advance(0.7)
+T.eq(legendShock.Enabled, false, "onde finie : dessin caché")
 
-T.section("contours et lumières prêtés")
+T.section("fluidité : les pièces tournent, jamais les dessins")
+local outerPart, innerPart = secret.Aura.Circle, secret.Aura.CircleInner
+local function turn(before: any, after: any): number
+	-- angle (signé) dont la pièce a tourné autour de la verticale
+	local l0, l1 = before.LookVector, after.LookVector
+	local d = (math.atan2(-l1.X, -l1.Z) - math.atan2(-l0.X, -l0.Z)) % (2 * math.pi)
+	return if d > math.pi then d - 2 * math.pi else d
+end
+local outer0, inner0 = outerPart.CFrame, innerPart.CFrame
+env.advance(env.frame)
+local outerTurn, innerTurn = turn(outer0, outerPart.CFrame), turn(inner0, innerPart.CFrame)
+T.check(math.abs(outerTurn) > 1e-4, "cercle au sol : la pièce tourne à chaque image")
+T.check(outerTurn * innerTurn < 0, "calque intérieur : tourne dans l'autre sens")
+T.check(innerPart.Position.Y > outerPart.Position.Y, "calques empilés (l'intérieur par-dessus)")
+local headCircle = secret.Aura.HeadCircle
+local head0 = headCircle.CFrame
+env.advance(env.frame)
+T.check(headCircle.CFrame.RightVector:Dot(head0.RightVector) < 0.99999, "cercle de tête : la pièce tourne")
+T.near(headCircle.CFrame.UpVector:Dot(head0.UpVector), 1, 1e-4, "cercle de tête : toujours penché vers la caméra")
+env.advance(0.5)
+local turned = 0
+for _, f in secret.Aura:GetDescendants() do
+	if f:IsA("Frame") and (f.Name == "Outer" or f.Name == "Inner" or f.Name == "Crown") and f.Rotation ~= 0 then
+		turned += 1
+	end
+end
+T.eq(turned, 0, "dessins jamais tournés (aucun SurfaceGui redessiné à chaque image)")
+local outline = find(secret.Aura, "Highlight", "AuraOutline")
+T.check(outline ~= nil, "Secret de près : contour")
+if outline then
+	local c0 = outline.FillColor
+	env.advance(env.frame)
+	local c1 = outline.FillColor
+	T.check(math.abs(c1.R - c0.R) + math.abs(c1.G - c0.G) + math.abs(c1.B - c0.B) > 0, "contour arc-en-ciel : change à chaque image")
+end
+
+T.section("contours et lumières prêtés, foule")
+local secretMotes = find(secret.Aura, "ParticleEmitter", "Motes")
+local fullRate = secretMotes.Rate
 local crowd = {}
 for k = 1, 12 do
 	local model, root = holder("Crowd" .. k, Vector3.new(-30 + k * 5, 0.5, 20))
@@ -198,9 +266,12 @@ local outlinesUsed = count(workspace, "Highlight", "AuraOutline")
 local lightsUsed = count(workspace, "PointLight", "AuraLight")
 T.check(outlinesUsed > 0 and outlinesUsed <= 6, "contours : au plus 6 (" .. outlinesUsed .. ")")
 T.check(lightsUsed > 0 and lightsUsed <= 8, "lumières : au plus 8 (" .. lightsUsed .. ")")
+T.check(secretMotes.Rate < fullRate * 0.9 and secretMotes.Rate >= fullRate * 0.35 - 1e-6, "foule de 19 auras proches : moins de particules par aura")
 for _, h in crowd do
 	Aura.Detach(h)
 end
+env.advance(0.6)
+T.near(secretMotes.Rate, fullRate, 1e-6, "foule partie : toutes les particules reviennent")
 for _, rarity in RARITIES do
 	Aura.Detach(handles[rarity])
 	T.eq(models[rarity]:FindFirstChild("Aura"), nil, rarity .. " : Detach enlève le dossier")
