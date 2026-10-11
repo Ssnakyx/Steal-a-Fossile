@@ -1,5 +1,5 @@
 --!strict
--- Test FossilDebug de la map (brief 10) : points d'ancrage des 8 parcs et des 8 zones (docs/BOUCLE.md), décor non
+-- Test FossilDebug de la map (brief 10) : points d'ancrage des parcs et des 8 zones (docs/BOUCLE.md), décor non
 -- collidable, budgets de lumières et de pièces, chemin dégagé (raycasts le long de l'axe de chaque zone), enseigne du
 -- parc du joueur. Lancer pendant un Play : game.ServerScriptService.FossilDebug:Invoke("map")
 

@@ -3,16 +3,18 @@
 -- et budgets (lumières, décor). La map est construite par src/server/Map/MapBuilder.luau au démarrage du serveur, avec
 -- les points d'ancrage nommés lus par PlotService et ZoneService (docs/BOUCLE.md, docs/MAP.md).
 --
--- Repère : le sol est à Y = GroundTop. Les 8 parcs sont alignés sur X, leur entrée tournée vers +Z ; la place du spawn
+-- Repère : le sol est à Y = GroundTop. Les 5 parcs (serveurs de 5 joueurs) sont alignés sur X, leur entrée tournée vers +Z ; la place du spawn
 -- s'étend devant eux (Z de 0 à Plaza.Depth), puis la route part vers +Z, zone 1 (Beach) d'abord.
 
 local Map = {
 	Seed = 20261011, -- graine du décor : la même map à chaque démarrage
 	GroundTop = 1, -- hauteur du dessus du sol
 
-	-- Parcs : Count parcs côte à côte (Plot1 à gauche, X négatif), Gap studs de haie entre deux parcs
+	-- Parcs : Count parcs côte à côte (Plot1 à gauche, X négatif), Gap studs de haie entre deux parcs. Un parc par joueur :
+	-- Count = nombre de joueurs max du serveur (à régler aussi sur Roblox : Creator Hub, Places, Max Players).
+	-- Avec un nombre impair, le parc du milieu est en face de la route.
 	Plots = {
-		Count = 8,
+		Count = 5,
 		Width = 80, -- sur X
 		Depth = 120, -- sur Z (l'entrée est au bord Z = 0, le fond à Z = -Depth)
 		Gap = 12,
@@ -22,7 +24,7 @@ local Map = {
 	-- Place du spawn devant les parcs (pavés, lampadaires, panneau de la route)
 	Plaza = {
 		Depth = 70, -- de Z = 0 (entrées des parcs) au début de la route
-		Margin = 26, -- studs de place en plus à gauche du parc 1 et à droite du parc 8
+		Margin = 26, -- studs de place en plus à gauche du premier parc et à droite du dernier
 		Back = 40, -- forêt derrière les parcs (fond du décor)
 	},
 

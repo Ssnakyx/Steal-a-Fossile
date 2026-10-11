@@ -1,5 +1,5 @@
 --!strict
--- Construction de la map (brief 10) : Workspace.Map avec les 8 parcs (Plots), la place du spawn (Spawn), les 8 zones de
+-- Construction de la map (brief 10) : Workspace.Map avec les 5 parcs (Plots, Config.Map.Plots.Count), la place du spawn (Spawn), les 8 zones de
 -- la route (Zones, une par module de Map/Zones), les murs invisibles de la route et la falaise de fin. Les noms des
 -- points d'ancrage sont ceux que lisent PlotService et ZoneService (docs/BOUCLE.md). La map est la même à chaque
 -- démarrage (graine Config.Map.Seed). Lancée par MapService ; Build({ Yield = true }) laisse respirer Studio entre
