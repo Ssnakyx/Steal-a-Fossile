@@ -353,17 +353,22 @@ function FusionService.Fuse(player: Player, ids: any, options: FuseOptions?): (b
 	if not p then
 		return false, problem or "Error", nil
 	end
-	local result = p.Result
-	if not result then
-		return false, "Unknown recipe! Your dinos are safe. Try another pair.", nil
-	end
+	-- (place et argent vérifiés avant la recette : sinon la réponse dirait si une paire est une recette sans la payer)
 	-- (enclos au-dessus de sa taille, ne devrait pas arriver : le dino obtenu doit avoir sa place une fois les autres partis)
 	if EnclosureService.Count(player) - #p.Inputs + 1 > EnclosureService.Slots(player) then
 		return false, "Your enclosure is too full!", nil
 	end
 	local cost = if free then 0 else p.Cost
+	local tooPoor = "Not enough money! Fusion costs " .. Format.Money(cost) .. "."
+	if cost > 0 and not MoneyService.CanAfford(player, cost) then
+		return false, tooPoor, nil
+	end
+	local result = p.Result
+	if not result then
+		return false, "Unknown recipe! Your dinos are safe. Try another pair.", nil
+	end
 	if cost > 0 and not MoneyService.Spend(player, cost, "Fusion") then
-		return false, "Not enough money! Fusion costs " .. Format.Money(cost) .. ".", nil
+		return false, tooPoor, nil
 	end
 	-- (tout est vérifié : aucune attente entre ici et la fin, deux demandes ne fusionnent jamais les mêmes dinos)
 	local removed: { Dino } = {}

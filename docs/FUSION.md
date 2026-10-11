@@ -14,7 +14,8 @@ Le joueur utilise le labo de son parc (`ProximityPrompt` « Fuse » sur la pièc
 - **Hybride** : 2 dinos d'espèces différentes. Si la paire est une recette (dans les deux sens), ils donnent la chimère
   de la recette, avec la meilleure taille et la meilleure mutation des deux, au plus petit de leurs niveaux. Revenu de
   base de l'hybride : (A + B) x 1,5. Sinon : « Unknown recipe! Your dinos are safe. Try another pair. », rien ne bouge
-  et rien n'est payé.
+  et rien n'est payé (il faut quand même avoir de quoi payer : sans argent, la réponse est « Not enough money » pour
+  toutes les paires, pour ne pas trahir les recettes).
 - **Coût** d'une fusion réussie : 60 s (Upgrade) ou 120 s (Hybride) du revenu des dinos utilisés, au moins $50.
 - **Où** : seulement dans son propre parc (le serveur vérifie la position du personnage).
 - Le dino obtenu arrive dans l'enclos en rugissant (état `Roar`). Un hybride fusionné pour la première fois est
@@ -22,7 +23,9 @@ Le joueur utilise le labo de son parc (`ProximityPrompt` « Fuse » sur la pièc
 
 Secret des recettes : un aperçu d'hybride pas encore découvert renvoie toujours « ??? », que la recette existe ou non.
 La clé replica `Hybrids` ne donne que les indices avant la découverte. Le nom, la clé de la chimère et les parents
-n'arrivent chez le client qu'une fois l'hybride découvert.
+n'arrivent chez le client qu'une fois l'hybride découvert. Seule exception, voulue : un hybride posé dans un parc est visible
+par tout le serveur (son étiquette porte son nom, son modèle la clé de la chimère), comme tous les dinos ; voir celui
+d'un autre joueur donne donc une piste (son apparence la donnerait de toute façon).
 
 ## Recettes (12 au lancement)
 
