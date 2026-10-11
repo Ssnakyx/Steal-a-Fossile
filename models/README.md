@@ -87,7 +87,12 @@ StreamingEnabled : le proxy peut arriver sans sa pièce Root, ou la perdre au lo
 pièce arrive et le défait quand elle repart (`tools/luau_tests/t_dino_stream.luau`).
 Pour un ViewportFrame (Index) : `DinoBuilder.Build(...)`, attribut `AlwaysAnimate = true`, `DinoAnimController.Register`.
 Tailles (`DinoBuilder.Sizes`) : Small 0,75, Normal 1, Big 1,5, Huge 2,5 ; option `Scale` en plus (gardiens x1,5 à x3).
-Mutations Amber, Crystal, Lava et niveaux Golden, Diamond : couleurs et matières dans `DinoBuilder` (première version,
-le brief blocs-hybrides affine Golden et Diamond).
+Mutations Amber, Crystal, Lava et niveaux Golden, Diamond : couleurs et matières dans `DinoBuilder`. Golden et Diamond
+(brief 9, comparés dans Studio) : Golden est une statue d'or en Foil (dégradé d'or qui garde les motifs de l'espèce),
+Diamond un cristal cyan à reflet avec un tiers de facettes en verre et quelques petits éclats Neon. Planche :
+`python models/hybrids/render.py --levels`.
+
+Blocs de fossiles (un bloc de roche en briques par rareté, décor du biome) : `models/blocks/README.md`. Chimères de la
+fusion : `models/hybrids/README.md`.
 
 Ajouter une espèce : voir `models/BRIEF.md`.
