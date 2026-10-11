@@ -381,7 +381,8 @@ function ReviveService.Reveal(player: Player, rawSlot: any): (boolean, string)
 		Income = IncomeService.DinoIncome(dino),
 	})
 	Signals.Fire("DinoRevived", player, id, dino, tank.Rarity)
-	return true, "You revived a " .. EnclosureService.DisplayName(dino) .. "!"
+	local name = EnclosureService.DisplayName(dino)
+	return true, "You revived " .. Format.Article(name) .. " " .. name .. "!"
 end
 
 -- Achète la cuve suivante. Renvoie (ok, texte).

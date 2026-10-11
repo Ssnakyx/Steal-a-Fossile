@@ -213,10 +213,9 @@ local function track(model: Model)
 		Conns = {},
 	}
 	tracked[model] = t
-	local function dirty(inst: Instance)
-		if inst:IsA("BasePart") then
-			t.Dirty = true
-		end
+	-- (briques faites ou défaites : DinoAnimController construit et retire tout un modèle de briques d'un coup)
+	local function dirty()
+		t.Dirty = true
 	end
 	table.insert(t.Conns, model.DescendantAdded:Connect(dirty))
 	table.insert(t.Conns, model.DescendantRemoving:Connect(dirty))
@@ -274,6 +273,10 @@ local function spawnCube(t: Tracked, scale: number)
 	local fx = t.Effect
 	local bricks = t.Bricks
 	local brick = bricks[rng:NextInteger(1, #bricks)]
+	if not brick.Parent then
+		t.Dirty = true -- (briques défaites depuis le dernier inventaire)
+		return
+	end
 	local part = takePart()
 	local size = math.clamp(fx.Size * scale, 0.18, 1.6)
 	part.Size = Vector3.new(size, size, size)

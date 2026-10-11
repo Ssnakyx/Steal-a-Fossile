@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Economy = require(ReplicatedStorage.Shared.Config.Economy)
 local Zones = require(ReplicatedStorage.Shared.Config.Zones)
+local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Notify = require(script.Parent.Parent.Lib.Notify)
 local Signals = require(script.Parent.Parent.Lib.Signals)
@@ -37,10 +38,12 @@ function MutationService.AnnounceText(player: Player, dino: EnclosureService.Din
 	if not info or info.Chance > Economy.MutationAnnounce then
 		return nil
 	end
+	local name = EnclosureService.DisplayName(dino)
 	return string.format(
-		"%s revived a %s! %s mutation: %s, x%s income",
+		"%s revived %s %s! %s mutation: %s, x%s income",
 		player.DisplayName,
-		EnclosureService.DisplayName(dino),
+		Format.Article(name),
+		name,
 		info.Name,
 		MutationService.Odds(info),
 		number(info.Income)

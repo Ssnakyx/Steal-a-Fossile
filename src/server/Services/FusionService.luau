@@ -408,7 +408,7 @@ function FusionService.Fuse(player: Player, ids: any, options: FuseOptions?): (b
 	if isNew then
 		return true, "New hybrid discovered: " .. name .. "!", info
 	end
-	return true, "You made a " .. name .. "!", info
+	return true, "You made " .. Format.Article(name) .. " " .. name .. "!", info
 end
 
 -- ===================================================================== labo du parc
