@@ -83,6 +83,8 @@ et visibles font vivre les cubes et les paillettes.
 `DinoAnimController` (client) anime tout modèle tagué `Dino` : fondus de 0,2 s, variantes d'Idle au hasard, cadence plus
 lente pour les gros, animation complète près de la caméra, cadence réduite au loin, figée hors de vue ou très loin.
 `DinoAnimController.Event` signale les pas, rugissements et impacts des dinos proches (effets du brief vfx).
+StreamingEnabled : le proxy peut arriver sans sa pièce Root, ou la perdre au loin ; le client construit le dino quand la
+pièce arrive et le défait quand elle repart (`tools/luau_tests/t_dino_stream.luau`).
 Pour un ViewportFrame (Index) : `DinoBuilder.Build(...)`, attribut `AlwaysAnimate = true`, `DinoAnimController.Register`.
 Tailles (`DinoBuilder.Sizes`) : Small 0,75, Normal 1, Big 1,5, Huge 2,5 ; option `Scale` en plus (gardiens x1,5 à x3).
 Mutations Amber, Crystal, Lava et niveaux Golden, Diamond : couleurs et matières dans `DinoBuilder` (première version,
