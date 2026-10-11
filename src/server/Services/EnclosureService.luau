@@ -5,6 +5,8 @@
 -- (PrimaryPart), attributs Species (nom du module de src/shared/DinoModels), Scale, Mutation, Level ("Normal",
 -- "Golden", "Diamond"), State, StateAt, plus DinoId et OwnerUserId. Si l'espèce a son module DinoModels, le client
 -- (DinoAnimController) construit et anime les briques ; sinon un dino provisoire en quelques briques est posé ici.
+-- Espèces assemblées en jeu (hybrides du brief 8) : FusionService les déclare avec RegisterSpecies (modèle, taille de base,
+-- rareté), comme une fiche de Config.Species.
 -- Clés replica « Dinos » ({ [id]: { Species, Size, Mutation, Level, Income } }) et « EnclosureSlots ».
 -- Remote BuyEnclosure (et ProximityPrompt « Expand » sur l'enclos).
 -- Signaux : DinoAdded(player, id, dino), DinoRemoved(player, id, dino)
@@ -28,6 +30,9 @@ local PlotService = require(script.Parent.PlotService)
 local ReplicaService = require(script.Parent.ReplicaService)
 
 export type Dino = { Species: string, Size: string, Mutation: string, Level: number, Got: number }
+-- Espèce sans fiche Config.Species (hybride) : Model = attribut Species du modèle (clé HybridBuilder), HasModel = le
+-- client sait construire ses briques, Rarity = rareté affichée (effets de DinoAnimController)
+export type SpeciesLook = { Model: string, BaseSize: number, HasModel: boolean, Rarity: string? }
 
 local EnclosureService = {}
 
@@ -51,6 +56,7 @@ type Pen = {
 }
 
 local pens: { [Player]: Pen } = {}
+local looks: { [string]: SpeciesLook } = {}
 
 local function rateText(income: number): string
 	if income < 10 then
@@ -78,8 +84,34 @@ function EnclosureService.DisplayName(dino: Dino): string
 	return table.concat(parts, " ")
 end
 
--- Nom du module DinoModels d'une espèce (Config.Species.Model, sinon le nom sans espaces ni tirets : T-Rex -> TRex)
+-- Déclare une espèce assemblée en jeu (hybride du brief 8, appelé dans l'Init de FusionService)
+function EnclosureService.RegisterSpecies(species: string, look: SpeciesLook)
+	if type(species) ~= "string" or type(look) ~= "table" or type(look.Model) ~= "string" then
+		error("EnclosureService.RegisterSpecies : espèce ou modèle invalide", 2)
+	end
+	if not Guard.IsFinite(look.BaseSize) or look.BaseSize <= 0 then
+		error("EnclosureService.RegisterSpecies : taille de base invalide", 2)
+	end
+	looks[species] = table.clone(look)
+end
+
+-- Taille de base (studs) d'une espèce : Config.Species, sinon RegisterSpecies, sinon une taille par défaut
+local function baseSize(species: string): number
+	local info = IncomeService.SpeciesInfo(species)
+	if info and Guard.IsFinite(info.BaseSize) and info.BaseSize > 0 then
+		return info.BaseSize
+	end
+	local look = looks[species]
+	return if look then look.BaseSize else DEFAULT_SIZE
+end
+
+-- Nom du module DinoModels d'une espèce (Config.Species.Model, sinon le nom sans espaces ni tirets : T-Rex -> TRex) ;
+-- pour un hybride, sa clé HybridBuilder (RegisterSpecies)
 function EnclosureService.ModelName(species: string): string
+	local look = looks[species]
+	if look then
+		return look.Model
+	end
 	local info = IncomeService.SpeciesInfo(species)
 	if info and type(info.Model) == "string" then
 		return info.Model
@@ -87,7 +119,11 @@ function EnclosureService.ModelName(species: string): string
 	return (string.gsub(species, "[^%w]", ""))
 end
 
-local function hasDinoModel(moduleName: string): boolean
+local function hasDinoModel(species: string, moduleName: string): boolean
+	local look = looks[species]
+	if look then
+		return look.HasModel
+	end
 	local folder = ReplicatedStorage.Shared:FindFirstChild("DinoModels")
 	local module = folder and folder:FindFirstChild(moduleName)
 	return module ~= nil and module:IsA("ModuleScript")
@@ -192,9 +228,9 @@ end
 
 -- Dino provisoire en briques (espèce sans module DinoModels) : corps, tête vers -Z, queue, pattes
 local function buildPlaceholder(model: Model, dino: Dino, base: CFrame, scale: number)
-	local info = IncomeService.SpeciesInfo(dino.Species)
-	local b = (if info and Guard.IsFinite(info.BaseSize) and info.BaseSize > 0 then info.BaseSize else DEFAULT_SIZE) * scale
-	local rarity = Rarity.Info[Rarity.Species[dino.Species] or ""]
+	local b = baseSize(dino.Species) * scale
+	local look = looks[dino.Species]
+	local rarity = Rarity.Info[Rarity.Species[dino.Species] or (look and look.Rarity) or ""]
 	local color = if rarity then rarity.Color else Color3.fromRGB(120, 160, 110)
 	placeholderPart("Body", Vector3.new(0.4, 0.35, 0.75) * b, Vector3.new(0, 0.45, 0) * b, base, color, dino, model)
 	placeholderPart("Head", Vector3.new(0.3, 0.28, 0.32) * b, Vector3.new(0, 0.72, -0.45) * b, base, color, dino, model)
@@ -278,9 +314,12 @@ local function spawnModel(player: Player, pen: Pen, id: string, dino: Dino, stat
 	model:SetAttribute("StateAt", Workspace:GetServerTimeNow())
 	model:SetAttribute("DinoId", id)
 	model:SetAttribute("OwnerUserId", player.UserId)
-	local info = IncomeService.SpeciesInfo(dino.Species)
-	local height = (if info and Guard.IsFinite(info.BaseSize) and info.BaseSize > 0 then info.BaseSize else DEFAULT_SIZE) * scale
-	if not hasDinoModel(moduleName) then
+	local look = looks[dino.Species]
+	if look and look.Rarity then
+		model:SetAttribute("Rarity", look.Rarity)
+	end
+	local height = baseSize(dino.Species) * scale
+	if not hasDinoModel(dino.Species, moduleName) then
 		buildPlaceholder(model, dino, base, scale)
 		height *= 0.9
 	end
