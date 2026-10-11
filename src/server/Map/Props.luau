@@ -1,7 +1,9 @@
 --!strict
 -- Décor de la map en studs (brief 10) : arbres, plantes, rochers, objets du camp et des gisements. Chaque fonction
 -- construit un modèle de décor (non collidable) posé sur `cf` (pied du modèle, -Z = avant), à l'échelle `s`, et le
--- range dans `parent`. `pal` remplace les couleurs par défaut (Trunk, Leaf, Rock, Snow...).
+-- range dans `parent`. `pal` remplace les couleurs par défaut (Trunk, Leaf, Rock, Snow...). Les objets lumineux sont en
+-- Neon translucide (ils brillent avec le bloom, sans PointLight) ; les objets flottants portent le tag de
+-- Config.Ambience.Float (montés, descendus et tournés chez les joueurs par AmbienceController).
 
 local Kit = require(script.Parent.Kit)
 
@@ -292,6 +294,234 @@ function Props.lavaRock(parent: Instance, cf: CFrame, s: number, rng: Random, pa
 	prop(m, Vector3.new(w * 0.55, h * 0.7, w * 0.5), base * CFrame.new(-w * 0.15, h * 1.25, 0), shade(stone, -0.12))
 	local crack = prop(m, Vector3.new(w * 0.8, 0.2, 0.4 * s), base * CFrame.new(0, h + 0.05, w * 0.15), glow, Enum.Material.Neon)
 	crack.Transparency = 0.1
+	return finish(m, parent)
+end
+
+-- ===================================================================== lumineux et flottants
+
+local TAU = math.pi * 2
+
+-- Pièce de décor lumineuse (Neon translucide)
+local function neon(parent: Instance, size: Vector3, cframe: CFrame, c: Color3, transparency: number): Part
+	local part = prop(parent, size, cframe, c, Enum.Material.Neon)
+	part.Transparency = transparency
+	return part
+end
+
+-- Couleurs de cristal de la palette : Crystal, Crystal2, Crystal3, Crystal4 (au moins une)
+local function crystalColors(pal: Palette?, default: Color3): { Color3 }
+	local list = { color(pal, "Crystal", default) }
+	for _, key in { "Crystal2", "Crystal3", "Crystal4" } do
+		local value = pal and pal[key]
+		if value then
+			table.insert(list, value)
+		end
+	end
+	return list
+end
+
+-- Pointe de cristal lumineuse posée sur `foot` (bas de la pointe) : prisme tourné d'un huitième de tour et pointe
+-- plus claire en deux étages
+local function shard(m: Model, foot: CFrame, w: number, h: number, c: Color3)
+	local f = foot * CFrame.Angles(0, math.pi / 4, 0)
+	neon(m, Vector3.new(w, h, w), f * CFrame.new(0, h / 2, 0), c, 0.3)
+	neon(m, Vector3.new(w * 0.64, w * 0.9, w * 0.64), f * CFrame.new(0, h + w * 0.45, 0), shade(c, -0.3), 0.15)
+	neon(m, Vector3.new(w * 0.3, w * 0.7, w * 0.3), f * CFrame.new(0, h + w * 1.25, 0), shade(c, -0.55), 0.05)
+end
+
+-- Grappe de cristaux lumineux : 3 à 5 pointes penchées vers l'extérieur, de 1 à 4 couleurs (pal.Crystal, Crystal2,
+-- Crystal3, Crystal4), sur un socle de roche (pal.Rock)
+function Props.glowCrystal(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("GlowCrystal")
+	local colors = crystalColors(pal, rgb(170, 100, 255))
+	local rock = color(pal, "Rock", rgb(70, 64, 80))
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	prop(m, Vector3.new(3.6, 0.8, 3) * s, base * CFrame.new(0, 0.4 * s, 0), rock)
+	prop(m, Vector3.new(1.8, 0.6, 1.6) * s, base * CFrame.new(1.5 * s, 0.3 * s, 1.1 * s), shade(rock, -0.12))
+	local first = rng:NextInteger(1, #colors)
+	for k = 0, rng:NextInteger(3, 5) - 1 do
+		local c = colors[(first + k - 1) % #colors + 1]
+		local main = k == 0
+		local h = (if main then Kit.range(rng, 4.6, 6.2) else Kit.range(rng, 2.2, 4)) * s
+		local w = (if main then 1.4 else Kit.range(rng, 0.8, 1.1)) * s
+		local a = k * 2.3 + rng:NextNumber() * 0.5
+		local r = if main then 0 else Kit.range(rng, 0.9, 1.4) * s
+		local tilt = if main then rad(Kit.range(rng, -4, 4)) else rad(Kit.range(rng, 15, 30))
+		local foot = base * CFrame.new(math.cos(a) * r, 0.5 * s, math.sin(a) * r) * CFrame.fromAxisAngle(Vector3.new(-math.sin(a), 0, math.cos(a)), -tilt)
+		shard(m, foot, w, h, c)
+	end
+	return finish(m, parent)
+end
+
+-- Champignons lumineux : chapeau Neon (pal.Cap) en croix, pied pâle, un point clair
+function Props.glowShroom(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("GlowShroom")
+	local cap = color(pal, "Cap", rgb(80, 230, 255))
+	for k = 1, rng:NextInteger(2, 3) do
+		local scale = s * (if k == 1 then 1 else Kit.range(rng, 0.45, 0.7))
+		local a = k * 2.1 + rng:NextNumber()
+		local r = if k == 1 then 0 else 1.7 * s
+		local foot = cf * CFrame.new(math.cos(a) * r, 0, math.sin(a) * r) * CFrame.Angles(rad(Kit.range(rng, -8, 8)), 0, rad(Kit.range(rng, -8, 8)))
+		local h = 2.6 * scale
+		prop(m, Vector3.new(0.8 * scale, h, 0.8 * scale), foot * CFrame.new(0, h / 2, 0), rgb(236, 230, 214))
+		neon(m, Vector3.new(3 * scale, 0.8 * scale, 1.9 * scale), foot * CFrame.new(0, h + 0.3 * scale, 0), cap, 0.15)
+		neon(m, Vector3.new(1.9 * scale, 0.8 * scale, 3 * scale), foot * CFrame.new(0, h + 0.3 * scale, 0), shade(cap, 0.08), 0.15)
+		neon(m, Vector3.new(1.6 * scale, 0.5 * scale, 1.6 * scale), foot * CFrame.new(0, h + 0.95 * scale, 0), shade(cap, -0.2), 0.1)
+		neon(m, Vector3.new(0.45, 0.2, 0.45) * scale, foot * CFrame.new(0.5 * scale, h + 1.25 * scale, 0.3 * scale), rgb(255, 255, 255), 0)
+	end
+	return finish(m, parent)
+end
+
+-- Géode : rocher fendu en deux moitiés penchées, l'intérieur sombre tapissé de cristaux lumineux
+function Props.geode(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Geode")
+	local rock = color(pal, "Rock", rgb(150, 92, 62))
+	local colors = crystalColors(pal, rgb(255, 170, 50))
+	local base = cf * CFrame.Angles(0, rng:NextNumber() * TAU, 0)
+	for _, side in { -1, 1 } do
+		local half = base * CFrame.new(side * 1.9 * s, 0, 0) * CFrame.Angles(0, 0, -side * rad(10))
+		local stone = if side < 0 then rock else shade(rock, 0.08)
+		prop(m, Vector3.new(2.8, 1.6, 4.4) * s, half * CFrame.new(side * 0.2 * s, 0.8 * s, 0), stone)
+		prop(m, Vector3.new(2.4, 1.4, 3.8) * s, half * CFrame.new(side * 0.4 * s, 2.3 * s, 0), shade(stone, -0.06))
+		prop(m, Vector3.new(1.6, 1.2, 2.6) * s, half * CFrame.new(side * 0.6 * s, 3.6 * s, 0), shade(stone, 0.05))
+		prop(m, Vector3.new(0.3, 3.2, 3.4) * s, half * CFrame.new(-side * 1.15 * s, 1.9 * s, 0), shade(rock, 0.5))
+		for k = 1, 3 do
+			local c = colors[(k + (if side < 0 then 0 else 1) - 1) % #colors + 1]
+			local spot = half * CFrame.new(-side * 1.3 * s, (0.8 + k * 0.8) * s, (k - 2) * 1.1 * s)
+			neon(m, Vector3.new(0.6, 1.5, 0.6) * s, spot * CFrame.Angles(0, 0, side * rad(Kit.range(rng, 60, 80))) * CFrame.new(0, 0.5 * s, 0), c, 0.15)
+		end
+	end
+	return finish(m, parent)
+end
+
+-- Feu follet : lueur qui flotte au-dessus du sol (pal.Glow)
+function Props.wisp(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Wisp")
+	local c = color(pal, "Glow", rgb(170, 255, 120))
+	local center = cf * CFrame.new(0, Kit.range(rng, 3, 5.5) * s, 0)
+	local shell = neon(m, Vector3.new(1.6, 1.6, 1.6) * s, center, c, 0.6)
+	neon(m, Vector3.new(0.9, 0.9, 0.9) * s, center * CFrame.Angles(math.pi / 4, math.pi / 4, 0), shade(c, -0.4), 0)
+	neon(m, Vector3.new(0.4, 0.4, 0.4) * s, center * CFrame.new(0.9 * s, -0.8 * s, 0.3 * s), c, 0.2)
+	Kit.float(m, shell, Kit.range(rng, 0.8, 1.4), Kit.range(rng, 0.9, 1.5), Kit.range(rng, 0.6, 1.2))
+	return finish(m, parent)
+end
+
+-- Méduse lumineuse qui flotte entre deux eaux (pal.Glow)
+function Props.jellyfish(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Jellyfish")
+	local c = color(pal, "Glow", rgb(255, 130, 220))
+	local center = cf * CFrame.new(0, Kit.range(rng, 7, 13) * s, 0)
+	local bell = neon(m, Vector3.new(3.2, 1.2, 3.2) * s, center, c, 0.35)
+	neon(m, Vector3.new(2.2, 0.8, 2.2) * s, center * CFrame.new(0, 0.95 * s, 0), shade(c, -0.25), 0.3)
+	neon(m, Vector3.new(3.6, 0.3, 3.6) * s, center * CFrame.new(0, -0.6 * s, 0), shade(c, 0.1), 0.45)
+	for k = 0, 3 do
+		local a = k * math.pi / 2 + math.pi / 4
+		local h = Kit.range(rng, 2.4, 4) * s
+		neon(m, Vector3.new(0.3 * s, h, 0.3 * s), center * CFrame.new(math.cos(a) * 0.9 * s, -0.6 * s - h / 2, math.sin(a) * 0.9 * s), shade(c, -0.15), 0.4)
+	end
+	Kit.float(m, bell, Kit.range(rng, 1.2, 2), Kit.range(rng, 0.6, 1), Kit.range(rng, 0.1, 0.25))
+	return finish(m, parent)
+end
+
+-- Anémone de mer lumineuse : pied (pal.Coral), tentacules Neon (pal.Glow)
+function Props.anemone(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("Anemone")
+	local c = color(pal, "Glow", rgb(90, 240, 255))
+	local foot = color(pal, "Coral", rgb(120, 60, 140))
+	prop(m, Vector3.new(2.4, 1.2, 2.4) * s, cf * CFrame.new(0, 0.6 * s, 0), foot)
+	prop(m, Vector3.new(1.8, 0.6, 1.8) * s, cf * CFrame.new(0, 1.5 * s, 0) * CFrame.Angles(0, math.pi / 4, 0), shade(foot, -0.1))
+	for k = 0, 6 do
+		local a = k * TAU / 7 + rng:NextNumber() * 0.3
+		local h = Kit.range(rng, 1.4, 2.4) * s
+		local root = cf * CFrame.new(math.cos(a) * 0.7 * s, 1.6 * s, math.sin(a) * 0.7 * s) * CFrame.fromAxisAngle(Vector3.new(-math.sin(a), 0, math.cos(a)), -rad(25))
+		neon(m, Vector3.new(0.3 * s, h, 0.3 * s), root * CFrame.new(0, h / 2, 0), if k % 2 == 0 then c else shade(c, 0.15), 0.2)
+	end
+	return finish(m, parent)
+end
+
+-- Éclat de cristal qui flotte et tourne lentement (losange en 5 blocs, pal.Crystal)
+function Props.floatShard(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("FloatShard")
+	local c = color(pal, "Crystal", rgb(170, 100, 255))
+	local center = cf * CFrame.new(0, Kit.range(rng, 8, 15) * s, 0)
+	local turn = CFrame.Angles(0, math.pi / 4, 0)
+	local core = neon(m, Vector3.new(1.6, 2.6, 1.6) * s, center * turn, c, 0.25)
+	for _, side in { -1, 1 } do
+		neon(m, Vector3.new(1.1, 1.4, 1.1) * s, center * CFrame.new(0, side * 2 * s, 0) * turn, shade(c, if side > 0 then -0.25 else -0.1), 0.15)
+		neon(m, Vector3.new(0.5, 1, 0.5) * s, center * CFrame.new(0, side * 3.1 * s, 0) * turn, shade(c, if side > 0 then -0.5 else -0.3), 0.05)
+	end
+	Kit.float(m, core, Kit.range(rng, 1, 2), Kit.range(rng, 0.6, 1.1), Kit.range(rng, 0.3, 0.7) * (if rng:NextNumber() < 0.5 then -1 else 1))
+	return finish(m, parent)
+end
+
+-- Squelette fossile à demi enterré (pal.Bone) : colonne de vertèbres à épines, côtes en arcs de 3 blocs de chaque côté,
+-- plus hautes au milieu ; le crâne est à part (Props.skull)
+function Props.ribcage(parent: Instance, cf: CFrame, s: number, _rng: Random, pal: Palette?): Model
+	local m = Kit.group("Ribcage")
+	local bone = color(pal, "Bone", rgb(236, 226, 198))
+	local count = 6
+	local spacing = 3 * s
+	local sink = cf * CFrame.new(0, -1.2 * s, 0)
+	for k = 0, count - 1 do
+		local z = (k - (count - 1) / 2) * spacing
+		local middle = 1 - math.abs(k - (count - 1) / 2) / count
+		local height = (6 + middle * 3) * s
+		local width = (4.2 + middle * 1.6) * s
+		local tone = if k % 2 == 0 then bone else shade(bone, 0.08)
+		prop(m, Vector3.new(1.4 * s, 1.2 * s, spacing * 0.8), sink * CFrame.new(0, height, z), tone)
+		prop(m, Vector3.new(0.6 * s, 1.3 * s, 0.6 * s), sink * CFrame.new(0, height + 1.2 * s, z), shade(bone, 0.12))
+		for _, side in { -1, 1 } do
+			local points = {
+				Vector3.new(side * 0.6 * s, height, z),
+				Vector3.new(side * width * 0.72, height * 0.86, z),
+				Vector3.new(side * width, height * 0.48, z),
+				Vector3.new(side * width * 0.92, 0, z),
+			}
+			for index = 1, 3 do
+				local a, b = points[index], points[index + 1]
+				local length = (b - a).Magnitude + 0.6 * s
+				prop(m, Vector3.new(0.9 * s, 0.9 * s, length), sink * CFrame.lookAt((a + b) / 2, b), tone)
+			end
+		end
+	end
+	return finish(m, parent)
+end
+
+-- Crâne fossile en blocs (pal.Bone), à demi enterré, tourné vers -Z : boîte crânienne, museau, orbites, mâchoire, dents
+function Props.skull(parent: Instance, cf: CFrame, s: number, _rng: Random, pal: Palette?): Model
+	local m = Kit.group("Skull")
+	local bone = color(pal, "Bone", rgb(236, 226, 198))
+	local dark = rgb(60, 50, 44)
+	local base = cf * CFrame.new(0, -0.6 * s, 0)
+	prop(m, Vector3.new(4.4, 3.4, 4.4) * s, base * CFrame.new(0, 2.4 * s, 1 * s), bone)
+	prop(m, Vector3.new(3.2, 2.2, 4.6) * s, base * CFrame.new(0, 1.9 * s, -3.2 * s), shade(bone, 0.06))
+	prop(m, Vector3.new(2.4, 1, 2.4) * s, base * CFrame.new(0, 3.5 * s, -2.6 * s), shade(bone, -0.06))
+	prop(m, Vector3.new(3, 0.8, 5.4) * s, base * CFrame.new(0, 0.5 * s, -1.6 * s), shade(bone, 0.12))
+	for _, side in { -1, 1 } do
+		prop(m, Vector3.new(0.3, 1.3, 1.5) * s, base * CFrame.new(side * 2.25 * s, 2.9 * s, 0.4 * s), dark)
+		prop(m, Vector3.new(0.3, 0.6, 0.9) * s, base * CFrame.new(side * 1.65 * s, 1.5 * s, -4.4 * s), dark)
+		for k = 0, 1 do
+			prop(m, Vector3.new(0.4, 0.8, 0.4) * s, base * CFrame.new(side * 1.3 * s, 1.1 * s, (-4.6 + k * 1.3) * s), rgb(250, 246, 236))
+		end
+	end
+	return finish(m, parent)
+end
+
+-- Mare de lave : disque Neon, rebord de basalte, deux pierres
+function Props.lavaPool(parent: Instance, cf: CFrame, s: number, rng: Random, pal: Palette?): Model
+	local m = Kit.group("LavaPool")
+	local stone = color(pal, "Rock", rgb(46, 40, 42))
+	local lava = color(pal, "Glow", rgb(255, 112, 32))
+	for _, part in Kit.disc(m, cf * CFrame.new(0, 0.05, 0), 3.6 * s, 0.25, lava, Enum.Material.Neon) do
+		part.Transparency = 0.05
+	end
+	for k = 0, 7 do
+		local ring = cf * CFrame.Angles(0, k * math.pi / 4, 0)
+		prop(m, Vector3.new(3.2 * s, Kit.range(rng, 0.6, 1.1), 1.4), ring * CFrame.new(0, 0.35, -3.9 * s), if k % 2 == 0 then stone else shade(stone, -0.1))
+	end
+	for k = 0, 1 do
+		prop(m, Vector3.new(1.6, 0.6, 1.4) * s, cf * CFrame.new((k * 2 - 1) * 1.2 * s, 0.35, (k - 0.5) * 1.6 * s) * CFrame.Angles(0, rng:NextNumber(), 0), shade(stone, 0.1))
+	end
 	return finish(m, parent)
 end
 

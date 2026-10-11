@@ -1,6 +1,8 @@
 --!strict
 -- Zone 8 : Meteor Crater. Sol violet sombre, le gardien dort au fond du grand cratère (rebord en escalier, fissures
--- lumineuses), une météorite géante à demi enterrée, petits cratères, cristaux lumineux, aiguilles et rochers.
+-- lumineuses), une météorite géante à demi enterrée, petits cratères, cristaux lumineux, aiguilles et rochers ; éclats
+-- de cristal qui flottent au-dessus du grand cratère, flèche de cristaux géants, cristaux de toutes les couleurs et
+-- quelques-uns en or au sol, sur les falaises et sortant des parois.
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -12,6 +14,8 @@ local shade = Kit.shade
 local ROCK = rgb(66, 54, 84)
 local GREEN = rgb(70, 230, 120)
 local PURPLE = rgb(160, 90, 255)
+local STAR_GLOW = { Crystal = rgb(190, 110, 255), Crystal2 = rgb(90, 220, 255), Crystal3 = rgb(255, 120, 220), Crystal4 = rgb(120, 255, 170), Rock = ROCK }
+local GOLD = { Crystal = rgb(255, 214, 90), Crystal2 = rgb(255, 180, 60), Rock = ROCK }
 
 local function glow(parent: Instance, size: Vector3, cframe: CFrame, color: Color3): Part
 	local part = Kit.prop(parent, size, cframe, color, Enum.Material.Neon)
@@ -93,6 +97,22 @@ local function landmark(info: ZoneBase.Info)
 			made += 1
 		end
 	end
+	-- éclats de cristal qui flottent au-dessus du rebord du grand cratère
+	local colors = { STAR_GLOW.Crystal, STAR_GLOW.Crystal2, STAR_GLOW.Crystal3, STAR_GLOW.Crystal4 }
+	for k = 0, 7 do
+		local a = k * math.pi / 4 + math.pi / 8
+		local at = CFrame.new(math.cos(a) * 31, gt, z + math.sin(a) * 31)
+		Props.floatShard(info.Decor, at, Kit.range(rng, 0.9, 1.3), rng, { Crystal = colors[k % #colors + 1] })
+	end
+	-- flèche de cristaux géants
+	local spire = ZoneBase.Spot(info, 16, 50, 76, 0.15, 0.4, 1)
+	if spire then
+		Props.glowCrystal(info.Decor, CFrame.new(spire), 3.2, rng, STAR_GLOW)
+		for k = 0, 1 do
+			local a = k * math.pi + rng:NextNumber()
+			Props.glowCrystal(info.Decor, CFrame.new(spire + Vector3.new(math.cos(a) * 9, 0, math.sin(a) * 9)), 1.8, rng, if k == 0 then GOLD else STAR_GLOW)
+		end
+	end
 end
 
 local theme: ZoneBase.Theme = {
@@ -118,6 +138,12 @@ local theme: ZoneBase.Theme = {
 		{ Prop = Props.boulder, Count = 7, Radius = 6, XMin = 40, Pal = { Rock = rgb(80, 64, 96) } },
 		{ Prop = Props.lavaRock, Count = 10, Radius = 4, Pal = { Rock = rgb(44, 38, 52), Glow = GREEN } },
 		{ Prop = Props.crystals, Count = 8, Radius = 4, XMin = 104, XMax = 122, Scale = { 1.4, 2 }, Pal = { Crystal = PURPLE, Glow = GREEN, Rock = ROCK } },
+		{ Prop = Props.glowCrystal, Count = 12, Radius = 3.5, Scale = { 0.7, 1.2 }, Pal = STAR_GLOW },
+		{ Prop = Props.glowCrystal, Count = 4, Radius = 3.5, Scale = { 0.7, 1 }, Pal = GOLD },
+		{ Prop = Props.glowCrystal, Count = 6, Radius = 4, XMin = 104, XMax = 122, Scale = { 1.3, 1.8 }, Pal = STAR_GLOW },
+	},
+	Wall = {
+		{ Prop = Props.glowCrystal, Count = 10, Radius = 0, Scale = { 0.6, 1.1 }, Pal = STAR_GLOW },
 	},
 }
 

@@ -2,11 +2,16 @@
 -- Test FossilDebug de la map (brief 10) : points d'ancrage des parcs et des 8 zones (docs/BOUCLE.md), décor non
 -- collidable, budgets de lumières et de pièces, chemin dégagé (raycasts le long de l'axe de chaque zone), enseigne du
 -- parc du joueur. Lancer pendant un Play : game.ServerScriptService.FossilDebug:Invoke("map")
+-- Test « ambience » : une ambiance pour la place et chaque zone (Config.Ambience), effets de Lighting posés une seule
+-- fois par le serveur, décor flottant valide et inerte, décor lumineux dans chaque zone. Ce que voit le joueur
+-- (AmbienceController, côté client) se vérifie en marchant d'une zone à l'autre.
 
 local CollectionService = game:GetService("CollectionService")
+local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Ambience = require(ReplicatedStorage.Shared.Config.Ambience)
 local Map = require(ReplicatedStorage.Shared.Config.Map)
 local Zones = require(ReplicatedStorage.Shared.Config.Zones)
 local Services = script.Parent.Parent.Services
@@ -121,5 +126,76 @@ return {
 		else
 			t:Note("no player with a park: sign check skipped")
 		end
+	end,
+
+	ambience = function(t: Tester)
+		-- réglages : la place et chaque zone
+		local missing = {}
+		for _, zone in Zones.List do
+			if not Ambience.Regions[zone.Name] then
+				table.insert(missing, zone.Name)
+			end
+		end
+		t:Check(Ambience.Regions.Plaza ~= nil, "spawn plaza has an ambience")
+		t:Check(#missing == 0, "every zone has an ambience", table.concat(missing, ", "))
+		-- effets de Lighting : un seul de chaque (ceux de la place sont réutilisés)
+		for _, className in { "Atmosphere", "Sky", "BloomEffect", "SunRaysEffect" } do
+			local count = 0
+			for _, child in Lighting:GetChildren() do
+				if child:IsA(className) then
+					count += 1
+				end
+			end
+			t:Equal(count, 1, "Lighting has one " .. className)
+		end
+		local grade = Lighting:FindFirstChild(Ambience.GradeName)
+		t:Check(grade ~= nil and grade:IsA("ColorCorrectionEffect"), "Lighting has the ambience color grade")
+		local terrain = Workspace:FindFirstChildOfClass("Terrain")
+		if terrain then
+			local clouds = terrain:FindFirstChildOfClass("Clouds")
+			t:Check(clouds ~= nil and clouds.Enabled, "terrain clouds are on")
+		end
+		-- décor flottant : modèles de la map, pièce centrale, réglages, aucune collision
+		local map = Workspace:FindFirstChild("Map")
+		local zones = map and map:FindFirstChild("Zones")
+		local tagged = CollectionService:GetTagged(Ambience.Float.Tag)
+		t:Check(#tagged > 0, "floating decor exists", #tagged)
+		local bad = {}
+		for _, item in tagged do
+			local ok = item:IsA("Model") and zones ~= nil and item:IsDescendantOf(zones)
+			if ok and item:IsA("Model") then
+				local core = item.PrimaryPart
+				ok = core ~= nil and core:IsDescendantOf(item)
+				for _, key in { "FloatHeight", "FloatSpeed", "FloatSpin" } do
+					ok = ok and type(item:GetAttribute(key)) == "number"
+				end
+				for _, part in item:GetDescendants() do
+					if part:IsA("BasePart") and (part.CanCollide or part.CanQuery or part.CanTouch) then
+						ok = false
+					end
+				end
+			end
+			if not ok then
+				table.insert(bad, item:GetFullName())
+			end
+		end
+		t:Equal(#bad, 0, "floating decor is valid and inert")
+		if #bad > 0 then
+			t:Note(table.concat(bad, ", ", 1, math.min(#bad, 5)))
+		end
+		-- décor lumineux (cristaux, champignons...) dans chaque zone
+		for _, geo in ZoneService.List() do
+			local decor = geo.Model:FindFirstChild("Decor")
+			local glowing = 0
+			if decor then
+				for _, item in decor:GetDescendants() do
+					if item:IsA("BasePart") and item.Material == Enum.Material.Neon then
+						glowing += 1
+					end
+				end
+			end
+			t:Check(glowing >= 40, geo.Name .. " has glowing decor", glowing)
+		end
+		t:Note("walk through the zones to see each ambience (client side)")
 	end,
 }

@@ -1,6 +1,8 @@
 --!strict
 -- Zone 5 : Glacier. Neige, sentier de glace bleue, falaises de glace, sapins enneigés, pointes de glace, congères,
--- lac gelé avec ses fissures, cascade gelée sur la falaise droite et blocs de glace géants.
+-- lac gelé avec ses fissures, cascade gelée sur la falaise droite et blocs de glace géants ; squelette fossile pris
+-- dans un bloc de glace (le crâne dépasse), bosquet de grands cristaux et cristaux couleur aurore (cyan, menthe,
+-- violet) au sol, sur les falaises et sortant des parois.
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -11,6 +13,41 @@ local shade = Kit.shade
 
 local SNOW = rgb(244, 248, 252)
 local ICE = rgb(170, 216, 242)
+local ICE_GLOW = { Crystal = rgb(110, 236, 255), Crystal2 = rgb(150, 255, 210), Crystal3 = rgb(196, 150, 255), Crystal4 = rgb(236, 250, 255), Rock = rgb(150, 172, 196) }
+local BONE = { Bone = rgb(226, 222, 206) }
+
+-- Squelette fossile pris dans un bloc de glace translucide, le crâne qui dépasse devant, neige dessus, éclats de
+-- glace et cristaux autour
+local function frozenFossil(info: ZoneBase.Info, spot: Vector3)
+	local rng = info.Rng
+	local base = CFrame.new(spot) * CFrame.Angles(0, math.rad(Kit.range(rng, 20, 60)), 0)
+	local block = Kit.solid(Kit.block(info.Ground, Vector3.new(15, 11, 21), base * CFrame.new(0, 5.5, 1.5), rgb(176, 222, 246), Enum.Material.Ice))
+	block.Transparency = 0.5
+	block.CastShadow = false
+	Props.ribcage(info.Decor, base * CFrame.new(0, 1.6, 3), 1, rng, BONE)
+	Props.skull(info.Decor, base * CFrame.new(0, 1.2, -10.5) * CFrame.Angles(math.rad(-6), 0, 0), 1, rng, BONE)
+	Kit.prop(info.Decor, Vector3.new(15.4, 1.2, 21.4), base * CFrame.new(0, 11.4, 1.5), SNOW)
+	Kit.prop(info.Decor, Vector3.new(9, 1, 12), base * CFrame.new(-2, 12.4, 3), shade(SNOW, -0.04))
+	for k = 0, 3 do
+		local a = k * 1.6 + rng:NextNumber() * 0.6
+		local size = Vector3.new(Kit.range(rng, 1.6, 3), Kit.range(rng, 1.2, 2.4), Kit.range(rng, 1.6, 3))
+		Kit.prop(info.Decor, size, base * CFrame.new(math.cos(a) * 11, size.Y / 2, 1.5 + math.sin(a) * 13) * CFrame.Angles(0, a, 0), if k % 2 == 0 then ICE else SNOW)
+	end
+	for _, offset in { Vector3.new(9, 0, 9), Vector3.new(-9.5, 0, -6) } do
+		Props.glowCrystal(info.Decor, base * CFrame.new(offset), Kit.range(rng, 1, 1.3), rng, ICE_GLOW)
+	end
+end
+
+-- Bosquet de grands cristaux lumineux sur un tapis de neige
+local function crystalGrove(info: ZoneBase.Info, spot: Vector3)
+	local rng = info.Rng
+	Kit.disc(info.Decor, CFrame.new(spot) * CFrame.new(0, 0.05, 0), 10, 0.3, shade(SNOW, -0.03))
+	Props.glowCrystal(info.Decor, CFrame.new(spot), 2.2, rng, ICE_GLOW)
+	for k = 0, 4 do
+		local a = k * math.pi * 2 / 5 + rng:NextNumber() * 0.4
+		Props.glowCrystal(info.Decor, CFrame.new(spot + Vector3.new(math.cos(a) * 7, 0, math.sin(a) * 7)), Kit.range(rng, 0.9, 1.4), rng, ICE_GLOW)
+	end
+end
 
 local function archTop(info: ZoneBase.Info, beam: CFrame)
 	for k = -6, 6 do
@@ -56,6 +93,15 @@ local function landmark(info: ZoneBase.Info)
 			Kit.markCircle(info.Grid, x, z, 10)
 		end
 	end
+	-- fossile pris dans la glace (à droite), bosquet de cristaux (à gauche)
+	local fossil = ZoneBase.Spot(info, 15, 44, 76, 0.36, 0.56, 1)
+	if fossil then
+		frozenFossil(info, fossil)
+	end
+	local grove = ZoneBase.Spot(info, 12, 44, 76, 0.76, 0.94, -1)
+	if grove then
+		crystalGrove(info, grove)
+	end
 end
 
 local theme: ZoneBase.Theme = {
@@ -79,6 +125,11 @@ local theme: ZoneBase.Theme = {
 		{ Prop = Props.bush, Count = 16, Radius = 3.5, Pal = { Leaf = SNOW } },
 		{ Prop = Props.rock, Count = 12, Radius = 4, Pal = { Rock = rgb(130, 140, 150) } },
 		{ Prop = Props.crystals, Count = 8, Radius = 3, Pal = { Crystal = rgb(150, 210, 250), Rock = rgb(200, 220, 236) } },
+		{ Prop = Props.glowCrystal, Count = 8, Radius = 3.5, Scale = { 0.7, 1.1 }, Pal = ICE_GLOW },
+		{ Prop = Props.glowCrystal, Count = 4, Radius = 4, XMin = 104, XMax = 122, Scale = { 1.1, 1.5 }, Pal = ICE_GLOW },
+	},
+	Wall = {
+		{ Prop = Props.glowCrystal, Count = 8, Radius = 0, Scale = { 0.6, 1 }, Pal = ICE_GLOW },
 	},
 }
 

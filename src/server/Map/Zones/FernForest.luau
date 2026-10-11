@@ -1,6 +1,7 @@
 --!strict
 -- Zone 2 : Fern Forest. Herbe dense, fougères géantes, cycas, grands arbres, champignons et fleurs, troncs moussus,
--- un ruisseau qui traverse la route (cascade sur la falaise gauche, pierres de gué) et un arbre ancien géant.
+-- un ruisseau qui traverse la route (cascade sur la falaise gauche, pierres de gué), un arbre ancien géant, un cercle
+-- de pierres moussues autour d'un grand cristal émeraude, champignons lumineux (cyan, rose, vert) et petits cristaux.
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -11,6 +12,8 @@ local shade = Kit.shade
 
 local WATER = rgb(74, 166, 214)
 local STONE = rgb(128, 132, 124)
+local MOSS = rgb(96, 158, 70)
+local EMERALD = { Crystal = rgb(60, 232, 122), Crystal2 = rgb(172, 255, 92), Crystal3 = rgb(255, 232, 92), Rock = rgb(96, 104, 92) }
 
 local function archTop(info: ZoneBase.Info, beam: CFrame)
 	local leaf = rgb(70, 150, 58)
@@ -50,6 +53,19 @@ local function landmark(info: ZoneBase.Info)
 	local tx, tz = 72, info.Z0 + info.Length * 0.72
 	Props.bigTree(info.Decor, CFrame.new(tx, gt, tz), 2.2, rng, { Leaf = rgb(58, 132, 54) })
 	Kit.markCircle(info.Grid, tx, tz, 18)
+	-- cercle de pierres moussues autour d'un grand cristal émeraude, côté gauche
+	local spot = ZoneBase.Spot(info, 13, 50, 76, 0.1, 0.3, -1)
+	if spot then
+		local center = CFrame.new(spot)
+		Kit.disc(info.Decor, center * CFrame.new(0, 0.05, 0), 6, 0.2, shade(MOSS, 0.1))
+		for k = 0, 5 do
+			local base = center * CFrame.Angles(0, k * math.pi / 3 + 0.3, 0) * CFrame.new(0, 0, -8.5)
+			local h = Kit.range(rng, 4, 6.5)
+			Kit.prop(info.Decor, Vector3.new(2.4, h, 1.8), base * CFrame.new(0, h / 2, 0), if k % 2 == 0 then STONE else shade(STONE, 0.1))
+			Kit.prop(info.Decor, Vector3.new(2.6, 0.6, 2), base * CFrame.new(0, h + 0.3, 0), MOSS)
+		end
+		Props.glowCrystal(info.Decor, center, 1.6, rng, EMERALD)
+	end
 end
 
 local theme: ZoneBase.Theme = {
@@ -70,8 +86,12 @@ local theme: ZoneBase.Theme = {
 		{ Prop = Props.bigTree, Count = 6, Radius = 8, XMin = 104, XMax = 120, Scale = { 1, 1.3 } },
 		{ Prop = Props.pine, Count = 6, Radius = 5, XMin = 50, Pal = { Leaf = rgb(52, 118, 62) } },
 		{ Prop = Props.pine, Count = 6, Radius = 5, XMin = 104, XMax = 122, Scale = { 1.2, 1.6 } },
+		{ Prop = Props.glowShroom, Count = 3, Radius = 3.5, Pal = { Cap = rgb(80, 230, 255) } },
+		{ Prop = Props.glowShroom, Count = 3, Radius = 3.5, Pal = { Cap = rgb(255, 112, 202) } },
+		{ Prop = Props.glowShroom, Count = 3, Radius = 3.5, Pal = { Cap = rgb(172, 255, 92) } },
+		{ Prop = Props.glowCrystal, Count = 5, Radius = 3.5, Scale = { 0.6, 0.9 }, Pal = EMERALD },
 		{ Prop = Props.cycad, Count = 10, Radius = 5 },
-		{ Prop = Props.fern, Count = 30, Radius = 4, Scale = { 0.8, 1.4 } },
+		{ Prop = Props.fern, Count = 26, Radius = 4, Scale = { 0.8, 1.4 } },
 		{ Prop = Props.bush, Count = 12, Radius = 3.5 },
 		{ Prop = Props.log, Count = 5, Radius = 5 },
 		{ Prop = Props.mushroom, Count = 10, Radius = 2.5 },

@@ -3,12 +3,13 @@
 -- la route (Zones, une par module de Map/Zones), les murs invisibles de la route et la falaise de fin. Les noms des
 -- points d'ancrage sont ceux que lisent PlotService et ZoneService (docs/BOUCLE.md). La map est la même à chaque
 -- démarrage (graine Config.Map.Seed). Lancée par MapService ; Build({ Yield = true }) laisse respirer Studio entre
--- deux zones (aperçu en mode édition).
+-- deux zones (aperçu en mode édition). Lighting() pose l'ambiance de la place (Config.Ambience).
 
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Ambience = require(ReplicatedStorage.Shared.Config.Ambience)
 local Map = require(ReplicatedStorage.Shared.Config.Map)
 local Zones = require(ReplicatedStorage.Shared.Config.Zones)
 local Kit = require(script.Parent.Kit)
@@ -84,38 +85,65 @@ local function routeEnd(parent: Instance, z: number, rng: Random)
 	Plaza.Barrier(folder, Vector3.new(full * 2, Map.Route.BarrierHeight, 1), CFrame.new(0, gt + Map.Route.BarrierHeight / 2, z + 0.5))
 end
 
--- Lumière du jour, brume légère, bloom modéré (seulement ce qui n'existe pas déjà dans Lighting)
+-- Effet de Lighting (ou nuages du Terrain) : celui qui existe déjà dans la place, sinon un nouveau
+local function effect(parent: Instance, className: string, name: string?): Instance
+	local found = if name then parent:FindFirstChild(name) else parent:FindFirstChildOfClass(className)
+	if found and found:IsA(className) then
+		return found
+	end
+	local created = Instance.new(className)
+	if name then
+		created.Name = name
+	end
+	created.Parent = parent
+	return created
+end
+
+-- Ambiance de la place du spawn (Config.Ambience.Regions.Plaza) : heure, lumière, brume, nuages, ciel, couleurs, bloom.
+-- Chaque joueur passe ensuite à l'ambiance de l'endroit où il se trouve (AmbienceController, côté client) ; les
+-- effets déjà présents dans la place sont réglés plutôt que doublés.
 function MapBuilder.Lighting()
-	Lighting.ClockTime = 14.5
-	Lighting.Brightness = 2
-	Lighting.Ambient = rgb(84, 84, 96)
-	Lighting.OutdoorAmbient = rgb(150, 150, 160)
+	local base = Ambience.Regions.Plaza
+	Lighting.ClockTime = base.ClockTime
+	Lighting.Brightness = base.Brightness
+	Lighting.ExposureCompensation = base.Exposure
+	Lighting.Ambient = base.Ambient
+	Lighting.OutdoorAmbient = base.OutdoorAmbient
+	Lighting.ColorShift_Top = base.SunTint
 	Lighting.EnvironmentDiffuseScale = 0.5
 	Lighting.EnvironmentSpecularScale = 0.3
 	Lighting.GlobalShadows = true
 	Lighting.ShadowSoftness = 0.35
-	if not Lighting:FindFirstChildOfClass("Atmosphere") then
-		local atmosphere = Instance.new("Atmosphere")
-		atmosphere.Density = 0.3
-		atmosphere.Offset = 0.15
-		atmosphere.Color = rgb(206, 220, 238)
-		atmosphere.Decay = rgb(120, 140, 170)
-		atmosphere.Glare = 0
-		atmosphere.Haze = 1.4
-		atmosphere.Parent = Lighting
-	end
-	if not Lighting:FindFirstChildOfClass("BloomEffect") then
-		local bloom = Instance.new("BloomEffect")
-		bloom.Intensity = 0.35
-		bloom.Size = 24
-		bloom.Threshold = 1.6
-		bloom.Parent = Lighting
-	end
-	if not Lighting:FindFirstChildOfClass("ColorCorrectionEffect") then
-		local grade = Instance.new("ColorCorrectionEffect")
-		grade.Saturation = 0.08
-		grade.Contrast = 0.04
-		grade.Parent = Lighting
+	local atmosphere = effect(Lighting, "Atmosphere") :: Atmosphere
+	atmosphere.Density = base.Atmosphere.Density
+	atmosphere.Offset = base.Atmosphere.Offset
+	atmosphere.Color = base.Atmosphere.Color
+	atmosphere.Decay = base.Atmosphere.Decay
+	atmosphere.Glare = base.Atmosphere.Glare
+	atmosphere.Haze = base.Atmosphere.Haze
+	local sky = effect(Lighting, "Sky") :: Sky
+	sky.StarCount = math.floor(base.Sky.Stars)
+	sky.SunAngularSize = base.Sky.Sun
+	sky.MoonAngularSize = base.Sky.Moon
+	local bloom = effect(Lighting, "BloomEffect") :: BloomEffect
+	bloom.Intensity = base.Bloom.Intensity
+	bloom.Size = base.Bloom.Size
+	bloom.Threshold = base.Bloom.Threshold
+	local rays = effect(Lighting, "SunRaysEffect") :: SunRaysEffect
+	rays.Intensity = base.SunRays.Intensity
+	rays.Spread = base.SunRays.Spread
+	local grade = effect(Lighting, "ColorCorrectionEffect", Ambience.GradeName) :: ColorCorrectionEffect
+	grade.Brightness = base.Grade.Brightness
+	grade.Contrast = base.Grade.Contrast
+	grade.Saturation = base.Grade.Saturation
+	grade.TintColor = base.Grade.Tint
+	local terrain = Workspace:FindFirstChildOfClass("Terrain")
+	if terrain then
+		local clouds = effect(terrain, "Clouds") :: Clouds
+		clouds.Cover = base.Clouds.Cover
+		clouds.Density = base.Clouds.Density
+		clouds.Color = base.Clouds.Color
+		clouds.Enabled = true
 	end
 end
 
