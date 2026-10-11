@@ -27,7 +27,7 @@ MOUTH = (178, 74, 90)
 
 EYE_Y = 6                      # rangée basse de l'oeil (3 x 3 voxels, paupière de 3 rangées au-dessus)
 EYE_H = 3
-EYE_IN = 1                      # oeil creusé d'un voxel : l'anneau pâle reste au ras de la tête
+EYE_IN = 0                     # oeil au ras de la tête, anneau pâle à plat autour (rien ne dépasse de face)
 BELLY_TOP = -1.2               # ventre blanc jusqu'à l'axe du corps - 1,2 voxel
 BAND_TOP = 0.8                 # bande gris foncé au-dessus du ventre, jusqu'à l'axe + 0,8
 
@@ -70,12 +70,12 @@ def loft(d, pts, bone_at, color, power=2.0):
 
 
 def socket_eye(d, ey, ez, h, w, iris, pupil, skin, ring, ring_top=None, pupil_rows=None, bone="Head", lid="LidL",
-               inset=0):
+               inset=0, relief=1):
     """Oeil gauche dans une orbite : oeil et paupière sur un panneau plat (même x, la paupière couvre bien l'oeil en se
     fermant), cadre en relief d'un voxel tout autour (anneau `ring` autour de l'oeil, `ring_top` au-dessus), et creux
     derrière la paupière (quand elle descend, on voit la peau `skin` et pas les voxels cachés du crâne).
     inset = 1 : le panneau est creusé d'un voxel dans la tête, le cadre reste au ras de la peau (rien ne dépasse de
-    face)."""
+    face) ; relief = 0 : cadre au ras du panneau de l'oeil."""
     cells = [(y, z) for y in range(ey, ey + 2 * h) for z in range(ez, ez + w)]
     xe = min(d.surface_x(y, z) for y, z in cells if d.surface_x(y, z) is not None) + inset
     for y, z in cells:
@@ -95,7 +95,7 @@ def socket_eye(d, ey, ez, h, w, iris, pupil, skin, ring, ring_top=None, pupil_ro
             xs = d.surface_x(y, z)
             if xs is None:
                 continue
-            for x in range(min(xe - 1, xs), xs + 1):
+            for x in range(min(xe - relief, xs), xs + 1):
                 d.set(bone, x, y, z, col)
     for (x, y, z), (b, col, mat) in list(d.vox.items()):
         if b == lid and (x + 1, y, z) in d.vox and d.vox[(x + 1, y, z)][0] != lid:
@@ -185,7 +185,7 @@ def build():
                             (6.4, 22.0), (3.6, 23.0), (0.8, 24.2), (0.4, 23.2), (3.2, 20.0), (6.0, 17.6)], FIN)
     # ---------------------------------------------------------------- très grand oeil cerclé (anneau sclérotique)
     # oeil sombre de 3 x 3 voxels dans un anneau osseux pâle en relief, reflet blanc en haut à l'avant
-    socket_eye(d, EYE_Y, -12, EYE_H, 3, EYE, GLINT, BACK, RING, pupil_rows=[EYE_H - 1], inset=EYE_IN)
+    socket_eye(d, EYE_Y, -12, EYE_H, 3, EYE, GLINT, BACK, RING, pupil_rows=[EYE_H - 1], inset=EYE_IN, relief=0)
     # petites dents le long du museau
     for z in range(-21, -14, 2):
         x = d.surface_x(5, z, "Head")
@@ -201,7 +201,7 @@ def build():
         if c != BACK:
             return None
         if bone == "Jaw":
-            return BELLY
+            return None if y >= 4 and z <= -13 else BELLY   # rangée haute de la mâchoire bleue : les dents du bas se voient
         if bone == "Head":
             return None                                 # museau : dessus bleu, mâchoire blanche, la ligne de la bouche reste nette
         axis = 6.2 + 0.04 * max(0, z)

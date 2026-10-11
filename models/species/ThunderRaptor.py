@@ -2,9 +2,9 @@
 
 Voxels de 0,33 stud : environ 16 studs de long et 11 de haut (crête comprise) à la taille Normal. Plumage bleu nuit
 orageux, ventre gris d'orage, zébrures Neon cyan en zigzag d'éclair (chevrons sur le dos, brisées en éclair sur les
-flancs) des épaules au bout de la queue, grande crête de plumes en éclair sur la tête (os Crest, pointe Neon jaune),
-lame de plumes en dents de scie sous chaque avant-bras (pointe Neon cyan), queue terminée par un éclair de plumes,
-yeux Neon jaune, griffes en faucille Neon cyan."""
+flancs) des épaules au bout de la queue, grande crête de plumes en éclair sur la tête (os Crest, trait du haut et
+pointe Neon jaune), lame de plumes en dents de scie sous chaque avant-bras (pointe Neon cyan), queue terminée par un
+éclair de plumes, yeux Neon jaune, griffes en faucille Neon cyan."""
 import math
 import os
 import sys
@@ -19,7 +19,7 @@ NAVY = (34, 46, 100)
 DEEP = (22, 28, 64)
 FEATHER = (66, 104, 206)
 BELLY = (150, 170, 216)
-BOLT = (90, 236, 255)
+BOLT = (40, 210, 255)
 SPARK = (255, 232, 70)
 CLAW = (236, 242, 255)
 PUPIL = (14, 14, 30)
@@ -40,13 +40,14 @@ PERSONALITY = {
 }
 
 # Dessins en pixels vus de profil : rangées du haut vers le bas, colonnes de l'avant vers l'arrière.
-# Crête : grand éclair dressé sur le crâne et rabattu vers l'arrière, pointe Neon jaune.
+# Crête : grand éclair de plumes dressé sur le crâne et rabattu vers l'arrière, toute la pointe (trait du haut) en
+# Neon jaune.
 CREST = [
     ".........YY",
     "........YYY",
-    ".......YYF.",
-    "......FFF..",
-    ".....FFF...",
+    ".......YYY.",
+    "......YYY..",
+    ".....YYY...",
     "....FFFFFFF",
     "........FFF",
     ".......FFF.",
@@ -69,9 +70,9 @@ TAIL_BOLT = [
     "...FFF...",
 ]
 # Zébrure : rangée u = distance le long de la peau depuis l'échine, colonnes = z - z0 (vers l'arrière). Vue de
-# dessus elle fait un chevron rabattu vers l'arrière (zigzag le long de l'échine), sur le flanc elle se brise en éclair
-# (barre puis pointe).
-ZIG = ["......XXX", ".....XXX.", "....XXX..", "...XXX...", "..XXXXXX.", ".....XXX.", "....XX...", "....X...."]
+# dessus elle fait un chevron rabattu vers l'arrière (zigzag le long de l'échine), sur le flanc elle se brise en
+# éclair (barre puis pointe).
+ZIG = ["......XX", ".....XX.", "....XX..", "...XX...", "..XXXXX.", ".....XX.", "....XX..", "....X..."]
 STRIPES = [-4, 2, 8, 14, 19]
 
 

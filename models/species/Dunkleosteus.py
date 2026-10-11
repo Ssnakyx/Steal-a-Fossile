@@ -28,6 +28,9 @@ MOUTH = (56, 30, 30)
 IRIS = (255, 196, 64)
 PUPIL = (20, 16, 14)
 
+SHOULDER_SEAM = 4              # le joint des plaques d'épaule descend jusqu'à cette rangée
+CHEEK = (9, -16)               # joint de la joue : rangée, et z de départ (derrière l'oeil) jusqu'au joint du crâne
+
 PERSONALITY = {
     "tempo": 0.9,           # lourd et cuirassé, mais rapide à l'attaque
     "weight": 1.3,
@@ -169,11 +172,11 @@ def build():
                 d.set("Head", x, 7, z, MOUTH)
                 d.set("Jaw", x, 5, z, MOUTH)
 
-    def ring(z0, ymin=0):
+    def ring(z0, ymin=0, color=SEAM):
         """Joint de plaques tout autour de la cuirasse (anneau sombre d'un voxel), sur la surface."""
         for (x, y, z), (bone, col, mat) in list(d.vox.items()):
             if z == z0 and y >= ymin and col == ARMOR and d.visible((x, y, z)):
-                d.set(bone, x, y, z, SEAM)
+                d.set(bone, x, y, z, color)
 
     # ---------------------------------------------------------------- joints de la cuirasse : casque | épaules | dos
     # crête de la grande plaque dorsale (au milieu du dos de la cuirasse)
@@ -184,7 +187,17 @@ def build():
             if z < -4:
                 d.set("Neck1" if z < -7 else "Chest", 0, y + 2, z, ARMOR)
     ring(-12, 7)                                         # articulation crâne / épaules
-    ring(-7, 8)                                          # entre les deux plaques d'épaule (dessus)
+    ring(-7, SHOULDER_SEAM)                              # entre les deux plaques d'épaule
+    ring(-3, 4, RIM)                                     # rebord sombre au bout de la cuirasse
+    # joints du crâne : ligne du milieu sur le dessus, joue séparée du toit du crâne derrière l'oeil
+    for z in range(-21, -12):
+        y = d.surface_y(0, z)
+        if y is not None and d.vox[(0, y, z)][1] == ARMOR:
+            d.set("Head", 0, y, z, SEAM)
+    for z in range(CHEEK[1], -12):
+        x = d.surface_x(CHEEK[0], z)
+        if x is not None and d.vox[(x, CHEEK[0], z)][1] == ARMOR:
+            d.set("Head", x, CHEEK[0], z, SEAM)
     # ---------------------------------------------------------------- bouche : fente sombre, lames ivoire, bec à crocs
     for z in range(-24, -13):
         x = d.surface_x(7, z)
@@ -230,7 +243,7 @@ def build():
                 else:
                     d.set("Head" if y == 8 else "Jaw", x, y, z, BLADE, "Smooth")
     # ---------------------------------------------------------------- orbite en relief et oeil jaune
-    socket_eye(d, 10, -18, 2, 2, IRIS, PUPIL, ARMOR, ARMOR, pupil_rows=[0])
+    socket_eye(d, 10, -18, 2, 2, IRIS, PUPIL, ARMOR, RIM, ring_top=ARMOR, pupil_rows=[0])
     # ---------------------------------------------------------------- nageoires (plaques)
     d.plate("FinF1L", 1, 3, [(-4.0, -4.6), (-8.0, -3.0), (-8.0, 0.4), (-4.0, -0.6)], FIN, thick=2)
     d.plate("FinF2L", 1, 3, [(-8.0, -3.0), (-11.8, 1.6), (-10.6, 2.6), (-8.0, 0.4)], FIN, thick=2)

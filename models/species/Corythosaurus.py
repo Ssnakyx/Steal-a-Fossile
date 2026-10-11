@@ -1,9 +1,9 @@
 """Corythosaurus : hadrosaure du Swamp à bec de canard et grand casque arrondi, paisible.
 
-Voxels de 0,26 stud : environ 13 studs de long et 6,5 de haut (casque compris) à la taille Normal. Tête de cheval à
-bec de canard clair ; sur le crâne, un grand casque en demi-disque (os Crest, plaque de 3 voxels d'épaisseur) bleu vif
-cerclé d'orange, le signe qu'on reconnaît de loin. Corps massif brun chaud, dos olive rayé, ventre crème, pattes avant
-plus fines, longue queue haute et plate."""
+Voxels de 0,26 stud : environ 13,5 studs de long et 7 de haut (casque compris) à la taille Normal. Tête de cheval à
+bec de canard clair ; posé sur le crâne, au-dessus de l'oeil, un grand casque arrondi en demi-disque bombé (os Crest)
+bleu vif cerclé d'orange, le signe qu'on reconnaît de loin. Corps massif brun chaud, dos olive rayé, ventre crème,
+pattes avant plus fines, longue queue haute et plate."""
 import os
 import sys
 
@@ -38,8 +38,8 @@ PERSONALITY = {
 
 # casque, profil (y, z) : part du haut du museau, monte en pente, sommet au-dessus de l'oeil, arrondi derrière le
 # crâne ; le bord du bas suit le dessus de la tête (l'oeil reste dessous, sur la peau)
-HELMET = [(16.6, -18.6), (18.2, -19.0), (20.0, -18.7), (21.8, -17.8), (23.2, -16.3), (24.0, -14.5), (24.3, -12.6),
-          (24.0, -10.8), (23.0, -9.3), (21.4, -8.4), (19.6, -8.2), (19.4, -9.0), (19.4, -15.2), (17.4, -16.2)]
+HELMET = [(16.6, -19.0), (18.6, -19.5), (20.6, -19.2), (22.6, -18.2), (24.2, -16.6), (25.1, -14.6), (25.4, -12.6),
+          (25.1, -10.6), (24.1, -9.0), (22.5, -8.0), (20.6, -7.8), (19.4, -9.0), (19.4, -15.2), (17.4, -16.2)]
 # bas du demi-disque complet (sous la tête), seulement pour trouver le bord extérieur
 DISC_BOTTOM = [(18.0, -8.9), (14.0, -10.6), (14.0, -17.0)]
 
@@ -103,7 +103,7 @@ def build():
     # (de face : arête orange au milieu, flancs bleus).
     cells = {(y, z) for y in range(16, 26) for z in range(-20, -7) if inside(HELMET, y, z)}
     # bord extérieur (dessus, avant, arrière) : le bas du casque, posé sur la tête, n'est pas un bord
-    disc = {(y, z) for y in range(14, 26) for z in range(-20, -7) if inside(HELMET + DISC_BOTTOM, y, z)}
+    disc = {(y, z) for y in range(14, 26) for z in range(-20, -7) if inside(HELMET[:11] + DISC_BOTTOM, y, z)}
     dist = {k: 0 for k in cells if any((k[0] + dy, k[1] + dz) not in disc for dy, dz in ((1, 0), (0, 1), (0, -1)))}
     front = list(dist)
     while front:
@@ -120,7 +120,7 @@ def build():
             if x == -1 and k < 1 or x == -2 and (k < 2 or y > 20):
                 continue
             if d.vox.get((x, y, z), ("",))[0] != "Head":
-                d.set("Crest", x, y, z, CREST_RIM if k == 0 and y >= 18 else CREST)
+                d.set("Crest", x, y, z, CREST_RIM if k == 0 else CREST)
     # ---------------------------------------------------------------- pattes avant fines, pattes arrière fortes
     d.limb("ArmL", (-4.2, 8.6, -3.8), (-4.6, 5.4, -2.2), 1.8, 1.5, BODY)
     d.limb("ForearmL", (-4.6, 5.4, -2.2), (-4.6, 2.2, -4.2), 1.4, 1.2, BODY)
