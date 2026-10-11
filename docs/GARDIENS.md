@@ -42,7 +42,8 @@ pièges et les gardiens) : les pièces de décor `CanQuery = false` ne le gênen
 
 ## Modèles des gardiens (brief 2, contrat de DinoAnimController)
 
-`Workspace.Guardians.<Zone> Guardian` : Model tagué `Dino` et `Guardian`, pièce invisible `Root` au sol (PrimaryPart),
+`Workspace.Guardians.<Zone> Guardian` : Model tagué `Dino` et `Guardian` (`ModelStreamingMode = Persistent` : toujours
+chez tous les clients avec StreamingEnabled), pièce invisible `Root` au sol (PrimaryPart),
 attributs `Species` (nom du module DinoModels, `T-Rex` donne `TRex`), `Scale`, `State`, `StateAt`, `Speed` (studs/s
 pendant Run et Return, 0 sinon), `Guardian` (nom de la zone), `TargetUserId` (0 sans cible), `Trapped`. Le serveur
 déplace le pivot 10 fois par seconde ; le client lisse et anime. États : `Sleep`, `Wake`, `Roar`, `Run`, `Catch`,
