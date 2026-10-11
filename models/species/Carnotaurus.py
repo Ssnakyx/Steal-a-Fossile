@@ -1,7 +1,8 @@
 """Carnotaurus : bipède du Volcano, coureur rapide et bagarreur, cornes de taureau.
 
 Voxels de 0,35 stud : environ 16 studs de long et 9 de haut à la taille Normal. Tête courte et haute, deux cornes
-épaisses au-dessus des yeux, bras minuscules, longues pattes de coureur, rangées de bosses sur le dos."""
+épaisses au-dessus des yeux, bras minuscules, longues pattes de coureur, rangées de bosses sur le dos.
+Gardien du Volcano (zone 6) : cette espèce x2 (Scale = 2, environ 32 studs de long)."""
 import os
 import sys
 

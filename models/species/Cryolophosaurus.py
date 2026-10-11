@@ -1,7 +1,8 @@
 """Cryolophosaurus : bipède du Glacier, chasseur à crête, vif et fier.
 
 Voxels de 0,33 stud : environ 15 studs de long et 9 de haut (crête comprise) à la taille Normal. Grosse tête au long
-museau, crête en éventail posée en travers du crâne (plaque droite), bras courts, queue en six segments."""
+museau, crête en éventail posée en travers du crâne (plaque droite), bras courts, queue en six segments.
+Gardien du Glacier (zone 5) : cette espèce x2 (Scale = 2, environ 30 studs de long)."""
 import os
 import sys
 

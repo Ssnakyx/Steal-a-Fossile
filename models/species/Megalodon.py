@@ -2,7 +2,8 @@
 
 Voxels de 0,46 stud : environ 24 studs de long à la taille Normal. Corps en fuseau, museau conique, grande mâchoire
 en dessous, ouïes, grandes nageoires pectorales et petites nageoires pelviennes (plaques), aileron dorsal et nageoire
-de queue en croissant (plaques verticales). Neck1 = la partie des ouïes entre le torse et la tête."""
+de queue en croissant (plaques verticales). Neck1 = la partie des ouïes entre le torse et la tête.
+Gardien de l'Ocean Trench (zone 7) : cette espèce x1,5 (Scale = 1.5, environ 36 studs de long)."""
 import os
 import sys
 
