@@ -16,6 +16,14 @@ if not okOptions or type(options) ~= "table" then
 	options = { Phone = false }
 end
 
+-- (écrit par ui_preview.py --icons dossier : images locales des icônes du pack, { ["rbxassetid://..."] = "<img ...>" })
+local okIcons, icons = pcall(require, "./preview_icons")
+if okIcons and type(icons) == "table" then
+	for image, html in icons do
+		Render.Art.Icons[image] = html
+	end
+end
+
 local P = {}
 P.env = env
 P.Render = Render

@@ -7,8 +7,8 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
 
 ## Ce que voit le joueur
 
-- **Colonne de gauche** (de haut en bas) : **Shop** (vert), **Index** (orange), puis Daily, Spin et Gifts (brief 13).
-  Les 5 boutons sont centrés ensemble. Pastilles rouges : Shop « ! » quand une trail en argent est payable, Index = nombre
+- **Colonne de gauche** : boutons carrés à icône du pack, deux par ligne : **Shop** (vert) et **Index** (orange), puis
+  Daily et Spin, puis Gifts (brief 13). Les 5 boutons sont centrés ensemble. Pastilles rouges : Shop « ! » quand une trail en argent est payable, Index = nombre
   d'espèces et d'hybrides découverts depuis la dernière ouverture.
 - **Compteurs** en bas à gauche : argent (il monte doucement, les gros gains et les dépenses s'envolent en +$ / -$),
   revenu par seconde, vitesse. Sous la vitesse : dans une zone, « Swamp: 10K advised » (vert si assez rapide, rouge
@@ -22,15 +22,20 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
 - **Messages courts** : ils passent sous la carte du haut (bandeau ou transport) au lieu de la cacher.
 - **Cuves** à droite : une ligne par cuve (rareté, temps restant, barre), **OPEN** quand elle est prête (ouvre la cuve
   de loin), « +N fossils waiting », bouton **NEW TANK $X**. Visible dès qu'une cuve sert.
-- **Shop** (4 onglets) :
-  - *Speed* : Treadmill (gain actuel par seconde, même AFK ; niveau suivant avec sa vitesse, son prix en argent du jeu
-    (grisé tant qu'il est trop cher) et, si le produit est en vente, son vrai prix Roblox ; MAX au niveau 10), passe x2
-    Treadmill, raccourci vers les trails.
-  - *Trails* : Super trails (Neon x1.5, Galaxy x2, Golden x3, passes Robux, EQUIP / EQUIPPED une fois achetées) puis
-    les 10 trails en argent (grisées tant qu'elles sont trop chères, EQUIP / EQUIPPED).
+- **Shop** (4 onglets à icône, style des Steal a ... du moment) : chaque onglet est une page de **sections** (« FEATURED »,
+  « SPEED », « PASSES »...) en titres jaunes entre deux traits, puis de **grandes cartes illustrées** (3 par ligne) :
+  icône du pack de Steal a Snack, gros « x2 », nom, description, bouton vert. Prix Robux : logo Robux dessiné et prix
+  (le texte du bouton reste « R$ 99 »).
+  - *Speed* : FEATURED = carte large du Treadmill (gain actuel par seconde, même AFK ; niveau suivant ; pastilles des
+    10 niveaux ; bouton en argent du jeu toujours là, grisé tant qu'il est trop cher (`Next.Cash`, déblocage $1K) ;
+    bouton Robux seulement quand le produit est en vente (`Next.Price`) ; MAX au niveau 10). SPEED = passe x2
+    Treadmill et raccourci vers les trails.
+  - *Trails* : SUPER TRAILS (Neon x1.5, Galaxy x2, Golden x3, passes Robux, EQUIP / EQUIPPED une fois achetées) puis
+    CASH TRAILS (10 trails en argent, grisées tant qu'elles sont trop chères). L'image : la fusée au bout d'une bande
+    aux couleurs de la trail.
   - *Passes* : x2 Money, x2 Treadmill, Fast Revive, VIP (OWNED une fois achetés).
-  - *Items* : Bear Traps à l'unité ou par 5 en argent, Bear Traps x5 en Robux, Instant Revive (« N saved »), Server
-    Luck x2 (temps restant), 3 Spins et 10 Spins.
+  - *Items* : Bear Traps à l'unité ou par 5 en argent, Bear Traps x5, Instant Revive (« N saved »), Server Luck x2
+    (temps restant) ; SPINS : 3 Spins et 10 Spins.
 - **Index** : un onglet par zone, plus Secret et Hybrids. Les espèces vues ont leur portrait 3D, leur nom et leur
   revenu de base ; les autres sont une silhouette noire « ??? » (« Revive one to unlock »). Les hybrides pas trouvés
   montrent un « ? » et l'indice de leur recette ; trouvés, leur portrait et leurs deux parents. En haut : « Dinos a/b
@@ -46,6 +51,19 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
   bleu glacier pour Diamond), revenu en vert. Seulement chez le client : l'étiquette du serveur (EnclosureService) est
   restylée.
 - Les compteurs, cartes et cuves se cachent quand un menu est ouvert ; les boutons restent.
+
+## Récompenses (brief 13, refaites)
+
+- **Daily Rewards** : 14 cartes (2 lignes de 7) à la couleur de la récompense, « DAY n », grande icône (pièces, fusée,
+  roue, bouclier, oeuf pour un fossile), montant ; le jour à prendre brille et respire, les jours pris ont un voile et
+  une coche. Série, record et CLAIM DAY n / NEXT IN en bas.
+- **Lucky Spin** : une vraie roue de 8 parts (couleur de la récompense, icône, gain écrit le long du rayon, clous
+  blancs, anneau doré, flèche rouge en haut, bouton SPIN rond au milieu). Elle tourne 5 tours en 3,6 s et s'arrête sur
+  la part tirée par le serveur. À droite : tours en réserve, tour gratuit, tableau CHANCES (toutes les probabilités),
+  MORE SPINS (Robux, seulement si le serveur les permet). Dessin : quatre quarts fixes qui rognent, repeints à chaque
+  image par `SetAngle` (un CanvasGroup tourné ne tourne ni les rognages ni les dégradés : vu dans Studio).
+- **Free Gifts** : 9 cartes (3 x 3) : boîte cadeau tant que le cadeau est fermé (compte à rebours, puis OPEN et la
+  boîte qui respire), l'image du gain avec une coche une fois ouvert.
 
 ## Premières minutes
 
@@ -66,13 +84,13 @@ n'apparaissent qu'une fois leurs Ids mis, et jamais dans les pays qui interdisen
 
 | Élément | Où | ScreenGui (DisplayOrder) |
 |---|---|---|
-| Boutons Shop / Index | gauche, bas à 48 au-dessus du milieu | Hud (3) |
-| Daily / Spin / Gifts | gauche, centrés 82 sous le milieu | Rewards (5) |
+| Boutons Shop / Index (84 x 84, côte à côte) | gauche, bas à 52 au-dessus du milieu | Hud (3) |
+| Daily / Spin / Gifts (84 x 84, deux par ligne) | gauche, haut à 42 au-dessus du milieu | Rewards (5) |
 | Compteurs (300 x 134) | bas à gauche, marge 16 | Hud (3) |
 | Bandeau de zone, carte du transport (440 de large) | haut au milieu, y = 8 | Hud (3) |
 | Cuves (232 de large) | droite, milieu + 30 | Hud (3) |
 | Carte AFK, guide des premières minutes | bas au milieu | Afk (4), Tutorial (6) |
-| Shop, Index, Fusion Lab (1000 x 600) | milieu | Menus (7) |
+| Shop (1040 x 620), Index, Fusion Lab (1000 x 600) | milieu | Menus (7) |
 | Écran de révélation (760 x 470) | milieu | Reveal (8) |
 | Texte RUN!! / CAUGHT! | 30 % de la hauteur | StressText (20) |
 | Messages courts | haut au milieu, y = 70 (sous la carte du haut si elle est là) | Toasts (50) |
@@ -89,7 +107,10 @@ Un nouvel élément d'interface prend une place libre de ce tableau, ou le compl
 - `LabController.Open`, `Close`, `IsOpen`, `Select(ids)`, `Selected()`. Il met `FusionController.MenuReady = true`.
 - `RevealController.Show(infos, "Tank" | "Fusion")`, `IsOpen`, `Pending`, signal `Closed(genre)`. Le brief 11 peut
   jouer un son sur `DinoRevealed` sans toucher à la carte.
-- UIKit : `UIKit.tabs`, `UIKit.scroll`, `UIKit.badge`, `UIKit.SetToastTop(y)`. `UI/DinoView` : portrait 3D d'une
+- UIKit : `UIKit.tabs`, `UIKit.scroll`, `UIKit.badge`, `UIKit.SetToastTop(y)`, `UIKit.Icons` (pack d'icônes de
+  Steal a Snack, ids déjà téléversés), `UIKit.icon(nom, props)` (icône avec ombre), `UIKit.menuButton` (bouton carré à
+  icône), `UIKit.sectionTitle` (« -- FEATURED -- »), `UIKit.robuxGlyph`. Un bouton dont le texte commence par « R$ »
+  montre le logo Robux et le prix. Les tailles de texte maximales suivent l'échelle de l'écran (`UIKit.sizeLimit`). `UI/DinoView` : portrait 3D d'une
   espèce ou d'une chimère dans un ViewportFrame (`new`, `Show`, `Spin`, `Clear`, silhouette noire possible).
 - `IndexService` (serveur) : `Discover(joueur, espèce)`, `Publish(joueur)`. Clé replica `Index` = `{ Species = {
   [espèce] = true }, Found, Total }`. Une espèce est découverte quand elle sort d'une cuve ou entre dans le parc
@@ -123,5 +144,6 @@ Un nouvel élément d'interface prend une place libre de ce tableau, ou le compl
   Shop (achats par les boutons, Id = 0 caché hors Studio), événements abîmés.
 - `tools/luau_tests/t_ui_menus.luau` : IndexService, Index, labo (choix, aperçu, fusion, hybride), révélation (file,
   fermeture toute seule), étiquettes, événements abîmés.
-- Aperçus : `python3 tools/luau_tests/ui_preview.py ui_hud [--phone]` (HUD, cuve prête, bandeau, transport poursuivi,
+- Aperçus : `python3 tools/luau_tests/ui_preview.py ui_hud [--phone] [--icons dossier]` (`--icons` : dossier de
+  `<nom>.png` des icônes de `UIKit.Icons`, sinon des cases grises) (HUD, cuve prête, bandeau, transport poursuivi,
   4 onglets du Shop, Index, labo, révélation). Les portraits 3D y sont des cases « 3D ».

@@ -479,7 +479,11 @@ local function emit(rec: any, out: { string }, options: any)
 	elseif isImage and not studs and node.Image ~= "" and node.ImageTransparency < 1 then
 		local art = Render.Art.Icons[node.Image]
 		if art then
-			table.insert(out, '<div class="art">' .. art .. "</div>")
+			-- (image teintée en noir : ombre des icônes du UIKit)
+			local tint = node.ImageColor3
+			local dark = tint.R + tint.G + tint.B < 0.3
+			local style = if dark then string.format(' style="filter:brightness(0);opacity:%.2f"', 1 - node.ImageTransparency) else ""
+			table.insert(out, '<div class="art"' .. style .. ">" .. art .. "</div>")
 		else
 			local id = string.match(node.Image, "%d+") or "?"
 			table.insert(out, string.format('<div class="icon" style="background:%s">%s</div>', rgba(node.ImageColor3, 0), esc(string.sub(id, -4))))
