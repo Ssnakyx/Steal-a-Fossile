@@ -55,7 +55,7 @@ def main():
             if not a:
                 continue
             for k in (0.0, 0.37, 0.81):
-                t = a["length"] * k
+                t = float(n(a["length"] * k))  # même instant arrondi que celui écrit (et relu par le test Luau)
                 pose = A.game_sample(a["tracks"], t, a["length"], a["loop"])
                 W = sk.solve(pose)
                 parts = []
