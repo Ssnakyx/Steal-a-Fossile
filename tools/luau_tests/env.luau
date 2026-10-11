@@ -1427,6 +1427,9 @@ Setters.BasePart = {
 		fireChanged(self, "Orientation")
 	end,
 }
+-- Attachments : liés de la même façon (CFrame relatif à la partie parente)
+Getters.Attachment = Getters.BasePart
+Setters.Attachment = Setters.BasePart
 
 Methods.PVInstance = {
 	GetPivot = function(self)
@@ -1710,6 +1713,15 @@ Methods.Sound = {
 	end,
 }
 env.soundsPlayed = {}
+
+-- Gerbes de particules (auras, src/client/Aura) : rien à dessiner hors de Studio, on compte par émetteur
+Methods.ParticleEmitter = {
+	Emit = function(self, count)
+		env.particlesEmitted[self] = (env.particlesEmitted[self] or 0) + (count or 16)
+	end,
+	Clear = function() end,
+}
+env.particlesEmitted = setmetatable({}, { __mode = "k" })
 
 Methods.Animator = {
 	LoadAnimation = function(self, animation)

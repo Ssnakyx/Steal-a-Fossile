@@ -1,6 +1,7 @@
 --!strict
 -- Zone 3 : Swamp. Boue sombre, ponton de planches, mares d'eau verte avec nénuphars et roseaux, arbres morts à mousse
--- pendante, champignons violets, un tronc creux géant et un vieil arbre-palétuvier.
+-- pendante, champignons violets, un tronc creux géant et un vieil arbre-palétuvier ; dans le brouillard, champignons
+-- lumineux (violet, turquoise), feux follets qui flottent et cristaux turquoise, vert acide et violets.
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -99,6 +100,12 @@ local theme: ZoneBase.Theme = {
 	Scatter = {
 		{ Prop = Props.deadTree, Count = 16, Radius = 6, XMin = 40, Pal = { Trunk = BARK, Moss = MOSS } },
 		{ Prop = Props.deadTree, Count = 8, Radius = 6, XMin = 104, XMax = 120, Scale = { 1, 1.4 }, Pal = { Trunk = BARK, Moss = MOSS } },
+		{ Prop = Props.bogPool, Count = 4, Radius = 5, XMin = 30, Scale = { 0.9, 1.3 }, Pal = { Mud = rgb(64, 58, 42) } },
+		{ Prop = Props.flytrap, Count = 6, Radius = 4, XMin = 30, Scale = { 0.9, 1.3 } },
+		{ Prop = Props.glowShroom, Count = 4, Radius = 3.5, Pal = { Cap = rgb(182, 112, 255) } },
+		{ Prop = Props.glowShroom, Count = 3, Radius = 3.5, Pal = { Cap = rgb(60, 240, 212) } },
+		{ Prop = Props.wisp, Count = 6, Radius = 4, Pal = { Glow = rgb(172, 255, 132) } },
+		{ Prop = Props.wisp, Count = 3, Radius = 4, Pal = { Glow = rgb(120, 232, 255) } },
 		{ Prop = Props.reeds, Count = 24, Radius = 3, Pal = { Leaf = rgb(104, 138, 66) } },
 		{ Prop = Props.fern, Count = 16, Radius = 4, Pal = { Leaf = rgb(70, 112, 50) } },
 		{ Prop = Props.bush, Count = 14, Radius = 3.5, Pal = { Leaf = rgb(60, 98, 48) } },
