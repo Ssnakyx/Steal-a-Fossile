@@ -104,10 +104,11 @@ et s'anime ensuite comme une espèce (`DinoBuilder.Build(cle, ...)`, `DinoAnimCo
   ailes ou nageoires jouent l'animation de A du même nom (GDD : « la tête et les ailes gardent leurs propres animations »).
   Des ailes greffées sur un corps qui marche ne prennent pas la marche du volant (mains au sol) : elles restent repliées
   sur le dos et battent seulement en Happy, Roar, Fusion et Index.
-- **Budget** : viser 450 pièces ; le brief 9 rend les 12 chimères (face, profil, chaque état), corrige les raccords et
-  simplifie si une chimère dépasse.
+- **Budget** : viser 450 pièces. Le brief 9 a rendu les 12 chimères (face, profil, chaque état) et corrigé les raccords
+  (`models/hybrids/README.md`) ; Tricera-Stego reste à 493 pièces en attendant l'avis de Snaky.
 
 ## 8. Blocs fossiles (brief 9) et miniatures (brief 17)
 
-- Blocs fossiles : même bibliothèque `lib/vox.py`, un modèle sans animation (pas besoin d'os sauf `Hips`).
+- Blocs fossiles : même bibliothèque `lib/vox.py`, un modèle sans animation par rareté et un décor par biome, exportés
+  dans `src/shared/BlockModels.luau` (`models/blocks/README.md`).
 - Miniatures : la scène Blender `models/species/blend/<Espece>.blend` contient l'armature et une Action par état.

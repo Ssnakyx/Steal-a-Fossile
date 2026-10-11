@@ -62,23 +62,28 @@ T.check(HybridBuilder.Ensure("TRex+Nope") == nil, "Ensure sans modèle -> nil")
 T.check(HybridBuilder.Ensure("Nope+Pteranodon") == nil, "Ensure sans modèle de tête -> nil")
 T.check(DinoBuilder.Get("TRex+Pteranodon") == nil, "pas enregistré avant Ensure")
 
--- os de B qui ne sont pas sa tête (ni sous sa tête)
-local function keptOf(b: any): { [string]: boolean }
-	local headSet = {}
+local function hasGroup(data: any, group: string): boolean
+	return data.Groups[group] ~= nil and #data.Groups[group] > 0
+end
+
+-- os de B qui ne sont pas sa tête (ni sous sa tête) ; des ailes de A greffées sur un bipède remplacent ses bras (brief 9)
+local function keptOf(a: any, b: any): { [string]: boolean }
+	local dropped = {}
 	for _, name in b.Groups.Head or {} do
-		headSet[name] = true
+		dropped[name] = true
+	end
+	if not (hasGroup(b, "Wings") or hasGroup(b, "Fins")) and hasGroup(a, "Wings") and b.Family == "Biped" then
+		for _, name in b.Groups.Arms or {} do
+			dropped[name] = true
+		end
 	end
 	local kept = {}
 	for _, bone in b.Bones do
-		if (bone.Parent == nil or kept[bone.Parent]) and not headSet[bone.Name] then
+		if (bone.Parent == nil or kept[bone.Parent]) and not dropped[bone.Name] then
 			kept[bone.Name] = true
 		end
 	end
 	return kept
-end
-
-local function hasGroup(data: any, group: string): boolean
-	return data.Groups[group] ~= nil and #data.Groups[group] > 0
 end
 
 -- point le plus bas des boîtes d'un ensemble d'os dans une pose
@@ -145,7 +150,7 @@ for _, recipe in Recipes do
 	end
 	T.check(okBones, "os : noms uniques, parents avant enfants, une seule racine, valeurs finies")
 	T.eq(data.Bones[1].Name, b.Bones[1].Name, "racine = racine du corps")
-	local kept = keptOf(b)
+	local kept = keptOf(a, b)
 	local keptCount = 0
 	for name in kept do
 		keptCount += 1
@@ -222,7 +227,11 @@ for _, recipe in Recipes do
 	for group, list in b.Groups do
 		if group ~= "Head" then
 			for _, name in list do
-				T.check(table.find(data.Groups[group], name) ~= nil, "groupe " .. group .. " du corps gardé : " .. name)
+				if kept[name] then
+					T.check(table.find(data.Groups[group] or {}, name) ~= nil, "groupe " .. group .. " du corps gardé : " .. name)
+				else
+					T.check(bones[name] == nil, "os retiré du corps : " .. name)
+				end
 			end
 		end
 	end
@@ -241,6 +250,9 @@ for _, recipe in Recipes do
 	local wingSet = {}
 	if walkerWings then
 		withWings += 1
+		if b.Family == "Biped" then
+			T.check(data.Groups.Arms == nil, "ailes greffées sur un bipède : elles remplacent ses bras")
+		end
 		for _, name in data.Groups.Wings do
 			wingSet[name] = true
 		end
