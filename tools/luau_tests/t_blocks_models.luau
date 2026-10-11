@@ -1,6 +1,6 @@
--- Blocs de fossiles (brief 9) : BlockModels. Un modèle voxel par rareté (models/blocks/build.py --export), de la couleur
--- de Config.Rarity, au budget, à la bonne taille, avec des effets qui s'empilent avec la rareté. Appels hostiles :
--- raretés inconnues, tailles absurdes.
+-- Blocs de fossiles (brief 9) : BlockModels. Un bloc voxel par rareté et un décor par biome (models/blocks/build.py
+-- --export), de la couleur de Config.Rarity, au budget, à la bonne taille ; les raretés hautes plus grosses et
+-- lumineuses. Appels hostiles : raretés et zones inconnues, tailles absurdes.
 local T = require("./testkit")
 local env = T.env
 
@@ -10,8 +10,9 @@ local Enum = env.Enum
 
 local BlockModels = env.module("src/shared/BlockModels")
 local Rarity = env.module("src/shared/Config/Rarity")
+local Zones = env.module("src/shared/Config/Zones")
 
-local BUDGET = 100 -- pièces au plus par bloc (il y en a jusqu'à 96 sur la route)
+local BUDGET = 110 -- pièces au plus par bloc, décor du biome et pièce Root compris
 
 local function colorGap(a: any, b: any): number
 	return math.abs(a.R - b.R) + math.abs(a.G - b.G) + math.abs(a.B - b.B)
@@ -37,27 +38,35 @@ local function extent(model: any, roles: { [string]: boolean }): (any, any)
 	return lo, hi
 end
 
-T.section("une rareté par bloc, dans l'ordre de Config.Rarity")
+local ROCK = { Rock = true, Rainbow = true, Glow = true }
+
+T.section("une rareté par bloc, dans l'ordre de Config.Rarity ; un décor par zone de Config.Zones")
 T.eq(#BlockModels.Order, #Rarity.Order, "7 raretés")
 for i, name in Rarity.Order do
 	T.eq(BlockModels.Order[i], name, "ordre " .. name)
 	T.check(BlockModels.Get(name) ~= nil, "modèle " .. name)
-	T.check(BlockModels.Looks[name] ~= nil, "effets " .. name)
+	T.check(BlockModels.Looks[name] ~= nil, "apparence " .. name)
+end
+T.eq(#BlockModels.Biomes, #Zones.List, "un décor par zone")
+for _, zone in Zones.List do
+	T.check(BlockModels.Biome(zone.Name) ~= nil, "décor du biome " .. zone.Name)
+	T.check(table.find(BlockModels.Biomes, zone.Name) ~= nil, "BlockModels.Biomes contient " .. zone.Name)
 end
 
 T.section("modèles en briques")
 local previousGems, previous = -1, nil
 for _, name in BlockModels.Order do
 	local data = BlockModels.Get(name)
-	local count = BlockModels.Count(name)
-	T.check(count > 20 and count <= BUDGET, name .. " : " .. count .. " pièces (budget " .. BUDGET .. ")")
 	local model = BlockModels.Build(name)
 	T.check(model ~= nil and model:IsA("Model"), name .. " : Build donne un Model")
 	if not (model and data) then
 		continue
 	end
-	T.eq(#model:GetChildren(), count, name .. " : une pièce par boîte")
+	T.eq(#model:GetChildren(), BlockModels.Count(name), name .. " : une pièce par boîte, plus Root")
 	T.eq(model:GetAttribute("Rarity"), name, name .. " : attribut Rarity")
+	local root = model.PrimaryPart
+	T.check(root ~= nil and root.Name == "Root" and root.Transparency == 1, name .. " : pièce Root invisible (PrimaryPart)")
+	T.check(root ~= nil and root.CFrame.Position.Magnitude < 1e-6, name .. " : Root au centre du bloc")
 	local loose, roles = 0, {}
 	for _, p in model:GetChildren() do
 		if not (p.Anchored and not p.CanCollide and not p.CanQuery and not p.CanTouch) then
@@ -68,7 +77,7 @@ for _, name in BlockModels.Order do
 	T.eq(loose, 0, name .. " : pièces ancrées, sans collision, requête ni contact")
 	T.check((roles.Fossil or 0) >= 20, name .. " : squelette en relief (" .. tostring(roles.Fossil) .. " os)")
 	-- roche : un cube de 3 studs centré sur le pivot ; os juste au-dessus des faces ; cristaux au-dessus du dessus
-	local lo, hi = extent(model, { Rock = true, Rainbow = true, Glow = true })
+	local lo, hi = extent(model, ROCK)
 	T.near(lo.X, -1.5, 0.01, name .. " : roche à -1,5 en X")
 	T.near(hi.Y, 1.5, 0.01, name .. " : dessus à 1,5")
 	T.near(lo.Y, -1.5, 0.01, name .. " : dessous à -1,5")
@@ -81,7 +90,7 @@ for _, name in BlockModels.Order do
 		local glo, ghi = extent(model, { Gem = true })
 		T.check(ghi.Y > 1.9 and ghi.Y < 3.2, name .. " : cristaux au-dessus du bloc")
 		T.check(glo.Y > 0.9, name .. " : base des cristaux dans le dessus de la roche")
-		T.check((glo.Z + ghi.Z) / 2 < 0.4, name .. " : cristaux sur la moitié avant du dessus")
+		T.check((glo.Z + ghi.Z) / 2 < 0.6, name .. " : cristaux surtout sur la moitié avant du dessus")
 		T.check(glo.X > -2 and ghi.X < 2 and glo.Z > -2, name .. " : cristaux au-dessus du bloc, pas à côté")
 	end
 	T.check(data.Gems >= previousGems, name .. " : au moins autant de cristaux que la rareté d'avant")
@@ -95,32 +104,31 @@ for _, name in BlockModels.Order do
 			end
 		end
 		T.check(best < 0.4, name .. " : roche de la couleur de la rareté (écart " .. string.format("%.2f", best) .. ")")
-	end
-	-- studs : le dessus de la roche en plastique
-	local studs = 0
-	for _, p in model:GetChildren() do
-		if p.Name == "Rock" and p.TopSurface == Enum.SurfaceType.Studs then
-			studs += 1
+		local studs = 0
+		for _, p in model:GetChildren() do
+			if p.Name == "Rock" and p.TopSurface == Enum.SurfaceType.Studs then
+				studs += 1
+			end
 		end
-	end
-	if name ~= "Secret" then
 		T.check(studs > 0, name .. " : studs sur le dessus de la roche")
 	end
-	-- effets : s'empilent avec la rareté
+	-- apparence : plus grosse et plus lumineuse avec la rareté
 	local look = BlockModels.Looks[name]
-	T.eq(look.Name, name, name .. " : nom des effets")
+	T.eq(look.Name, name, name .. " : nom")
 	T.eq(look.Rank, Rarity.Info[name].Rank, name .. " : rang")
 	if previous then
-		T.check(look.Rise >= previous.Rise and look.Glint >= previous.Glint and look.Orbit >= previous.Orbit,
-			name .. " : effets au moins aussi forts que la rareté d'avant")
+		T.check(look.Scale > previous.Scale, name .. " : plus gros que la rareté d'avant")
+		T.check(look.Light >= previous.Light, name .. " : au moins aussi lumineux que la rareté d'avant")
 	end
+	local light = if root then root:FindFirstChildOfClass("PointLight") else nil
+	T.eq(light ~= nil, look.Light > 0, name .. " : PointLight seulement s'il brille")
 	previous = look
 	model:Destroy()
 end
-local common = BlockModels.Looks.Common
-T.check(common.Rise == 0 and common.Glint == 0 and common.Orbit == 0 and not common.Beam, "Common : aucun effet")
-T.check(BlockModels.Looks.Secret.Rainbow and BlockModels.Looks.Secret.Beam, "Secret : arc-en-ciel et colonne")
-T.check(BlockModels.Looks.Mythic.Pulse and BlockModels.Looks.Mythic.Flicker, "Mythic : lave qui bat et braises")
+T.eq(BlockModels.Looks.Common.Scale, 1, "Common : taille de référence")
+T.check(BlockModels.Looks.Secret.Scale >= 1.7, "Secret : presque deux fois plus gros")
+T.check(BlockModels.Looks.Legendary.Light > 0 and BlockModels.Looks.Mythic.Light > 0, "Legendary et Mythic brillent")
+T.check(BlockModels.Looks.Secret.Rainbow and BlockModels.Looks.Secret.Pulse, "Secret : arc-en-ciel et battement")
 
 T.section("signes des raretés hautes")
 local function rolesOf(name: string): { [string]: { any } }
@@ -135,11 +143,11 @@ end
 local legendary = rolesOf("Legendary")
 local gold = 0
 for _, p in legendary.Fossil do
-	if p.Reflectance > 0 and p.Color.R > 0.9 and p.Color.B < 0.5 then
+	if p.Material == Enum.Material.Foil and p.Color.R > 0.9 and p.Color.B < 0.5 then
 		gold += 1
 	end
 end
-T.eq(gold, #legendary.Fossil, "Legendary : os en or brillant")
+T.eq(gold, #legendary.Fossil, "Legendary : os en or (Foil)")
 local mythic = rolesOf("Mythic")
 T.check(mythic.Glow ~= nil and #mythic.Glow > 0, "Mythic : base de lave")
 for _, p in mythic.Glow or {} do
@@ -155,12 +163,68 @@ for _ in hues do
 	distinct += 1
 end
 T.check(distinct >= 5, "Secret : couches arc-en-ciel (" .. distinct .. " couleurs)")
+local pearl = 0
+for _, p in secret.Fossil do
+	if p.Material == Enum.Material.Foil and p.Color.R > 0.9 and p.Color.B > 0.9 then
+		pearl += 1
+	end
+end
+T.eq(pearl, #secret.Fossil, "Secret : os nacrés (Foil ; en Neon blanc, le halo effaçait le crâne)")
+local shining = 0
+for _, p in secret.Gem or {} do
+	if p.Material == Enum.Material.Neon then
+		shining += 1
+	end
+end
+T.check(shining > 0 and shining == #secret.Gem, "Secret : cristaux en Neon")
 T.eq(rolesOf("Common").Gem, nil, "Common : pas de cristal")
 
-T.section("taille demandée")
+T.section("décor des biomes")
+local seen = {}
+for _, zone in BlockModels.Biomes do
+	local biome = BlockModels.Biome(zone)
+	T.check(biome ~= nil and #biome.Boxes >= 6 and #biome.Boxes <= 30, zone .. " : décor de 6 à 30 pièces")
+	for _, rarity in BlockModels.Order do
+		local count = BlockModels.Count(rarity, zone)
+		T.check(count <= BUDGET, rarity .. " + " .. zone .. " : " .. count .. " pièces (budget " .. BUDGET .. ")")
+	end
+	local model = BlockModels.Build("Rare", 3, zone)
+	T.eq(#model:GetChildren(), BlockModels.Count("Rare", zone), zone .. " : décor ajouté au bloc")
+	T.eq(model:GetAttribute("Zone"), zone, zone .. " : attribut Zone")
+	-- le décor reste autour du bloc et ne s'envole pas
+	local lo, hi = extent(model, { Biome = true, Ember = true, Deco = true })
+	T.check(lo.X > -1.9 and hi.X < 1.9 and lo.Z > -1.9 and hi.Z < 1.9 and lo.Y > -1.6 and hi.Y < 2.8, zone .. " : décor autour du bloc")
+	local signature = {}
+	for _, p in model:GetChildren() do
+		if p.Name == "Biome" then
+			signature[string.format("%.2f %.2f %.2f", p.Color.R, p.Color.G, p.Color.B)] = true
+		end
+	end
+	local key = {}
+	for k in signature do
+		table.insert(key, k)
+	end
+	table.sort(key)
+	local text = table.concat(key, "|")
+	T.check(seen[text] == nil, zone .. " : décor différent des autres biomes")
+	seen[text] = true
+	model:Destroy()
+end
+
+T.section("taille en jeu")
+T.near(BlockModels.SideOf("Common", 3), 3, 1e-6, "Common : la taille de la pièce")
+T.near(BlockModels.SideOf("Secret", 3), 3 * BlockModels.Looks.Secret.Scale, 1e-6, "Secret : plus gros que la pièce")
+T.near(BlockModels.SideOf("Secret", 2.5, "TankBlock"), 2.5 * BlockModels.TankScale, 1e-6, "dans une cuve : borné")
+T.near(BlockModels.SideOf("Rare", 2.5, "TankBlock"), 2.5 * BlockModels.Looks.Rare.Scale, 1e-6, "cuve : les petites raretés gardent leur taille")
+local big = BlockModels.Build("Mythic", BlockModels.SideOf("Mythic", 3))
+local lo, hi = extent(big, ROCK)
+T.near(hi.Y - lo.Y, 3 * BlockModels.Looks.Mythic.Scale, 0.02, "Mythic construit plus gros")
+local light = big.PrimaryPart:FindFirstChildOfClass("PointLight")
+T.near(light.Range, BlockModels.Looks.Mythic.Range * BlockModels.Looks.Mythic.Scale, 1e-6, "portée de la lumière à l'échelle du bloc")
+big:Destroy()
 local small = BlockModels.Build("Rare", 2.5)
-local lo, hi = extent(small, { Rock = true })
-T.near(hi.X - lo.X, 2.5, 0.01, "bloc porté : 2,5 studs de côté")
+local slo, shi = extent(small, { Rock = true })
+T.near(shi.X - slo.X, 2.5, 0.01, "bloc porté : 2,5 studs de côté")
 T.near(small:GetAttribute("Scale"), 2.5 / 3, 1e-6, "attribut Scale")
 small:Destroy()
 
@@ -169,10 +233,19 @@ for _, bad in { nil, 0, -1, "", "Nope", "common", "Gem1", {}, true, 0 / 0, math.
 	T.eq(BlockModels.Get(bad), nil, "Get(" .. T.show(bad) .. ")")
 	T.eq(BlockModels.Build(bad), nil, "Build(" .. T.show(bad) .. ")")
 	T.eq(BlockModels.Count(bad), 0, "Count(" .. T.show(bad) .. ")")
+	T.eq(BlockModels.Biome(bad), nil, "Biome(" .. T.show(bad) .. ")")
+	local model = BlockModels.Build("Common", 3, bad)
+	T.check(model ~= nil and model:GetAttribute("Zone") == nil, "Build avec la zone " .. T.show(bad) .. " : bloc sans décor")
+	T.near(BlockModels.SideOf(bad, 3), 3, 1e-6, "SideOf(" .. T.show(bad) .. ") : taille de la pièce")
+	if model then
+		model:Destroy()
+	end
 end
 for _, bad in { 0 / 0, -3, 0, math.huge, -math.huge, "3" } do
 	local s = BlockModels.ScaleOf(bad :: any)
 	T.check(s == s and s > 0 and s < 100, "ScaleOf(" .. T.show(bad) .. ") reste fini et positif")
+	local side = BlockModels.SideOf("Epic", bad :: any)
+	T.check(side == side and side > 0 and side < 100, "SideOf(Epic, " .. T.show(bad) .. ") reste fini et positif")
 	local model = BlockModels.Build("Common", bad :: any)
 	T.check(model ~= nil, "Build avec une taille absurde : bloc quand même")
 	if model then

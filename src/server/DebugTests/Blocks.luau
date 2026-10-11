@@ -1,5 +1,6 @@
 --!strict
--- Tests FossilDebug du brief 9 « blocs-hybrides » : les modèles des blocs de fossiles (BlockModels).
+-- Tests FossilDebug du brief 9 « blocs-hybrides » : les modèles des blocs de fossiles (BlockModels), raretés et décors
+-- des biomes.
 -- Lancer pendant un Play (barre de commande, vue serveur) : game.ServerScriptService.FossilDebug:Invoke("blocks")
 -- Rien n'est laissé dans le jeu : les modèles de test sont construits hors du Workspace puis détruits. L'habillage des
 -- blocs chez le client (FossilBlockController) se regarde en jeu : un bloc près de la caméra est en briques, son cube
@@ -10,11 +11,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BlockModels = require(ReplicatedStorage.Shared.BlockModels)
 local Rarity = require(ReplicatedStorage.Shared.Config.Rarity)
+local Zones = require(ReplicatedStorage.Shared.Config.Zones)
 local DebugService = require(script.Parent.Parent.Services.DebugService)
 
 type Tester = DebugService.Tester
 
-local BUDGET = 100 -- pièces au plus par bloc
+local BUDGET = 110 -- pièces au plus par bloc, décor du biome compris
 
 return {
 	blocks = function(t: Tester)
@@ -41,9 +43,19 @@ return {
 			t:Check(count > 0 and count <= BUDGET, name .. ": parts within budget", count)
 			t:Equal(loose, 0, name .. ": anchored, no collision, no query, no touch")
 			t:Check(math.abs(hi.Y - lo.Y - BlockModels.Size) < 0.05, name .. ": rock is " .. BlockModels.Size .. " studs", hi.Y - lo.Y)
-			t:Check(BlockModels.Looks[name] ~= nil, name .. ": rarity effects")
-			t:Note(string.format("%s: %d parts", name, count))
+			local look = BlockModels.Looks[name]
+			t:Check(look ~= nil, name .. ": rarity look")
+			t:Note(string.format("%s: %d parts, x%.2f in game", name, count, if look then look.Scale else 1))
 			built:Destroy()
+		end
+		-- un décor par zone, au budget avec chaque rareté
+		for _, zone in Zones.List do
+			t:Check(BlockModels.Biome(zone.Name), zone.Name .. ": biome decor")
+			local worst = 0
+			for _, name in Rarity.Order do
+				worst = math.max(worst, BlockModels.Count(name, zone.Name))
+			end
+			t:Check(worst <= BUDGET, zone.Name .. ": parts within budget with every rarity", worst)
 		end
 		-- chaque bloc posé par le serveur peut être habillé chez le client
 		local unknown = 0
