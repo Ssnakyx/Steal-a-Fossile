@@ -45,6 +45,8 @@ T.section("départ")
 local alice = T.join({ Name = "Alice", Character = true })
 env.flush()
 local data = T.data(alice)
+-- (tutoriel fini : minuteurs normaux ; la première cuve rapide d'un nouveau joueur est testée dans t_daily_onboarding)
+data.Tutorial = 3
 local plot = PlotService.Get(alice)
 T.eq(replica(alice, "TankCount"), 2, "replica TankCount")
 T.check(next(replica(alice, "Tanks")) == nil, "replica Tanks vide")
