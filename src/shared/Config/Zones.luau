@@ -22,7 +22,7 @@ local List: { Zone } = {
 		Index = 1,
 		Speed = 0,
 		Weights = { Common = 75, Uncommon = 25, Secret = 0.01 },
-		Species = { "Compy", "Oviraptor", "Pteranodon" },
+		Species = { "Compy", "Oviraptor", "Pteranodon", "Protoceratops", "Psittacosaurus", "Dimorphodon", "Archelon", "Tanystropheus" },
 		Color = Color3.fromRGB(232, 210, 150),
 	},
 	{

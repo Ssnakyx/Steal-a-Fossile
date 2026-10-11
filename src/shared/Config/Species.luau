@@ -23,6 +23,11 @@ local list: { SpeciesDef } = {
 	{ Name = "Compy", Model = "Compy", Family = "Biped", Zone = "Beach", BaseSize = 4, Income = 1 },
 	{ Name = "Oviraptor", Model = "Oviraptor", Family = "Biped", Zone = "Beach", BaseSize = 5, Income = 2 },
 	{ Name = "Pteranodon", Model = "Pteranodon", Family = "Flyer", Zone = "Beach", BaseSize = 16, Income = 3 },
+	{ Name = "Protoceratops", Model = "Protoceratops", Family = "Quadruped", Zone = "Beach", BaseSize = 6, Income = 2 },
+	{ Name = "Psittacosaurus", Model = "Psittacosaurus", Family = "Biped", Zone = "Beach", BaseSize = 5, Income = 1 },
+	{ Name = "Dimorphodon", Model = "Dimorphodon", Family = "Flyer", Zone = "Beach", BaseSize = 8, Income = 2 },
+	{ Name = "Archelon", Model = "Archelon", Family = "Swimmer", Zone = "Beach", BaseSize = 12, Income = 4 },
+	{ Name = "Tanystropheus", Model = "Tanystropheus", Family = "Quadruped", Zone = "Beach", BaseSize = 14, Income = 3 },
 	-- 2. Fern Forest
 	{ Name = "Gallimimus", Model = "Gallimimus", Family = "Biped", Zone = "Fern Forest", BaseSize = 9, Income = 8 },
 	{ Name = "Parasaurolophus", Model = "Parasaurolophus", Family = "Quadruped", Zone = "Fern Forest", BaseSize = 12, Income = 11 },

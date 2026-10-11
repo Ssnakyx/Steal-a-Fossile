@@ -33,6 +33,11 @@ local Species: { [string]: string } = {
 	Compy = "Common",
 	Oviraptor = "Common",
 	Pteranodon = "Uncommon",
+	Protoceratops = "Common",
+	Psittacosaurus = "Common",
+	Dimorphodon = "Common",
+	Archelon = "Uncommon",
+	Tanystropheus = "Uncommon",
 	-- Fern Forest
 	Gallimimus = "Common",
 	Parasaurolophus = "Uncommon",
