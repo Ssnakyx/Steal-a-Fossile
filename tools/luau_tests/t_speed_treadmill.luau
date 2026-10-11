@@ -61,6 +61,7 @@ end)
 
 T.section("tapis pas acheté")
 local player = T.join({ UserId = 201, Character = true })
+env.flush() -- (apparition dans son parc par PlotService du brief 3, avant de le poser sur le tapis du test)
 local plot = makePlot(201, Vector3.new(0, 0, 0))
 T.eq(ReplicaService.Get(player, "TreadmillLevel"), 0, "Replica TreadmillLevel 0")
 T.eq(TreadmillService.Rate(player), 0, "aucun gain sans treadmill")

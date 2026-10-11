@@ -11,10 +11,13 @@ local Shop = Config.Shop
 Shop.Passes.DoubleMoney.Id = 501
 Shop.Passes.VIP.Id = 502
 Shop.Products.ServerLuck.Id = 601
-Shop.Products.InstantRevive.Id = 602 -- (Id posé, mais pas de service qui le donne : doit rester caché)
+Shop.Products.InstantRevive.Id = 602 -- (donné par ReviveService du brief 3 : en vente)
+-- (produit de test avec un Id, mais qu'aucun service ne donne : doit rester caché)
+Shop.Products.TestOrphan = { Id = 603, Name = "Test", Description = "Test", Price = 1, Order = 99, Owner = "Nobody" }
 env.productPrices[501] = 299
 env.productPrices[502] = 149
 env.productPrices[601] = 99
+env.productPrices[602] = 29
 env.ownedPasses[401] = { [501] = true }
 local Boot = T.bootServer()
 local ShopService = Boot.Services.ShopService
@@ -93,12 +96,13 @@ end
 T.check(productKeys.ServerLuck ~= nil, "Server Luck en vente")
 T.eq(productKeys.ServerLuck and productKeys.ServerLuck.Price, 99, "prix du produit lu sur Roblox")
 T.check(productKeys.BearTraps5 == nil, "produit à Id = 0 caché")
-T.check(productKeys.InstantRevive == nil, "produit sans service qui le donne caché")
+T.check(productKeys.InstantRevive ~= nil, "Instant Revive en vente (donné par ReviveService)")
+T.check(productKeys.TestOrphan == nil, "produit sans service qui le donne caché")
 T.check(shop.Treadmill ~= nil and shop.Treadmill.Level == 0, "section Treadmill")
 T.eq(shop.ServerLuck.Multiplier, 1, "pas de Server Luck")
 ok, text = call(player, "BuyProduct", "BearTraps5")
 T.check(not ok and text == "Coming soon!", "produit caché pas achetable")
-ok, text = call(player, "BuyProduct", "InstantRevive")
+ok, text = call(player, "BuyProduct", "TestOrphan")
 T.check(not ok and text == "Coming soon!", "produit sans service pas achetable")
 ok, text = call(player, "BuyProduct", "Nope")
 T.check(not ok and text == "Unknown product", "produit inconnu")
