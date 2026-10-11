@@ -725,7 +725,8 @@ function RewardsController.Init()
 	local buttons: Frame = new("Frame", {
 		Name = "RewardButtons",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 16, 0.5, 0),
+		-- (82 sous le milieu : les boutons Shop et Index du HUD, brief 12, sont juste au-dessus, les 5 centrés ensemble)
+		Position = UDim2.new(0, 16, 0.5, 82),
 		Size = UDim2.fromOffset(136, 3 * 68 + 2 * 14),
 		BackgroundTransparency = 1,
 		Parent = root,
