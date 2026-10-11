@@ -34,7 +34,7 @@ Même map et même boucle que **Steal an Egg** (pas Steal a Brainrot) : bases al
 | 8 | Meteor Crater | 25 M |
 
 - **Gisements (Dig Sites)** : plusieurs par zone, chacun avec des blocs fossiles. Ils se remplissent toutes les 5 min (compte à rebours affiché). Un bloc Secret est annoncé dans le chat du serveur.
-- **Gardiens** : dans chaque zone, un dino vivant dort près des gisements. Quand on arrache un bloc, il se réveille (« RUN!! ») et poursuit le joueur. Plus la zone est loin, plus il est rapide. S'il attrape le joueur : ragdoll cartoon, le bloc est lâché et retourne au gisement.
+- **Gardiens** : dans chaque zone, un dino vivant dort près des gisements. Quand on arrache un bloc, il se réveille (« RUN!! ») et poursuit le joueur sur toute la route, jusqu'au bord de la Beach. Plus la zone est loin, plus il est rapide : trop lent pour la zone, on est rattrapé avant d'être rentré. S'il attrape le joueur : ragdoll cartoon, le bloc est lâché et retourne au gisement.
 
 ## Boucle principale
 1. Courir vers une zone adaptée à sa vitesse.

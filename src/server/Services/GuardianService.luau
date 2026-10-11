@@ -1,10 +1,12 @@
 --!strict
 -- Gardiens des zones (brief 7 « gardiens-vol », GDD sections Carte et Animations) : un dino géant par zone dort sur le
 -- point « Guardian » de sa zone (docs/BOUCLE.md). Quand un bloc de sa zone est arraché (ou qu'un porteur d'un bloc de
--- sa zone passe à portée), il se réveille, rugit (« RUN!! ») et poursuit le porteur ; plus la zone est loin, plus il
--- court vite (Config.Guardians). S'il l'attrape : chute cartoon, le bloc retourne à son gisement. Il ne sort pas de sa
--- zone (+ Leash studs) et n'entre jamais dans un parc : il cherche, puis rentre chez lui et se rendort (coincé en
--- rentrant, il y réapparaît). Un Bear Trap le bloque 3 s (PvpService).
+-- sa zone passe à portée), il se réveille, rugit (« RUN!! ») et poursuit le porteur sur toute la route, jusqu'au bord
+-- de la Beach (Config.Guardians.SafeZones) ; plus la zone est loin, plus il court vite (Config.Guardians : un peu moins
+-- vite qu'un joueur à la vitesse conseillée de la zone, chargé du même bloc). S'il l'attrape : chute cartoon, le bloc
+-- retourne à son gisement. Il n'entre jamais dans un parc ni dans la Beach (sauf celui de la Beach, qui garde sa
+-- laisse : sa zone + Leash studs) : il cherche, puis rentre chez lui et se rendort (coincé en rentrant, il y
+-- réapparaît). Un Bear Trap le bloque 3 s (PvpService).
 -- États (noms identiques aux animations du brief 2) : Sleep, Wake, Roar, Run, Catch, Search, Return, BackToSleep.
 -- Modèle : contrat du brief 2 (DinoAnimController) : Model tagué « Dino » (et « Guardian ») dans Workspace.Guardians,
 -- pièce invisible « Root » au sol (PrimaryPart), attributs Species, Scale, State, StateAt, Speed (studs/s, cadence de
@@ -39,14 +41,15 @@ local ZoneService = require(script.Parent.ZoneService)
 export type Guardian = {
 	Zone: string,
 	Species: string,
-	Area: BasePart, -- étendue de la zone (poursuite jusqu'à Leash studs au-delà)
+	Area: BasePart, -- étendue de la zone (endormi, réveil jusqu'à Leash studs au-delà)
 	Model: Model,
 	Home: CFrame, -- où il dort (point Guardian de la zone, au sol, tourné comme lui)
 	CFrame: CFrame, -- où il est (au sol)
 	State: string,
 	StateEndsAt: number, -- os.clock() de la fin d'un état minuté
 	Target: Player?,
-	Speed: number, -- course (studs/s)
+	Speed: number, -- course de base (studs/s) ; contre un porteur, x le malus de son bloc (sauf FixedSpeed)
+	FixedSpeed: boolean, -- Speed donnée par la config (Beach) : la même contre tous
 	ReturnSpeed: number,
 	CatchRange: number,
 	Size: number, -- taille (studs) : taille de base de l'espèce x Scale
@@ -225,22 +228,42 @@ local function inLeash(g: Guardian, position: Vector3): boolean
 	return math.abs(relative.X) <= half.X + leash and math.abs(relative.Z) <= half.Z + leash
 end
 
--- Le joueur est-il une proie pour ce gardien ? (porte un bloc de sa zone, sur la route, à portée de laisse)
-local function isPrey(g: Guardian, player: Player): boolean
+-- La position est-elle dans une zone sûre qui n'est pas la sienne (la Beach pour les autres gardiens) ?
+local function inForeignSafeZone(g: Guardian, position: Vector3): boolean
+	local zone = ZoneService.ZoneAt(position)
+	return zone ~= nil and zone ~= g.Zone and GuardiansConfig.SafeZones[zone] == true
+end
+
+-- Peut-il poursuivre jusqu'ici ? Dans sa zone (+ Leash) toujours ; réveillé (`wide`), sur toute la route
+-- (ChaseWholeRoute). Jamais dans une zone sûre qui n'est pas la sienne ; le gardien d'une zone sûre garde sa laisse.
+local function inChase(g: Guardian, position: Vector3, wide: boolean): boolean
+	local zone = ZoneService.ZoneAt(position)
+	if zone ~= nil and zone ~= g.Zone and GuardiansConfig.SafeZones[zone] then
+		return false
+	end
+	if inLeash(g, position) then
+		return true
+	end
+	return wide and GuardiansConfig.ChaseWholeRoute and zone ~= nil and not GuardiansConfig.SafeZones[g.Zone]
+end
+
+-- Le joueur est-il une proie pour ce gardien ? (porte un bloc de sa zone, sur la route, hors d'un parc ; à portée de
+-- laisse s'il dort, partout sur la route jusqu'à la Beach s'il est réveillé : `wide`)
+local function isPrey(g: Guardian, player: Player, wide: boolean): boolean
 	if player.Parent ~= Players then
 		return false
 	end
 	local block = CarryService.Get(player)
 	local root = rootOf(player)
-	return block ~= nil and block.Zone == g.Zone and root ~= nil and not PlotService.IsSafe(root.Position) and inLeash(g, root.Position)
+	return block ~= nil and block.Zone == g.Zone and root ~= nil and not PlotService.IsSafe(root.Position) and inChase(g, root.Position, wide)
 end
 
 -- Proie la plus proche du gardien (nil s'il n'y en a pas)
-local function nearestPrey(g: Guardian): Player?
+local function nearestPrey(g: Guardian, wide: boolean): Player?
 	local best: Player? = nil
 	local bestDistance = math.huge
 	for _, player in Players:GetPlayers() do
-		if isPrey(g, player) then
+		if isPrey(g, player, wide) then
 			local distance = (flat((rootOf(player) :: BasePart).Position) - flat(g.CFrame.Position)).Magnitude
 			if distance < bestDistance then
 				best, bestDistance = player, distance
@@ -289,8 +312,9 @@ local function moveToward(g: Guardian, goal: Vector3, speed: number, dt: number,
 	local step = math.min(speed * dt, math.max(0, distance - stop))
 	local nextFlat = flat(here) + direction * step
 	local nextPosition = Vector3.new(nextFlat.X, groundY(g, nextFlat), nextFlat.Z)
-	-- (jamais dans un parc : il s'arrête au bord)
-	if PlotService.IsSafe(nextPosition + Vector3.new(0, 3, 0)) then
+	-- (jamais dans un parc ni dans la Beach s'il n'en est pas le gardien : il s'arrête au bord)
+	local lifted = nextPosition + Vector3.new(0, 3, 0)
+	if PlotService.IsSafe(lifted) or inForeignSafeZone(g, lifted) then
 		g.Model:SetAttribute("Speed", 0)
 		return distance
 	end
@@ -305,6 +329,14 @@ local function face(g: Guardian, position: Vector3)
 	if offset.Magnitude > 0.1 then
 		place(g, CFrame.lookAt(here, here + offset.Unit))
 	end
+end
+
+-- Vitesse de course contre ce porteur : course de base x le malus de son bloc (MatchCarry), ou Speed fixe (Beach)
+local function chaseSpeed(g: Guardian, target: Player): number
+	if g.FixedSpeed or not GuardiansConfig.MatchCarry then
+		return g.Speed
+	end
+	return g.Speed * CarryService.GetSpeedMultiplier(target)
 end
 
 local function wake(g: Guardian, player: Player)
@@ -333,7 +365,7 @@ local function goHome(g: Guardian)
 end
 
 -- Pourquoi le gardien lâche ce joueur : Safe (rentré dans un parc), Dropped (plus de bloc de sa zone, ou mort) ou
--- Escaped (sorti de la laisse avec son bloc). Seuls Safe et Escaped affichent « ESCAPED! » chez le joueur.
+-- Escaped (arrivé à la Beach avec son bloc, ou hors de portée). Seuls Safe et Escaped affichent « ESCAPED! ».
 local function lostReason(g: Guardian, player: Player): string
 	if PlotService.IsPlayerSafe(player) then
 		return "Safe"
@@ -404,7 +436,7 @@ local function tick(g: Guardian, dt: number, now: number)
 	local state = g.State
 	if state == "Sleep" or state == "BackToSleep" then
 		-- (un porteur d'un bloc de sa zone tout près, par exemple celui qui a ramassé un bloc lâché : il se réveille)
-		local other = nearestPrey(g)
+		local other = nearestPrey(g, false)
 		if other then
 			wake(g, other)
 		elseif state == "BackToSleep" and now >= g.StateEndsAt then
@@ -413,10 +445,10 @@ local function tick(g: Guardian, dt: number, now: number)
 	elseif state == "Wake" then
 		if now >= g.StateEndsAt then
 			local target = g.Target
-			if target and isPrey(g, target) then
+			if target and isPrey(g, target, true) then
 				roar(g, target)
 			else
-				local other = nearestPrey(g)
+				local other = nearestPrey(g, true)
 				if other then
 					roar(g, other)
 				else
@@ -431,10 +463,10 @@ local function tick(g: Guardian, dt: number, now: number)
 			face(g, root.Position)
 		end
 		if now >= g.StateEndsAt then
-			if target and isPrey(g, target) then
+			if target and isPrey(g, target, true) then
 				startRun(g, target)
 			else
-				local other = nearestPrey(g)
+				local other = nearestPrey(g, true)
 				if other then
 					startRun(g, other)
 				else
@@ -444,8 +476,8 @@ local function tick(g: Guardian, dt: number, now: number)
 		end
 	elseif state == "Run" then
 		local target = g.Target
-		if not (target and isPrey(g, target)) then
-			local other = nearestPrey(g)
+		if not (target and isPrey(g, target, true)) then
+			local other = nearestPrey(g, true)
 			if not other then
 				lose(g)
 				return
@@ -457,7 +489,7 @@ local function tick(g: Guardian, dt: number, now: number)
 			target = other
 		end
 		local root = rootOf(target :: Player) :: BasePart
-		local left = moveToward(g, root.Position, g.Speed, dt, g.CatchRange * 0.5)
+		local left = moveToward(g, root.Position, chaseSpeed(g, target :: Player), dt, g.CatchRange * 0.5)
 		if left <= g.CatchRange then
 			catch(g, target :: Player)
 			return
@@ -467,7 +499,7 @@ local function tick(g: Guardian, dt: number, now: number)
 		end
 	elseif state == "Catch" then
 		if now >= g.StateEndsAt then
-			local other = nearestPrey(g)
+			local other = nearestPrey(g, true)
 			if other then
 				startRun(g, other)
 			else
@@ -475,19 +507,24 @@ local function tick(g: Guardian, dt: number, now: number)
 			end
 		end
 	elseif state == "Search" then
-		local other = nearestPrey(g)
+		local other = nearestPrey(g, true)
 		if other then
 			startRun(g, other)
 		elseif now >= g.StateEndsAt then
 			goHome(g)
 		end
 	elseif state == "Return" then
-		local other = nearestPrey(g)
+		local other = nearestPrey(g, true)
 		if other then
 			roar(g, other)
 			return
 		end
-		local left = moveToward(g, g.Home.Position, g.ReturnSpeed, dt, 0)
+		-- (loin de sa zone, après une longue poursuite, il rentre plus vite : sa zone ne reste pas longtemps sans gardien)
+		local speed = g.ReturnSpeed
+		if not inLeash(g, g.CFrame.Position) then
+			speed = math.max(speed, g.Speed * GuardiansConfig.FarReturnFactor)
+		end
+		local left = moveToward(g, g.Home.Position, speed, dt, 0)
 		if left <= 0.5 or now >= g.StateEndsAt then
 			place(g, g.Home)
 			setState(g, "BackToSleep", GuardiansConfig.BackToSleepTime)
@@ -527,8 +564,8 @@ function GuardianService.List(): { Guardian }
 	return table.clone(guardians)
 end
 
--- Vitesse de course du gardien d'une zone (studs/s) : Speed de Config.Guardians, sinon SpeedFactor x WalkSpeed
--- conseillé de la zone
+-- Vitesse de course de base du gardien d'une zone (studs/s) : Speed de Config.Guardians, sinon SpeedFactor x WalkSpeed
+-- conseillé de la zone (contre un porteur, x le malus de son bloc : ChaseSpeed)
 function GuardianService.SpeedFor(zone: string): number
 	local info = GuardiansConfig.Zones[zone]
 	if info and Guard.Number(info.Speed, 0) then
@@ -536,6 +573,12 @@ function GuardianService.SpeedFor(zone: string): number
 	end
 	local zoneInfo = Zones.ByName[zone]
 	return GuardiansConfig.SpeedFactor * SpeedConfig.WalkSpeedFor(if zoneInfo then zoneInfo.Speed else 0)
+end
+
+-- Vitesse de course du gardien d'une zone contre ce joueur (avec le malus du bloc qu'il porte) ; 0 sans gardien
+function GuardianService.ChaseSpeed(zone: string, player: Player): number
+	local g = byZone[zone]
+	return if g then chaseSpeed(g, player) else 0
 end
 
 -- Gardiens actifs ou non (commande d'admin « guardians », tests de la boucle) : éteints, ils dorment chez eux
@@ -600,6 +643,7 @@ function GuardianService.Init()
 			StateEndsAt = 0,
 			Target = nil,
 			Speed = speed,
+			FixedSpeed = Guard.Number(info.Speed, 0) ~= nil,
 			ReturnSpeed = math.max(GuardiansConfig.MinReturnSpeed, speed * GuardiansConfig.ReturnFactor),
 			CatchRange = GuardiansConfig.CatchRange + GuardiansConfig.CatchReach * size,
 			Size = size,

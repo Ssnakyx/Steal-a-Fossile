@@ -9,14 +9,22 @@ valeurs de jeu sont dans `Config/Guardians.luau` et `Config/Pvp.luau` (valeurs d
 - **Parc = zone sûre** (`PlotService.IsSafe`) : un bloc rapporté au parc n'est jamais volable, personne n'y est bonké
   ni piégé, aucun piège ne se pose dans un parc ni à moins de 10 studs, et les gardiens n'y entrent jamais.
 - **Gardien** : un par zone, il dort sur le point `Guardian` de la zone. Arracher un bloc de sa zone le réveille
-  (Wake 1.2 s, Roar 1.3 s avec « RUN!! »), puis il court vers le porteur. Vitesse : `Speed` de la config, sinon
-  0.75 x le WalkSpeed conseillé de la zone (Beach : 10, lent pour le tutoriel ; Meteor Crater : 52.5). Il attrape à
-  4 studs + 0.35 x sa taille : chute de 2 s et le bloc retourne à son gisement. Il poursuit tant que le porteur garde un
-  bloc de sa zone, reste à moins de 40 studs de la zone (`Leash`) et hors des parcs ; sinon il cherche 3 s, rentre en
-  marchant, se recouche. Réveillé, il prend la proie la plus proche (le voleur qui a ramassé le bloc, par exemple).
-  Endormi, il se réveille aussi dès qu'un porteur d'un bloc de sa zone est à portée (celui qui ramasse au sol un bloc
-  lâché près de lui). S'il reste coincé en rentrant (un parc sur le chemin), il réapparaît chez lui au bout de
-  distance / vitesse + 5 s (`ReturnSlack`).
+  (Wake 1.2 s, Roar 1.3 s avec « RUN!! »), puis il court vers le porteur. Vitesse : `Speed` de la config (Beach : 10,
+  fixe, lent pour le tutoriel), sinon 0.9 x le WalkSpeed conseillé de la zone (`SpeedFactor`), multiplié par le malus
+  du bloc que porte sa proie (`MatchCarry`, le même que celui du joueur) : à la vitesse conseillée, chargé de n'importe
+  quel bloc, on va 11 % plus vite que lui. Il attrape à 4 studs + 0.35 x sa taille : chute de 2 s et le bloc retourne à
+  son gisement.
+- **Poursuite sur toute la route** (`ChaseWholeRoute`) : réveillé, il suit le porteur de zone en zone tant que celui-ci
+  garde un bloc de sa zone, jusqu'au bord de la Beach (`SafeZones`) : il n'entre jamais dans la Beach ni dans un parc.
+  La course est longue, c'est la vitesse qui décide : un nouveau joueur ne peut pas voler au fond de la route (rattrapé
+  partout sauf au gisement de la Fern Forest le plus près de la Beach), deux zones trop lent on est rattrapé, une zone
+  trop lent on l'est souvent depuis le gisement le plus loin (`t_pvp_chase`). Le gardien de la Beach garde sa laisse
+  (la Beach + 40 studs, `Leash`). Perdu (arrivé à la Beach, dans un parc, bloc lâché), il cherche 3 s puis rentre : en
+  marchant dans sa zone, à sa vitesse de course plus loin (`FarReturnFactor`), et se recouche. Réveillé, il prend la
+  proie la plus proche (le voleur qui a ramassé le bloc, par exemple). Endormi, il se réveille seulement pour un porteur
+  d'un bloc de sa zone dans sa laisse (sa zone + 40 studs : celui qui ramasse au sol un bloc lâché près de lui). S'il
+  reste coincé en rentrant (un parc sur le chemin), il réapparaît chez lui au bout de distance / vitesse + 5 s
+  (`ReturnSlack`).
 - **Pelle** (outil « Shovel » donné à chaque apparition) : un coup toutes les 2 s, portée 8 studs (+4 de tolérance).
   Le porteur touché tombe 1.5 s et lâche son bloc à ses pieds. Un joueur sans bloc ne subit rien.
 - **Bear Trap** (outil « Bear Trap » tant qu'il en reste) : posé à ses pieds sur la route, 3 posés au plus (le plus
@@ -37,7 +45,8 @@ valeurs de jeu sont dans `Config/Guardians.luau` et `Config/Pvp.luau` (valeurs d
 
 Rien de neuf : le point `Guardian` de chaque zone (docs/BOUCLE.md) est l'endroit où le gardien dort, au-dessus de la
 pièce, tourné comme elle (le dino regarde vers -Z). Sans point `Guardian`, il dort au centre de la zone. La zone
-(`Area`) + 40 studs borne la poursuite. Le gardien suit le sol par raycast (sans les personnages, les blocs au sol, les
+(`Area`) + 40 studs borne le réveil ; réveillé, il poursuit dans toutes les pièces `Area` de la route sauf celle de la
+Beach : les `Area` doivent couvrir tout le couloir entre les murs invisibles (sorti des `Area`, le joueur est perdu). Le gardien suit le sol par raycast (sans les personnages, les blocs au sol, les
 pièges et les gardiens) : les pièces de décor `CanQuery = false` ne le gênent pas.
 
 ## Modèles des gardiens (brief 2, contrat de DinoAnimController)
@@ -59,7 +68,8 @@ Trench Megalodon x1.5, Meteor Crater T-Rex x2.
 ```lua
 -- GuardianService
 GuardianService.Get(zone) -> Guardian?          -- { Zone, Species, Model, Home, CFrame, State, Target?, Speed, ... }
-GuardianService.List() / SpeedFor(zone) -> studs/s
+GuardianService.List() / SpeedFor(zone) -> studs/s (course de base)
+GuardianService.ChaseSpeed(zone, player) -> studs/s   -- contre ce joueur : course de base x malus de son bloc
 GuardianService.SetEnabled(on) / IsEnabled()    -- éteints : ils dorment chez eux (commande « guardians on|off »)
 GuardianService.Wake(zone, player) / ResetAll() -- tests, debug
 
@@ -98,7 +108,7 @@ Remotes (`Remotes/Pvp.luau`) :
 - `BuyTraps(nombre)` -> (ok, texte) : pour le shop du brief 12.
 - `Knocked(secondes, raison)` : au joueur touché ; `PvpController` le fait tomber (sauf pour un piège).
 - `GuardianAlert(zone, état, raison?)` : au joueur poursuivi (`Roar`, `Run`, `Lost`, `Catch`) : alerte du HUD, « RUN!! ».
-  `Lost` porte une raison : `Safe` (rentré dans un parc), `Escaped` (sorti de la laisse avec son bloc) ou `Dropped`
+  `Lost` porte une raison : `Safe` (rentré dans un parc), `Escaped` (arrivé à la Beach avec son bloc) ou `Dropped`
   (plus de bloc de la zone : bonk, piège, mort).
 - `PvpEffect(genre, position)` : à tous (`Bonk`, `Catch`, `Trap`) : étoiles, piège qui se ferme, sons.
 
