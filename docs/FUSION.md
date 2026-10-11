@@ -133,9 +133,12 @@ FusionController.Ensure(clé) -> Data?      -- chimère pour un ViewportFrame : 
 
 Pour les autres briefs :
 
-- **Brief 9** : réglages des jointures dans la recette (`Tweak` : `HeadScale`, `HeadOffset`, `HeadPitch`, `LimbScale`,
-  `LimbOffset`), aperçus avec `python3 models/hybrids/preview.py` (voir `models/hybrids/README.md`). Deux chimères
-  dépassent le budget de 450 pièces : Tricera-Stego (493) et Ptero-Rex (451).
+- **Brief 9** (fait) : rendus Blender des 12 chimères et de leurs états (`python models/hybrids/render.py`, voir
+  `models/hybrids/README.md`) ; réglages des jointures dans la recette (`Tweak` : `HeadScale`, `HeadOffset`,
+  `HeadPitch`, `LimbScale`, `LimbOffset`, `LimbTurn`) pour Tricera-Stego, Shark-Raptor, Quetza-Carno et Plesio-Shark ;
+  ailes repliées qui pendent le long des flancs ; des ailes greffées sur un bipède remplacent ses bras (Ptero-Rex passe
+  de 451 à 433 pièces). Tricera-Stego reste à 493 pièces (au-dessus des 450 visées) : l'alléger enlèverait des détails
+  visibles, à décider avec Snaky.
 - **Brief 10** : le prompt du labo se pose sur la pièce `Lab` du parc (point d'ancrage du brief 3).
 - **Brief 11** : effet de fusion sur `FusionController.Done` (le nouveau dino rugit, état `Roar`) ; le modèle de
   l'hybride porte l'attribut `Rarity`.
@@ -158,4 +161,5 @@ FossilDebug (Studio) : `fusion` (Upgrade, recette inconnue, hybride, ids hostile
 - Fusion seulement dans son propre parc ; le dino obtenu sort en rugissant.
 - Les 12 recettes, leurs noms et leurs indices (tableau ci-dessus), dont Ptero-Rex = tête de Pteranodon sur un corps
   de T-Rex (les ailes viennent du Pteranodon).
-- Ailes greffées sur un corps qui marche : envergure 1,2 fois la longueur du corps, repliées le long des flancs.
+- Ailes greffées sur un corps qui marche : envergure 1,2 fois la longueur du corps, repliées le long des flancs ; sur
+  un bipède, elles remplacent ses bras (brief 9).

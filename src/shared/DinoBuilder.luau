@@ -279,7 +279,11 @@ local function noise(i: number): number
 	return x - math.floor(x)
 end
 
--- Couleur, matière, transparence, reflet d'une boîte selon le niveau et la mutation
+-- Couleur, matière, transparence, reflet d'une boîte selon le niveau et la mutation.
+-- Niveaux (brief 9, comparés dans Studio) : Golden = statue d'or en Foil (le plastique doré avec reflet virait au beige),
+-- dégradé d'or selon la clarté d'origine (les motifs de l'espèce restent lisibles) ; Diamond = cristal cyan brillant :
+-- plastique à reflet, un tiers de facettes en verre, quelques petits éclats Neon blancs qui scintillent.
+-- Les yeux et l'intérieur de la bouche (détails sombres) gardent leur couleur.
 local function paint(box: Box, i: number, level: string?, mutation: string?): (Color3, Enum.Material, number, number)
 	local color = box.Color
 	local mat = box.Material
@@ -287,14 +291,22 @@ local function paint(box: Box, i: number, level: string?, mutation: string?): (C
 	local transparency = if mat == "Glass" or mat == "Ice" then 0.25 else 0
 	local reflectance = 0
 	local detail = mat == "Smooth" -- yeux, griffes, dents, bouche : gardent leur couleur
-	if level == "Golden" and not (detail and luminance(color) < 0.15) then
-		color = ramp(Color3.fromRGB(150, 96, 16), Color3.fromRGB(255, 226, 96), color)
-		reflectance = 0.15
-	elseif level == "Diamond" and not (detail and luminance(color) < 0.15) then
-		color = ramp(Color3.fromRGB(96, 170, 226), Color3.fromRGB(236, 250, 255), color)
-		reflectance = 0.2
-		if not detail and noise(i) < 0.3 then
-			material, transparency = Enum.Material.Glass, 0.15
+	local dark = detail and luminance(color) < 0.15
+	if level == "Golden" and not dark then
+		color = ramp(Color3.fromRGB(176, 116, 20), Color3.fromRGB(255, 222, 90), color)
+		material, transparency = Enum.Material.Foil, 0
+	elseif level == "Diamond" and not dark then
+		color = ramp(Color3.fromRGB(80, 180, 240), Color3.fromRGB(228, 251, 255), color)
+		reflectance = 0.25
+		if not detail then
+			local r = noise(i)
+			local size = box.Size
+			if r < 0.07 and size.X * size.Y * size.Z < 0.5 then
+				-- petit éclat qui brille
+				color, material, transparency = Color3.fromRGB(205, 246, 255), Enum.Material.Neon, 0
+			elseif r < 0.35 then
+				material, transparency = Enum.Material.Glass, 0.1
+			end
 		end
 	end
 	if detail then
