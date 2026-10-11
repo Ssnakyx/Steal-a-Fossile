@@ -149,6 +149,7 @@ for index, zone in Zones.List do
 	T.eq(model.Parent, folder, zone.Name .. " : dans Workspace.Guardians")
 	T.eq(model.PrimaryPart and model.PrimaryPart.Name, "Root", zone.Name .. " : pivot Root")
 	T.eq(model.PrimaryPart.Transparency, 1, zone.Name .. " : Root invisible")
+	T.eq(model.ModelStreamingMode, env.Enum.ModelStreamingMode.Persistent, zone.Name .. " : Persistent (toujours chez le client)")
 	T.eq(model:GetAttribute("Species"), (string.gsub(info.Species, "[^%w]", "")), zone.Name .. " : attribut Species (nom du module DinoModels)")
 	T.eq(model:GetAttribute("Scale"), info.Scale, zone.Name .. " : attribut Scale")
 	T.check(info.Scale >= 1.5 and info.Scale <= 3, zone.Name .. " : x1.5 à x3")
