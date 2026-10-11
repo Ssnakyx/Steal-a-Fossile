@@ -6,7 +6,7 @@ local env = T.env
 
 env.studio = false
 env.quiet = true
-local Config = T.config()
+local Config = T.clearRobuxIds()
 local Shop = Config.Shop
 local current = Shop.Current(env.baseTime)
 Shop.Cash.CashSmall.Id = 801

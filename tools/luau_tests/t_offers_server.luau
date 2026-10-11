@@ -6,7 +6,7 @@ local env = T.env
 
 env.studio = false
 env.quiet = true
-local Config = T.config()
+local Config = T.clearRobuxIds()
 local Shop = Config.Shop
 local now0 = env.baseTime
 local current = Shop.Current(now0)

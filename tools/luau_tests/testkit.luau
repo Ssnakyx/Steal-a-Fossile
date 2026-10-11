@@ -116,6 +116,24 @@ function T.config(): any
 	return env.module("src/shared/Config")
 end
 
+-- Remet à 0 les Ids Robux de la config (vrais Ids du Creator Hub depuis la publication) : les tests qui vérifient
+-- qu'un objet à Id = 0 est caché donnent ensuite leurs propres Ids de test.
+function T.clearRobuxIds(): any
+	local Config = T.config()
+	local function clear(list: any)
+		for _, item in list do
+			if type(item) == "table" and item.Id then
+				item.Id = 0
+			end
+		end
+	end
+	local Shop = Config.Shop
+	for _, list in { Shop.Passes, Shop.Products, Shop.Cash, Shop.Packs, Shop.Gifts, Shop.Treadmill.Levels, Config.Daily.Spins.Products } do
+		clear(list)
+	end
+	return Config
+end
+
 -- ===== serveur et joueurs =====
 
 T.serverBoot = nil :: any

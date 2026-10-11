@@ -73,8 +73,8 @@ local Daily = {
 		-- Produits développeur : Id = 0 tant que Snaky ne les a pas créés dans le Creator Hub (ils restent cachés).
 		-- Price = prix conseillé à mettre dans le Creator Hub ; le prix affiché est celui que Roblox renvoie.
 		Products = {
-			Spins3 = { Id = 0, Name = "3 Spins", Count = 3, Price = 49, Order = 1 },
-			Spins10 = { Id = 0, Name = "10 Spins", Count = 10, Price = 129, Order = 2 },
+			Spins3 = { Id = 3717983627, Name = "3 Spins", Count = 3, Price = 49, Order = 1 },
+			Spins10 = { Id = 3717983703, Name = "10 Spins", Count = 10, Price = 129, Order = 2 },
 		} :: { [string]: SpinProduct },
 	},
 

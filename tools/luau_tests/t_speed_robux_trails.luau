@@ -5,7 +5,7 @@ local env = T.env
 
 env.studio = false
 env.quiet = true
-local Config = T.config()
+local Config = T.clearRobuxIds()
 local Shop = Config.Shop
 local Trails = Config.Speed.Trails
 local RobuxTrails = Config.Speed.RobuxTrails

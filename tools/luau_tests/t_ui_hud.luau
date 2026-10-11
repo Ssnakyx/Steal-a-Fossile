@@ -7,7 +7,7 @@ local env = T.env
 
 env.studio = false -- (hors Studio : les objets Robux à Id = 0 restent cachés)
 env.quiet = true
-local Config = T.config()
+local Config = T.clearRobuxIds()
 local Shop = Config.Shop
 -- (« créés dans le Creator Hub » pour ce test ; les autres restent à Id = 0)
 Shop.Passes.DoubleMoney.Id = 501
