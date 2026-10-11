@@ -1,13 +1,14 @@
 --!strict
 -- Treadmill du parc (brief 4 « vitesse-treadmill ») : en courant dessus, ou AFK dessus, le joueur gagne de la vitesse
--- chaque seconde. Rien à regarder pendant.
+-- chaque seconde. Rien à regarder pendant. Sans achat, le tapis donne Config.Speed.Treadmill.FreeMultiplier x BaseGain
+-- (tout le monde peut AFK dessus ; reconnexion AFK : AfkService).
 -- Achat : niveau 1 à 25 R$, puis un produit développeur par niveau, au prix qui monte (Config.Shop.Treadmill.Levels).
 -- Le serveur ne propose que le niveau suivant du joueur ; un reçu d'un autre niveau n'est pas donné (Roblox le
 -- représente plus tard, et il passe quand il devient le niveau suivant).
 -- Tapis : toute BasePart taguée « Treadmill » (CollectionService) dans le Workspace. Le joueur est dessus si son
 -- HumanoidRootPart est au-dessus de la pièce (Config.Speed.Treadmill.Height). Si la pièce ou un de ses ancêtres (le
 -- parc) a l'attribut OwnerUserId, seul ce joueur y gagne de la vitesse.
---   TreadmillService.Rate(player)           vitesse gagnée par seconde sur le tapis (0 sans treadmill)
+--   TreadmillService.Rate(player)           vitesse gagnée par seconde sur le tapis (gain gratuit sans treadmill)
 --   TreadmillService.IsOnTreadmill(player)
 --   TreadmillService.SetLevel(player, niveau)   fixe le niveau sans achat (admin Studio, FossilDebug)
 -- Signaux : TreadmillUpgraded(player, level)   niveau acheté et sauvegardé
@@ -46,6 +47,7 @@ local players: { [Player]: boolean } = {}
 local onBelt: { [Player]: boolean } = {}
 local pending: { [Player]: Pending } = {}
 local lastHint: { [Player]: number } = {}
+local upsold: { [Player]: boolean } = {} -- rappel « achète le treadmill » déjà montré (gain gratuit)
 
 local function keyFor(level: number): string
 	return KEY_PREFIX .. tostring(level)
@@ -56,13 +58,22 @@ local function levelOf(player: Player): number
 	return if data then data.TreadmillLevel else 0
 end
 
+-- Multiplicateur du niveau (0 = pas acheté : gain gratuit)
+local function multiplierAt(level: number): number
+	if level == 0 then
+		return math.max(0, SpeedConfig.Treadmill.FreeMultiplier or 0)
+	end
+	local entry = LEVELS[level]
+	return if entry then entry.Multiplier else 0
+end
+
 -- Vitesse par seconde au niveau donné (passe x2 Treadmill compris)
 local function rateAt(player: Player, level: number): number
-	local entry = LEVELS[level]
-	if not entry then
+	local multiplier = multiplierAt(level)
+	if multiplier <= 0 then
 		return 0
 	end
-	return SpeedConfig.Treadmill.BaseGain * entry.Multiplier * ShopService.PassMultiplier(player, "DoubleTreadmill")
+	return SpeedConfig.Treadmill.BaseGain * multiplier * ShopService.PassMultiplier(player, "DoubleTreadmill")
 end
 
 function TreadmillService.Rate(player: Player): number
@@ -157,6 +168,17 @@ function TreadmillService.Tick()
 		local rate = TreadmillService.Rate(player)
 		if rate > 0 then
 			SpeedService.Add(player, rate * seconds, "Treadmill")
+			if levelOf(player) == 0 and not upsold[player] then
+				-- (gain gratuit : un seul rappel par visite, pour ne pas gêner un joueur AFK)
+				upsold[player] = true
+				local paid = multiplierAt(1)
+				local free = multiplierAt(0)
+				Notify.Send(
+					player,
+					string.format("+%s speed/s here, even AFK! Buy the Treadmill in the Shop for x%s.", Format.Number(rate), Format.Number(paid / free)),
+					"info"
+				)
+			end
 		else
 			local now = os.clock()
 			if not lastHint[player] or now - lastHint[player] >= SpeedConfig.Treadmill.HintCooldown then
@@ -216,7 +238,7 @@ local function section(player: Player): { [string]: any }
 		Name = Shop.Treadmill.Name,
 		Level = level,
 		MaxLevel = MAX_LEVEL,
-		Multiplier = if LEVELS[level] then LEVELS[level].Multiplier else 0,
+		Multiplier = multiplierAt(level),
 		Rate = TreadmillService.Rate(player),
 		Next = nextInfo,
 	}
@@ -322,6 +344,7 @@ function TreadmillService.OnPlayerRemoving(player: Player)
 	onBelt[player] = nil
 	pending[player] = nil
 	lastHint[player] = nil
+	upsold[player] = nil
 end
 
 return TreadmillService

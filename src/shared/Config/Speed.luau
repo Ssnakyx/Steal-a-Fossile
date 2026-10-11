@@ -52,14 +52,26 @@ local Speed = {
 	RefreshInterval = 0.2, -- secondes entre deux mises à jour du WalkSpeed (bloc porté, trail, effets)
 
 	-- Treadmill du parc : vitesse gagnée chaque seconde en courant dessus ou AFK dessus (rien à regarder).
-	-- Il faut l'avoir acheté (niveau 1, 25 R$) ; les niveaux et leurs multiplicateurs sont dans Config.Shop.Treadmill.
+	-- Sans achat, le tapis donne FreeMultiplier x BaseGain (tout le monde peut AFK dessus) ; l'achat (niveau 1, 25 R$)
+	-- et les niveaux suivants sont dans Config.Shop.Treadmill.
 	Treadmill = {
 		Tag = "Treadmill", -- BasePart taguée (CollectionService) = surface du tapis
 		OwnerAttribute = "OwnerUserId", -- sur la pièce ou un ancêtre (parc) : seul ce joueur y gagne de la vitesse
 		BaseGain = 25, -- vitesse par seconde au niveau 1 (x1), avant le passe x2 Treadmill
+		-- Treadmill pas acheté (niveau 0) : gain x0.2 (5 vitesse/s), 5 fois moins que l'achat. 0 = rien sans achat.
+		FreeMultiplier = 0.2,
 		TickSeconds = 1, -- la vitesse est donnée toutes les TickSeconds
 		Height = 8, -- hauteur au-dessus de la surface où le joueur compte comme dessus (studs)
-		HintCooldown = 15, -- secondes entre deux rappels « achète le treadmill » à un joueur qui monte dessus
+		HintCooldown = 15, -- secondes entre deux rappels « achète le treadmill » (seulement si FreeMultiplier = 0)
+
+		-- AFK : Roblox expulse un joueur inactif depuis 20 min. Un joueur inactif depuis RejoinAfter secondes sur son
+		-- treadmill est reconnecté au même serveur (TeleportService, pas dans Studio) et reposé sur son tapis.
+		Afk = {
+			Rejoin = true,
+			RejoinAfter = 15 * 60, -- secondes d'inactivité (Players.LocalPlayer.Idled) avant la reconnexion
+			RejoinCooldown = 60, -- secondes entre deux demandes de reconnexion d'un même joueur
+			Attribute = "AfkReturn", -- attribut posé sur le joueur revenu d'une reconnexion AFK (le client le montre)
+		},
 	},
 
 	-- Trails achetées avec l'argent du jeu : vitesse gratuite pour les joueurs qui ne paient pas. Une seule portée à la

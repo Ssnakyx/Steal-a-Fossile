@@ -101,6 +101,7 @@ local Zones = {
 		GrabDistance = 10, -- portée du ProximityPrompt (studs) ; le serveur tolère un peu plus
 		TutorialZone = "Beach", -- tutoriel : cette zone garde un bloc Common tant qu'un nouveau n'a pas rapporté son premier bloc
 		TutorialRarity = "Common",
+		TutorialReviveTime = 10, -- secondes en cuve (au plus) pour le tout premier bloc rapporté par un nouveau joueur
 	},
 }
 
