@@ -54,7 +54,7 @@ export type Data = {
 export type BuildOptions = {
 	Size: (string | number)?, -- "Small" | "Normal" | "Big" | "Huge" ou une échelle
 	Scale: number?, -- échelle en plus (gardiens x1.5 à x3)
-	Mutation: string?, -- "Amber" | "Crystal" | "Lava"
+	Mutation: string?, -- un nom de DinoBuilder.Mutations ("Amber", "Rainbow"...)
 	Level: string?, -- "Normal" | "Golden" | "Diamond"
 	Rarity: string?, -- "Common" ... "Secret" : anneau et effets de rareté (DinoAnimController)
 }
@@ -88,7 +88,8 @@ export type Rig = {
 
 -- tailles tirées à la réanimation (échelle visible du modèle, GDD section Tailles)
 DinoBuilder.Sizes = { Small = 0.75, Normal = 1, Big = 1.5, Huge = 2.5 } :: { [string]: number }
-DinoBuilder.Mutations = { "Amber", "Crystal", "Lava" }
+-- (mêmes noms que Config.Economy.Mutations, de la plus commune à la plus rare)
+DinoBuilder.Mutations = { "Amber", "Crystal", "Pearl", "Bloom", "Toxic", "Ruby", "Frost", "Lava", "Obsidian", "Abyssal", "Galaxy", "Rainbow" }
 DinoBuilder.Levels = { "Normal", "Golden", "Diamond" }
 DinoBuilder.Tag = "Dino" -- tag CollectionService des dinos animés par DinoAnimController
 
@@ -261,6 +262,8 @@ local AMBER = Color3.fromRGB(255, 172, 38)
 local CRYSTAL = Color3.fromRGB(150, 228, 255)
 local BASALT = Color3.fromRGB(46, 34, 32)
 local LAVA = Color3.fromRGB(255, 108, 28)
+-- mutations ajoutées après Amber, Crystal et Lava (docs/MUTATIONS.md) : couleurs posées par paintMutation, plus bas
+local paintMutation: (box: Box, i: number, mutation: string, color: Color3, material: Enum.Material, transparency: number, reflectance: number) -> (Color3, Enum.Material, number, number)
 
 local function luminance(c: Color3): number
 	return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B
@@ -331,6 +334,113 @@ local function paint(box: Box, i: number, level: string?, mutation: string?): (C
 		else
 			color = color:Lerp(BASALT, 0.72)
 		end
+	elseif mutation then
+		return paintMutation(box, i, mutation, color, material, transparency, reflectance)
+	end
+	return color, material, transparency, reflectance
+end
+
+local function rgb(r: number, g: number, b: number): Color3
+	return Color3.fromRGB(r, g, b)
+end
+
+-- Mutations des biomes et Rainbow. Le motif de l'espèce reste lisible (dégradé selon la clarté d'origine) ; la matière
+-- ne change que sur le plastique de base (le Foil d'un Golden, le verre d'un Diamond restent), sauf les points Neon.
+-- Les effets animés (bulles, flocons, étoiles, arc-en-ciel qui défile) sont faits par MutationController, chez le client.
+paintMutation = function(box: Box, i: number, mutation: string, color: Color3, material: Enum.Material, transparency: number, reflectance: number): (Color3, Enum.Material, number, number)
+	local plain = material == Enum.Material.Plastic
+	local small = box.Size.X * box.Size.Y * box.Size.Z < 0.5
+	if mutation == "Pearl" then
+		-- nacre : blanc rosé brillant, reflets pastel (lavande, rose, menthe)
+		color = ramp(rgb(214, 188, 206), rgb(255, 244, 248), color)
+		local r = noise(i + 71)
+		if r < 0.25 then
+			color = color:Lerp(rgb(226, 204, 255), 0.6)
+		elseif r < 0.5 then
+			color = color:Lerp(rgb(255, 192, 218), 0.6)
+		elseif r < 0.65 then
+			color = color:Lerp(rgb(200, 255, 234), 0.5)
+		end
+		if plain then
+			material = Enum.Material.SmoothPlastic
+		end
+		reflectance = math.max(reflectance, 0.25)
+	elseif mutation == "Bloom" then
+		-- mousse verte et fleurs roses, jaunes et blanches
+		color = ramp(rgb(40, 88, 34), rgb(130, 196, 96), color)
+		local r = if small then noise(i + 89) else 1
+		if r < 0.12 then
+			color = rgb(255, 120, 196)
+		elseif r < 0.18 then
+			color = rgb(255, 222, 80)
+		elseif r < 0.23 then
+			color = rgb(255, 250, 245)
+		elseif r < 0.27 then
+			color = rgb(196, 120, 255)
+		end
+	elseif mutation == "Toxic" then
+		-- vert radioactif, taches qui brillent
+		color = ramp(rgb(24, 52, 18), rgb(104, 170, 40), color)
+		local r = noise(i + 97)
+		if r < 0.16 then
+			color, material, transparency = rgb(150, 255, 60), Enum.Material.Neon, 0
+		elseif r < 0.2 then
+			color, material, transparency = rgb(214, 255, 96), Enum.Material.Neon, 0
+		end
+	elseif mutation == "Ruby" then
+		-- rubis : rouge profond, facettes de verre, éclats
+		color = ramp(rgb(104, 6, 26), rgb(240, 58, 94), color)
+		local r = noise(i + 101)
+		if r < 0.06 and small then
+			color, material, transparency = rgb(255, 130, 160), Enum.Material.Neon, 0
+		elseif r < 0.4 and plain then
+			material, transparency = Enum.Material.Glass, 0.1
+		end
+		reflectance = math.max(reflectance, 0.15)
+	elseif mutation == "Frost" then
+		-- givre : bleu glacier, plaques de glace, neige
+		color = ramp(rgb(84, 140, 206), rgb(206, 234, 255), color)
+		local r = noise(i + 107)
+		if r < 0.14 then
+			color = rgb(255, 255, 255)
+		elseif r < 0.42 and plain then
+			material, transparency, reflectance = Enum.Material.Ice, 0.1, 0.2
+		end
+	elseif mutation == "Obsidian" then
+		-- verre volcanique noir et brillant, éclats violets
+		color = ramp(rgb(10, 8, 16), rgb(56, 46, 74), color)
+		if noise(i + 113) < 0.08 then
+			color, material, transparency = rgb(170, 90, 255), Enum.Material.Neon, 0
+		else
+			if plain then
+				material = Enum.Material.SmoothPlastic
+			end
+			reflectance = math.max(reflectance, 0.3)
+		end
+	elseif mutation == "Abyssal" then
+		-- bleu des abysses, points bioluminescents
+		color = ramp(rgb(6, 14, 38), rgb(40, 82, 144), color)
+		if noise(i + 127) < 0.12 then
+			color, material, transparency = rgb(60, 230, 255), Enum.Material.Neon, 0
+		end
+	elseif mutation == "Galaxy" then
+		-- nuit violette, nébuleuses, étoiles
+		color = ramp(rgb(14, 8, 34), rgb(74, 42, 136), color)
+		local cloud = noise(i + 131)
+		if cloud < 0.25 then
+			color = color:Lerp(rgb(150, 50, 170), 0.55)
+		elseif cloud < 0.45 then
+			color = color:Lerp(rgb(40, 70, 176), 0.5)
+		end
+		local r = noise(i + 137)
+		if r < 0.16 and small then
+			color, material, transparency = rgb(255, 255, 255), Enum.Material.Neon, 0
+		elseif r < 0.2 and small then
+			color, material, transparency = rgb(255, 230, 150), Enum.Material.Neon, 0
+		end
+	elseif mutation == "Rainbow" then
+		-- toutes les couleurs (MutationController les fait défiler en vague)
+		color = Color3.fromHSV(noise(i + 149), 0.72, 0.72 + 0.28 * luminance(color))
 	end
 	return color, material, transparency, reflectance
 end

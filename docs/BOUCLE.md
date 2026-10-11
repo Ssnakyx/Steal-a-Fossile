@@ -153,6 +153,7 @@ TANK »), `Text` (compte à rebours tagué `LoopCountdown`, « READY! » en vert
 ## Commandes admin et FossilDebug
 
 Admin (chat) : `tpzone <0-8>`, `refill`, `tutorial <0-3> [joueur]`, `giveblock <rareté> [n° de zone] [joueur]`,
-`finishtanks [joueur]`, `givedino <espèce> [taille] [mutation] [joueur]`.
+`finishtanks [joueur]`, `givedino <espèce> [taille] [mutation|none] [joueur]`. Mutations : `mutations [zone]` (voir
+`docs/MUTATIONS.md`).
 
 FossilDebug (Studio) : `plots`, `zones`, `digsites`, `carry`, `revive`, `enclosure`, `income`.

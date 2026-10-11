@@ -66,20 +66,24 @@ Même map et même boucle que **Steal an Egg** (pas Steal a Brainrot) : bases al
 
 Les zones lointaines ont de meilleures probas. La couleur du bloc fixe la rareté, l'espèce est tirée parmi les espèces de cette rareté dans la zone.
 
-## Espèces (liste de départ, rareté de chacune à fixer à l'équilibrage)
-- Beach : Compy, Oviraptor, Pteranodon
-- Fern Forest : Gallimimus, Parasaurolophus, Stegosaurus
-- Swamp : Iguanodon, Baryonyx, Sarcosuchus
-- Canyon : Pachycephalosaurus, Velociraptor, Triceratops
-- Glacier : Ankylosaurus, Therizinosaurus, Cryolophosaurus
-- Volcano : Carnotaurus, Brachiosaurus, Spinosaurus
-- Ocean Trench : Plesiosaurus, Megalodon, Mosasaurus
-- Meteor Crater : Quetzalcoatlus, Giganotosaurus, T-Rex
+## Espèces (8 par zone ; raretés dans Config/Rarity, nouvelles espèces : docs/MUTATIONS.md)
+- Beach : Compy, Oviraptor, Pteranodon, Protoceratops, Psittacosaurus, Dimorphodon, Archelon, Tanystropheus
+- Fern Forest : Gallimimus, Parasaurolophus, Stegosaurus, Hypsilophodon, Microraptor, Kentrosaurus, Styracosaurus, Dilophosaurus
+- Swamp : Iguanodon, Baryonyx, Sarcosuchus, Diplocaulus, Dimetrodon, Deinonychus, Corythosaurus, Basilisk
+- Canyon : Pachycephalosaurus, Velociraptor, Triceratops, Coelophysis, Edmontonia, Allosaurus, Amargasaurus, Thunder Raptor
+- Glacier : Ankylosaurus, Therizinosaurus, Cryolophosaurus, Troodon, Smilodon, Yutyrannus, Woolly Mammoth, Frost Wyvern
+- Volcano : Carnotaurus, Brachiosaurus, Spinosaurus, Dracorex, Ceratosaurus, Acrocanthosaurus, Magma Behemoth, Phoenix
+- Ocean Trench : Plesiosaurus, Megalodon, Mosasaurus, Ichthyosaurus, Dunkleosteus, Helicoprion, Liopleurodon, Abyssal Leviathan
+- Meteor Crater : Quetzalcoatlus, Giganotosaurus, T-Rex, Kosmoceratops, Deinocheirus, Argentinosaurus, Celestial Serpent, Star Dragon
 - Secret (zones lointaines surtout) : Golden Raptor, Crystal Rex, Lava Titan
 
 ## Taille et mutations (à la réanimation)
 - Taille : Small x0.8, Normal x1, Big x1.5, Huge x3 (Huge rare).
-- Mutations : Amber 8 % (x1.5), Crystal 3 % (x2), Lava 1 % (x3).
+- Mutations : Amber 8 % (x1.5), Crystal 3 % (x2), Lava 1 % (x3), Rainbow 0.05 % (x10) dans toutes les zones, plus
+  une mutation par biome qui ne sort que de ses fossiles : Pearl (Beach) et Bloom (Fern Forest) 2 % (x2), Toxic
+  (Swamp), Ruby (Canyon) et Frost (Glacier) 1.5 % (x2.5), Obsidian (Volcano) 1 % (x3), Abyssal (Ocean Trench) 0.75 %
+  (x4), Galaxy (Meteor Crater) 0.5 % (x5). Les mutations de 1 % ou moins sont annoncées à tout le serveur. Détails :
+  `docs/MUTATIONS.md`.
 - Revenu d'un dino = base de l'espèce x taille x mutation.
 
 ## Fusion (labo dans le parc)
@@ -213,7 +217,7 @@ Les zones lointaines ont de meilleures probas. La couleur du bloc fixe la raret�
 - Common : aucun. Uncommon : quelques particules vertes. Rare : lueur bleue.
 - Epic : aura et particules violettes. Legendary : rayons orange et étincelles.
 - Mythic : flammes rouges et pulsation. Secret : arc-en-ciel qui tourne, rayon vers le ciel visible de loin, son spécial.
-- Mutations sur les dinos : Amber (gouttes dorées translucides), Crystal (éclats brillants), Lava (fissures lumineuses et braises).
+- Mutations sur les dinos : Amber (gouttes dorées translucides), Crystal (éclats brillants), Lava (fissures lumineuses et braises), et les mutations des biomes et Rainbow (faites : couleurs dans `DinoBuilder`, effets animés dans `MutationController`, voir `docs/MUTATIONS.md`).
 
 **VFX de gameplay**
 - Arrachage : poussière et débris. Réveil du gardien : rugissement, onde de choc, « RUN!! » à l'écran.

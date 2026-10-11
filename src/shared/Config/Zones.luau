@@ -22,7 +22,7 @@ local List: { Zone } = {
 		Index = 1,
 		Speed = 0,
 		Weights = { Common = 75, Uncommon = 25, Secret = 0.01 },
-		Species = { "Compy", "Oviraptor", "Pteranodon" },
+		Species = { "Compy", "Oviraptor", "Pteranodon", "Protoceratops", "Psittacosaurus", "Dimorphodon", "Archelon", "Tanystropheus" },
 		Color = Color3.fromRGB(232, 210, 150),
 	},
 	{
@@ -30,7 +30,7 @@ local List: { Zone } = {
 		Index = 2,
 		Speed = 1e3,
 		Weights = { Common = 60, Uncommon = 28, Rare = 12, Secret = 0.02 },
-		Species = { "Gallimimus", "Parasaurolophus", "Stegosaurus" },
+		Species = { "Gallimimus", "Parasaurolophus", "Stegosaurus", "Hypsilophodon", "Microraptor", "Kentrosaurus", "Styracosaurus", "Dilophosaurus" },
 		Color = Color3.fromRGB(88, 150, 70),
 	},
 	{
@@ -38,7 +38,7 @@ local List: { Zone } = {
 		Index = 3,
 		Speed = 1e4,
 		Weights = { Uncommon = 60, Rare = 30, Epic = 10, Secret = 0.03 },
-		Species = { "Iguanodon", "Baryonyx", "Sarcosuchus" },
+		Species = { "Iguanodon", "Baryonyx", "Sarcosuchus", "Diplocaulus", "Dimetrodon", "Deinonychus", "Corythosaurus", "Basilisk" },
 		Color = Color3.fromRGB(85, 105, 60),
 	},
 	{
@@ -46,7 +46,7 @@ local List: { Zone } = {
 		Index = 4,
 		Speed = 5e4,
 		Weights = { Rare = 62, Epic = 30, Legendary = 8, Secret = 0.05 },
-		Species = { "Pachycephalosaurus", "Velociraptor", "Triceratops" },
+		Species = { "Pachycephalosaurus", "Velociraptor", "Triceratops", "Coelophysis", "Edmontonia", "Allosaurus", "Amargasaurus", "Thunder Raptor" },
 		Color = Color3.fromRGB(185, 95, 55),
 	},
 	{
@@ -54,7 +54,7 @@ local List: { Zone } = {
 		Index = 5,
 		Speed = 2e5,
 		Weights = { Rare = 50, Epic = 38, Legendary = 12, Secret = 0.08 },
-		Species = { "Ankylosaurus", "Therizinosaurus", "Cryolophosaurus" },
+		Species = { "Ankylosaurus", "Therizinosaurus", "Cryolophosaurus", "Troodon", "Smilodon", "Yutyrannus", "Woolly Mammoth", "Frost Wyvern" },
 		Color = Color3.fromRGB(200, 230, 245),
 	},
 	{
@@ -62,7 +62,7 @@ local List: { Zone } = {
 		Index = 6,
 		Speed = 1e6,
 		Weights = { Epic = 62, Legendary = 31, Mythic = 7, Secret = 0.12 },
-		Species = { "Carnotaurus", "Brachiosaurus", "Spinosaurus" },
+		Species = { "Carnotaurus", "Brachiosaurus", "Spinosaurus", "Dracorex", "Ceratosaurus", "Acrocanthosaurus", "Magma Behemoth", "Phoenix" },
 		Color = Color3.fromRGB(50, 45, 45),
 	},
 	{
@@ -70,7 +70,7 @@ local List: { Zone } = {
 		Index = 7,
 		Speed = 5e6,
 		Weights = { Epic = 52, Legendary = 38, Mythic = 10, Secret = 0.18 },
-		Species = { "Plesiosaurus", "Megalodon", "Mosasaurus" },
+		Species = { "Plesiosaurus", "Megalodon", "Mosasaurus", "Ichthyosaurus", "Dunkleosteus", "Helicoprion", "Liopleurodon", "Abyssal Leviathan" },
 		Color = Color3.fromRGB(40, 85, 135),
 	},
 	{
@@ -78,7 +78,7 @@ local List: { Zone } = {
 		Index = 8,
 		Speed = 2.5e7,
 		Weights = { Legendary = 72, Mythic = 28, Secret = 0.3 },
-		Species = { "Quetzalcoatlus", "Giganotosaurus", "T-Rex" },
+		Species = { "Quetzalcoatlus", "Giganotosaurus", "T-Rex", "Kosmoceratops", "Deinocheirus", "Argentinosaurus", "Celestial Serpent", "Star Dragon" },
 		Color = Color3.fromRGB(95, 60, 130),
 	},
 }

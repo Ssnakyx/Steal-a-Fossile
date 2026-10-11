@@ -73,8 +73,9 @@ for index, size in Economy.Sizes do
 	SIZE_RANK[size.Name] = index
 end
 local MUTATION_RANK: { [string]: number } = { [""] = 0 }
-for _, mutation in Economy.Mutations do
-	MUTATION_RANK[mutation.Name] = mutation.Income
+for index, mutation in Economy.Mutations do
+	-- meilleur revenu ; à revenu égal, la plus rare (Config.Economy.Mutations va de la plus commune à la plus rare)
+	MUTATION_RANK[mutation.Name] = mutation.Income + index / 1000
 end
 local MAX_LEVEL = #Economy.Levels - 1
 
@@ -407,7 +408,7 @@ function FusionService.Fuse(player: Player, ids: any, options: FuseOptions?): (b
 	if isNew then
 		return true, "New hybrid discovered: " .. name .. "!", info
 	end
-	return true, "You made a " .. name .. "!", info
+	return true, "You made " .. Format.Article(name) .. " " .. name .. "!", info
 end
 
 -- ===================================================================== labo du parc
@@ -462,7 +463,7 @@ local function registerAdmin()
 	})
 	AdminService.RegisterCommand("givehybrid", {
 		Description = "Put a hybrid in the enclosure (and discover it)",
-		Usage = "givehybrid <name|all> [Small|Normal|Big|Huge] [Amber|Crystal|Lava|none] [player]",
+		Usage = "givehybrid <name|all> [Small|Normal|Big|Huge] [mutation|none] [player]",
 		Run = function(caller: Player, args: { string })
 			local target = AdminService.FindPlayer(caller, args[4])
 			local list: { Hybrid } = {}
@@ -479,7 +480,8 @@ local function registerAdmin()
 			end
 			local given = 0
 			for _, hybrid in list do
-				if EnclosureService.AddDino(target, { Species = hybrid.Name, Size = args[2], Mutation = args[3] }, Fusion.ResultState) then
+				local mutation = Economy.FindMutation(args[3]) or args[3]
+				if EnclosureService.AddDino(target, { Species = hybrid.Name, Size = args[2], Mutation = mutation }, Fusion.ResultState) then
 					FusionService.Discover(target, hybrid.Name)
 					given += 1
 				end

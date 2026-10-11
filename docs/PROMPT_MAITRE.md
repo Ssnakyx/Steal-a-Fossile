@@ -188,7 +188,7 @@ Même brief que 5 pour : Ankylosaurus, Therizinosaurus, Cryolophosaurus, Carnota
 
 ### 11. vfx (Opus 5.5 xhigh, PC avec Studio MCP)
 **But** : tous les effets du GDD, réglés dans Studio.
-- Fossiles par rareté, mutations des dinos, effets de gameplay (arrachage, réveil du gardien, bonk, bloc lâché, réanimation, fusion, météorites, treadmill), effets liés aux animations (poussière de pas, tremblement caméra, bulles).
+- Fossiles par rareté, mutations des dinos (couleurs et effets animés déjà faits : `MutationController`, `docs/MUTATIONS.md` ; il reste leurs sons), effets de gameplay (arrachage, réveil du gardien, bonk, bloc lâché, réanimation, fusion, météorites, treadmill), effets liés aux animations (poussière de pas, tremblement caméra, bulles).
 - Côté client, distance cull, aucun effet sans limite.
 - **Possède** : `src/client/Vfx/`, `src/shared/VfxSheets.luau`.
 

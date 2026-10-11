@@ -99,4 +99,9 @@ function Format.Percent(p: number): string
 	return text .. "%"
 end
 
+-- Article anglais devant un nom : « an Amber Compy », « an Archelon », « a Big Compy »
+function Format.Article(name: string): string
+	return if type(name) == "string" and string.match(name, "^[AEIOUaeiou]") then "an" else "a"
+end
+
 return Format

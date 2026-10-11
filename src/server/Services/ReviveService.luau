@@ -149,19 +149,8 @@ function ReviveService.Roll(rarity: string, zoneName: string, luck: number?): Ro
 	local size = pickWeighted(Economy.Sizes, function(info: Economy.SizeInfo): number
 		return info.Chance
 	end)
-	local boost = 1 + (if type(luck) == "number" and Guard.IsFinite(luck) and luck > 0 then luck else 0)
-	local mutation = ""
-	local roll = rng:NextNumber() * 100
-	local acc = 0
-	-- (de la plus rare à la plus commune : Lava, Crystal, Amber ; chances en %)
-	for index = #Economy.Mutations, 1, -1 do
-		local info = Economy.Mutations[index]
-		acc += info.Chance * boost
-		if roll < acc then
-			mutation = info.Name
-			break
-		end
-	end
+	-- (mutations de toutes les zones + celle du biome du bloc, de la plus rare à la plus commune : Config.Economy)
+	local mutation = Economy.RollMutation(zoneName, luck, rng:NextNumber())
 	return { Species = species, Size = size.Name, Mutation = mutation, Level = 0 }
 end
 
@@ -396,7 +385,8 @@ function ReviveService.Reveal(player: Player, rawSlot: any): (boolean, string)
 		Income = IncomeService.DinoIncome(dino),
 	})
 	Signals.Fire("DinoRevived", player, id, dino, tank.Rarity)
-	return true, "You revived a " .. EnclosureService.DisplayName(dino) .. "!"
+	local name = EnclosureService.DisplayName(dino)
+	return true, "You revived " .. Format.Article(name) .. " " .. name .. "!"
 end
 
 -- Achète la cuve suivante. Renvoie (ok, texte).
