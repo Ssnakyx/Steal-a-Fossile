@@ -49,8 +49,8 @@ def build():
     d.bone("Head", (0, 19.8, -10.4), "Neck2")
     d.bone("Jaw", (0, 18.8, -12.4), "Head")
     d.bone_pair("Lid", (-2.8, 23, -15), "Head")
-    d.bone_pair("Arm", (-3.4, 11.6, -6.0), "Chest")
-    d.bone_pair("Forearm", (-4.0, 9.4, -7.4), "ArmL")
+    d.bone_pair("Arm", (-3.4, 11.6, -8.0), "Chest")
+    d.bone_pair("Forearm", (-4.0, 9.4, -9.4), "ArmL")
     d.bone_pair("Thigh", (-3.8, 11.6, 2), "Hips")
     d.bone_pair("Shin", (-4.0, 6.5, -0.6), "ThighL")
     d.bone_pair("Foot", (-3.9, 3.2, 2.6), "ShinL")
@@ -80,14 +80,14 @@ def build():
             d.set("Head", x, 19, z, TOOTH, "Smooth")
     d.set("Head", -1, 21, -20, DARK, "Smooth")  # narine
     # ---------------------------------------------------------------- bras-ailes : longues plumes, griffes
-    d.limb("ArmL", (-3.4, 11.6, -6.0), (-4.0, 9.4, -7.4), 1.4, 1.2, BODY)
-    d.limb("ForearmL", (-4.0, 9.4, -7.4), (-3.8, 7.8, -10.2), 1.1, 0.9, BODY)
-    d.set("ForearmL", -4, 7, -11, CLAW, "Smooth")
-    d.set("ForearmL", -3, 7, -11, CLAW, "Smooth")
-    d.set("ForearmL", -4, 6, -11, CLAW, "Smooth")
-    d.plate("ForearmL", 0, -5, [(10.2, -7.0), (8.4, -10.8), (6.2, -11.4), (5.2, -10.0), (6.6, -9.4), (5.8, -8.2),
-                                (7.2, -7.6), (7.0, -6.2), (8.4, -5.8), (9.6, -5.6)], BODY)
-    d.plate("ArmL", 0, -5, [(12.4, -5.4), (10.2, -7.2), (9.6, -5.6), (8.2, -5.4), (8.6, -4.0), (10.6, -3.8)], BODY)
+    d.limb("ArmL", (-3.4, 11.8, -6.6), (-4.0, 9.4, -9.4), 1.4, 1.2, BODY)
+    d.limb("ForearmL", (-4.0, 9.4, -9.4), (-3.8, 7.8, -12.2), 1.1, 0.9, BODY)
+    d.set("ForearmL", -4, 7, -13, CLAW, "Smooth")
+    d.set("ForearmL", -3, 7, -13, CLAW, "Smooth")
+    d.set("ForearmL", -4, 6, -13, CLAW, "Smooth")
+    d.plate("ForearmL", 0, -5, [(10.2, -9.0), (8.4, -12.8), (6.2, -13.4), (5.2, -12.0), (6.6, -11.4), (5.8, -10.2),
+                                (7.2, -9.6), (7.0, -8.2), (8.4, -7.8), (9.6, -7.6)], BODY)
+    d.plate("ArmL", 0, -5, [(12.4, -7.4), (10.2, -9.2), (9.6, -7.6), (8.2, -7.4), (8.6, -6.0), (10.6, -5.8)], BODY)
     for (x, y, z), (bone, col, mat) in list(d.vox.items()):
         if bone in ("ArmL", "ForearmL") and x == -5 and col == BODY:
             tip = any((x, y - k, z) not in d.vox for k in (1, 2)) and y <= 8

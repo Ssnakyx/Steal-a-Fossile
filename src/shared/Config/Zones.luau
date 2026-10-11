@@ -38,7 +38,7 @@ local List: { Zone } = {
 		Index = 3,
 		Speed = 1e4,
 		Weights = { Uncommon = 60, Rare = 30, Epic = 10, Secret = 0.03 },
-		Species = { "Iguanodon", "Baryonyx", "Sarcosuchus" },
+		Species = { "Iguanodon", "Baryonyx", "Sarcosuchus", "Diplocaulus", "Dimetrodon", "Deinonychus", "Corythosaurus", "Basilisk" },
 		Color = Color3.fromRGB(85, 105, 60),
 	},
 	{

@@ -41,6 +41,11 @@ local list: { SpeciesDef } = {
 	{ Name = "Iguanodon", Model = "Iguanodon", Family = "Quadruped", Zone = "Swamp", BaseSize = 12, Income = 35 },
 	{ Name = "Baryonyx", Model = "Baryonyx", Family = "Biped", Zone = "Swamp", BaseSize = 13, Income = 45 },
 	{ Name = "Sarcosuchus", Model = "Sarcosuchus", Family = "Quadruped", Zone = "Swamp", BaseSize = 16, Income = 60 },
+	{ Name = "Diplocaulus", Model = "Diplocaulus", Family = "Quadruped", Zone = "Swamp", BaseSize = 6, Income = 30 },
+	{ Name = "Dimetrodon", Model = "Dimetrodon", Family = "Quadruped", Zone = "Swamp", BaseSize = 10, Income = 38 },
+	{ Name = "Deinonychus", Model = "Deinonychus", Family = "Biped", Zone = "Swamp", BaseSize = 11, Income = 48 },
+	{ Name = "Corythosaurus", Model = "Corythosaurus", Family = "Quadruped", Zone = "Swamp", BaseSize = 14, Income = 52 },
+	{ Name = "Basilisk", Model = "Basilisk", Family = "Quadruped", Zone = "Swamp", BaseSize = 15, Income = 75 },
 	-- 4. Canyon
 	{ Name = "Pachycephalosaurus", Model = "Pachycephalosaurus", Family = "Biped", Zone = "Canyon", BaseSize = 8, Income = 160 },
 	{ Name = "Velociraptor", Model = "Velociraptor", Family = "Biped", Zone = "Canyon", BaseSize = 14, Income = 220 },

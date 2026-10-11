@@ -51,6 +51,11 @@ local Species: { [string]: string } = {
 	Iguanodon = "Uncommon",
 	Baryonyx = "Rare",
 	Sarcosuchus = "Epic",
+	Diplocaulus = "Uncommon",
+	Dimetrodon = "Uncommon",
+	Deinonychus = "Rare",
+	Corythosaurus = "Rare",
+	Basilisk = "Epic",
 	-- Canyon
 	Pachycephalosaurus = "Rare",
 	Velociraptor = "Epic",
