@@ -34,9 +34,11 @@ local Daily = {
 	-- Calendrier de 14 jours (GDD) : un clic par jour. Après le jour 14, on repart au jour 1 (la série continue).
 	Login = {
 		ResetOnMiss = true, -- un jour manqué : retour au jour 1 et série à 0
-		AutoOpen = true, -- le calendrier s'ouvre tout seul à l'arrivée quand une récompense attend
+		-- le calendrier s'ouvre tout seul à l'arrivée quand une récompense attend (un nouveau joueur : juste après son
+		-- premier dino, pour ne pas couvrir l'écran avant qu'il sache quoi faire)
+		AutoOpen = true,
 		Days = {
-			{ Kind = "Money", IncomeMinutes = 5, Amount = 200 },
+			{ Kind = "Money", IncomeMinutes = 5, Amount = 500 },
 			{ Kind = "Spins", Amount = 1 },
 			{ Kind = "Speed", SpeedPercent = 3, Amount = 300 },
 			{ Kind = "BearTraps", Amount = 3 },
@@ -78,12 +80,12 @@ local Daily = {
 
 	-- Cadeaux de temps de jeu : Minutes = temps de jeu du jour (AFK compris) pour débloquer le cadeau.
 	Gifts = {
-		{ Minutes = 5, Reward = { Kind = "Money", IncomeMinutes = 5, Amount = 150 } },
-		{ Minutes = 10, Reward = { Kind = "Spins", Amount = 1 } },
-		{ Minutes = 15, Reward = { Kind = "Speed", SpeedPercent = 1, Amount = 200 } },
-		{ Minutes = 20, Reward = { Kind = "Money", IncomeMinutes = 10, Amount = 500 } },
-		{ Minutes = 30, Reward = { Kind = "BearTraps", Amount = 2 } },
-		{ Minutes = 45, Reward = { Kind = "Spins", Amount = 1 } },
+		{ Minutes = 2, Reward = { Kind = "Money", IncomeMinutes = 5, Amount = 250 } },
+		{ Minutes = 5, Reward = { Kind = "Spins", Amount = 1 } },
+		{ Minutes = 10, Reward = { Kind = "Speed", SpeedPercent = 1, Amount = 200 } },
+		{ Minutes = 15, Reward = { Kind = "Money", IncomeMinutes = 10, Amount = 500 } },
+		{ Minutes = 25, Reward = { Kind = "BearTraps", Amount = 2 } },
+		{ Minutes = 40, Reward = { Kind = "Spins", Amount = 1 } },
 		{ Minutes = 60, Reward = { Kind = "Money", IncomeMinutes = 25, Amount = 2_000 } },
 		{ Minutes = 90, Reward = { Kind = "Block", Rarity = "Rare" } },
 		{ Minutes = 120, Reward = { Kind = "Spins", Amount = 2 } },

@@ -2,13 +2,13 @@
 -- Côté client des récompenses (Config.Daily) : trois boutons à gauche de l'écran (Daily, Spin, Gifts), avec une
 -- pastille rouge quand quelque chose attend, et leurs menus :
 --   * Daily Rewards : calendrier de 14 jours, bouton Claim, série en cours. S'ouvre tout seul à l'arrivée quand la
---     récompense du jour attend (Config.Daily.Login.AutoOpen).
+--     récompense du jour attend (Config.Daily.Login.AutoOpen) ; pour un nouveau joueur, juste après son premier dino.
 --   * Lucky Spin : roue de 8 cases avec leurs chances (toute chance payante affiche ses probas), tour gratuit du jour,
 --     tours en réserve, tours à acheter en Robux (seulement si le serveur les permet à ce joueur).
 --   * Free Gifts : cadeaux de temps de jeu avec leur compte à rebours.
 -- Le client ne décide rien : il lit les clés replica « Daily », « Spins », « Gifts », « RewardScale » et demande au
 -- serveur (ClaimDaily, Spin, ClaimGift, GetSpinOffers, BuySpins).
--- API (HUD du brief 12) : RewardsController.Open("Daily" | "Spin" | "Gifts"), RewardsController.SetButtonsVisible(bool),
+-- API (HUD du brief 12) : RewardsController.Open("Daily" | "Spin" | "Gifts"), Close(nom?), SetButtonsVisible(bool),
 -- RewardsController.Badge(nom) -> nombre de la pastille ; ClaimDaily(), Spin(), ClaimGift(n) font la demande et
 -- renvoient la réponse du serveur.
 
@@ -34,6 +34,8 @@ local PRIZES = DailyConfig.Spins.Prizes
 local GIFTS = DailyConfig.Gifts
 local REFRESH = 0.25 -- secondes entre deux mises à jour des comptes à rebours et des pastilles
 local AUTO_OPEN_DELAY = 2.5 -- secondes après l'arrivée avant d'ouvrir le calendrier tout seul
+local FIRST_DINO_DELAY = 3 -- nouveau joueur : secondes après son premier dino avant d'ouvrir le calendrier
+local NEW_PLAYER_WAIT = 30 * 60 -- au plus, secondes d'attente du premier dino (ensuite plus d'ouverture toute seule)
 local Z = 23 -- (contenu des panneaux : au-dessus du corps, ZIndex 22)
 
 local KIND_COLOR: { [string]: Color3 } = {
@@ -324,9 +326,10 @@ end
 local function buildSpin(root: Frame): (Panel, () -> ())
 	local panel = UIKit.panel(root, "Lucky Spin", Colors.Purple, Vector2.new(840, 560))
 	local content = panel.Content
-	local center = Vector2.new(250, 229)
-	local radius = Vector2.new(178, 162)
-	local tileSize = Vector2.new(132, 80)
+	-- (cases en ovale sans chevauchement : décalage des cases en diagonale plus grand que la largeur d'une case)
+	local center = Vector2.new(272, 229)
+	local radius = Vector2.new(190, 175)
+	local tileSize = Vector2.new(124, 80)
 	type Cell = { Tile: Frame, Value: TextLabel, Glow: Frame }
 	local cells: { Cell } = {}
 	for index, prize in PRIZES do
@@ -335,7 +338,8 @@ local function buildSpin(root: Frame): (Panel, () -> ())
 		local y = center.Y + math.sin(angle) * radius.Y - tileSize.Y / 2
 		local tile, value, kind = rewardTile(content, "Prize" .. index, prize.Reward, UDim2.fromOffset(tileSize.X, tileSize.Y), UDim2.fromOffset(x, y))
 		value.Position = UDim2.fromScale(0.5, 0.42)
-		kind.Text = string.upper(prize.Name)
+		-- (fossile : « FOSSIL BLOCK » en haut, la rareté est déjà dans la valeur)
+		kind.Text = if prize.Reward.Kind == "Block" then "FOSSIL BLOCK" else string.upper(prize.Name)
 		kind.Position = UDim2.fromScale(0.5, 0.15)
 		kind.Size = UDim2.fromScale(0.88, 0.2)
 		text({
@@ -679,6 +683,19 @@ function RewardsController.Open(name: string)
 	end
 end
 
+-- Ferme un menu des récompenses (tous sans nom)
+function RewardsController.Close(name: string?)
+	local current = ui
+	if not current then
+		return
+	end
+	for key, panel in current.Panels do
+		if (name == nil or key == name) and panel.IsOpen() then
+			panel.Close()
+		end
+	end
+end
+
 function RewardsController.SetButtonsVisible(visible: boolean)
 	local current = ui
 	if current then
@@ -759,17 +776,38 @@ function RewardsController.Init()
 	end)
 end
 
-function RewardsController.Start()
-	task.spawn(function()
-		if not ReplicaController.WaitReady(60) then
-			return
+-- Ouvre le calendrier tout seul quand une récompense attend : à l'arrivée, ou pour un nouveau joueur juste après son
+-- premier dino (avant, le guide des premières minutes a la place)
+local function autoOpenDaily()
+	if not DailyConfig.Login.AutoOpen or not ReplicaController.WaitReady(60) then
+		return
+	end
+	local tutorial = tonumber(ReplicaController.Get("Tutorial"))
+	if tutorial and tutorial < 3 then
+		local deadline = os.clock() + NEW_PLAYER_WAIT
+		while (tonumber(ReplicaController.Get("Tutorial")) or 0) < 3 do
+			if os.clock() > deadline then
+				return
+			end
+			task.wait(0.5)
 		end
+		task.wait(FIRST_DINO_DELAY)
+	else
 		task.wait(AUTO_OPEN_DELAY)
-		local daily = tableOr("Daily")
-		if DailyConfig.Login.AutoOpen and daily and daily.CanClaim == true and not UIKit.AnyPanelOpen() then
-			RewardsController.Open("Daily")
-		end
-	end)
+	end
+	-- (un menu déjà ouvert : on attend qu'il se ferme, un peu)
+	local deadline = os.clock() + 30
+	while UIKit.AnyPanelOpen() and os.clock() < deadline do
+		task.wait(0.5)
+	end
+	local daily = tableOr("Daily")
+	if daily and daily.CanClaim == true and not UIKit.AnyPanelOpen() then
+		RewardsController.Open("Daily")
+	end
+end
+
+function RewardsController.Start()
+	task.spawn(autoOpenDaily)
 	while true do
 		refreshAll()
 		task.wait(REFRESH)

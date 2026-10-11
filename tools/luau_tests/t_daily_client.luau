@@ -1,5 +1,5 @@
 -- Récompenses et AFK, serveur et client ensemble : RewardsController (boutons Daily / Spin / Gifts et leurs pastilles,
--- calendrier ouvert tout seul à l'arrivée, Claim, roue, cadeaux) et AfkController (carte du treadmill, demande de
+-- calendrier ouvert tout seul à l'arrivée d'un joueur qui a fini le tutoriel, Claim, roue, cadeaux) et AfkController (carte du treadmill, demande de
 -- reconnexion après l'inactivité). Événements abîmés du serveur sans erreur.
 local T = require("./testkit")
 local env = T.env
@@ -27,6 +27,9 @@ local player = env.addPlayer({ Local = true, Name = "Me", Character = true })
 env.waitUntil(function()
 	return player:GetAttribute("Ready") == true
 end, "joueur prêt", 60)
+-- (joueur qui a déjà fini le tutoriel : le calendrier s'ouvre dès l'arrivée ; le nouveau joueur est dans t_daily_onboarding)
+T.data(player).Tutorial = 3
+Boot.Services.ReplicaService.Set(player, "Tutorial", 3)
 env.flush()
 
 local function find(name: string): any
@@ -53,6 +56,8 @@ env.waitUntil(function()
 end, "état reçu", 30)
 env.advance(0.5)
 T.eq(#ClientBoot.Errors, 0, "aucune erreur au démarrage du client")
+T.check(not ClientBoot.Controllers.TutorialController.IsActive(), "tutoriel fini : pas de guide")
+T.check(not find("TutorialCard").Visible, "carte du guide cachée")
 
 T.section("boutons")
 local buttons = find("RewardButtons")
