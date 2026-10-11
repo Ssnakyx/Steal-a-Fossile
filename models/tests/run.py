@@ -18,8 +18,17 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 # faux environnement Roblox minimal : Vector3, CFrame (vraies maths), Color3, Enum, script
 MOCKS = r'''
 local V3 = {}
-V3.__index = V3
+V3.__index = function(v, k)
+	if k == "Magnitude" then return math.sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z) end
+	if k == "Unit" then
+		local m = math.sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z)
+		return setmetatable({ X = v.X / m, Y = v.Y / m, Z = v.Z / m }, V3)
+	end
+	return rawget(V3, k)
+end
 local function v3(x, y, z) return setmetatable({ X = x or 0, Y = y or 0, Z = z or 0 }, V3) end
+V3.__div = function(a, b) return v3(a.X / b, a.Y / b, a.Z / b) end
+V3.Cross = function(a, b) return v3(a.Y * b.Z - a.Z * b.Y, a.Z * b.X - a.X * b.Z, a.X * b.Y - a.Y * b.X) end
 V3.__add = function(a, b) return v3(a.X + b.X, a.Y + b.Y, a.Z + b.Z) end
 V3.__sub = function(a, b) return v3(a.X - b.X, a.Y - b.Y, a.Z - b.Z) end
 V3.__unm = function(a) return v3(-a.X, -a.Y, -a.Z) end
@@ -28,7 +37,7 @@ V3.__mul = function(a, b)
 	if type(b) == "number" then return v3(a.X * b, a.Y * b, a.Z * b) end
 	return v3(a.X * b.X, a.Y * b.Y, a.Z * b.Z)
 end
-local Vector3 = { new = v3, zero = v3(0, 0, 0), one = v3(1, 1, 1) }
+local Vector3 = { new = v3, zero = v3(0, 0, 0), one = v3(1, 1, 1), xAxis = v3(1, 0, 0), yAxis = v3(0, 1, 0), zAxis = v3(0, 0, 1) }
 local function mm(A, B)
 	local C = {}
 	for i = 1, 3 do
@@ -45,7 +54,10 @@ local function mv(A, p)
 end
 local I = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } }
 local CF = {}
-CF.__index = CF
+CF.__index = function(c, k)
+	if k == "Position" then return c.P end
+	return rawget(CF, k)
+end
 local function cf(R, p) return setmetatable({ R = R, P = p }, CF) end
 CF.__mul = function(a, b)
 	if getmetatable(b) == CF then return cf(mm(a.R, b.R), a.P + mv(a.R, b.P)) end
@@ -65,6 +77,10 @@ local CFrame = {
 	end,
 }
 CFrame.identity = cf(I, v3(0, 0, 0))
+CFrame.fromMatrix = function(p, vx, vy, vz)
+	vz = vz or vx:Cross(vy).Unit
+	return cf({ { vx.X, vy.X, vz.X }, { vx.Y, vy.Y, vz.Y }, { vx.Z, vy.Z, vz.Z } }, p)
+end
 local Color3 = { fromRGB = function(r, g, b) return { R = r / 255, G = g / 255, B = b / 255 } end }
 local Enum = setmetatable({}, { __index = function(_, k)
 	return setmetatable({}, { __index = function(_, kk) return k .. "." .. kk end })

@@ -1,0 +1,931 @@
+--!strict
+-- Boîte à outils d'interface (base reprise du UIKit de Steal a Snack, brief 1 ; le brief 12 « ui-ux » la complète).
+-- Style « studs » des jeux du moment : tout est carré et couvert de plots. Panneaux gris foncé à plots cernés de noir
+-- avec une barre de titre à plots de la couleur du menu, cartes vives à plots en dégradé, boutons à plots avec une
+-- lèvre sombre en bas, texte Fredoka One blanc cerné de noir. Animations : survol x1.05, appui x0.95, panneau qui
+-- s'ouvre de 90 % à 100 % sur un fond assombri. Pas d'emoji dans les textes. Textes en anglais.
+-- Les plots viennent d'une seule texture grise teintée par un UIGradient (un dégradé sur une image multiplie ses couleurs).
+--
+-- Mise à l'échelle : UIKit.Root(nom) donne un ScreenGui et un cadre « Root » dessiné pour un écran de 1280 x 720 unités,
+-- agrandi ou réduit d'un bloc selon l'écran réel. Tout ce qui est dans Root se place en unités de ce cadre.
+-- Sons : UIKit.Sound(nom) ne fait rien tant que le brief 16 ne l'a pas remplacé (Hover, Click, Open, Close, Notify).
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local Signal = require(ReplicatedStorage.Shared.Signal)
+
+local UIKit = {}
+
+local C = Color3.fromRGB
+local INK = C(14, 12, 24) -- noir profond des contours
+local WHITE = Color3.new(1, 1, 1)
+local BLACK = Color3.new(0, 0, 0)
+local SLATE = C(54, 56, 66) -- gris foncé des panneaux et des cases neutres
+
+UIKit.Colors = {
+	Ink = INK,
+	Slate = SLATE,
+	SlateDark = C(36, 38, 46),
+	SlateLight = C(74, 77, 90),
+	Text = WHITE,
+	Muted = C(222, 222, 232),
+	Disabled = C(132, 134, 146),
+	Green = C(92, 214, 48), -- boutons d'achat, succès
+	GreenText = C(142, 229, 122), -- texte vert clair (gains, $/s, « NEW »)
+	Tomato = C(240, 56, 72), -- erreur, croix de fermeture
+	Yellow = C(255, 222, 40), -- titres de section
+	Orange = C(255, 142, 32),
+	Blue = C(52, 142, 255),
+	Purple = C(164, 84, 255),
+	Cyan = C(40, 214, 244),
+	Pink = C(255, 70, 160),
+	Robux = C(145, 80, 232),
+	Money = C(92, 203, 63),
+}
+local Colors = UIKit.Colors
+
+-- Couleurs des raretés du GDD (gris, vert, bleu, violet, orange, rouge, arc-en-ciel). Fill = case, Tag = texte.
+UIKit.Rarity = {
+	Common = { Fill = C(158, 160, 168), Tag = C(220, 222, 228) },
+	Uncommon = { Fill = C(76, 200, 72), Tag = C(150, 236, 140) },
+	Rare = { Fill = C(52, 132, 240), Tag = C(130, 186, 255) },
+	Epic = { Fill = C(156, 76, 232), Tag = C(204, 160, 255) },
+	Legendary = { Fill = C(255, 152, 24), Tag = C(255, 204, 110) },
+	Mythic = { Fill = C(232, 44, 52), Tag = C(255, 132, 132) },
+	Secret = { Fill = C(46, 42, 51), Tag = WHITE, Rainbow = true },
+} :: { [string]: { Fill: Color3, Tag: Color3, Rainbow: boolean? } }
+
+-- Plots ronds (une tuile = un plot gris clair, téléversée pour les menus à plots des jeux de Snaky). "" = aplat sans plots.
+UIKit.StudTexture = "rbxassetid://79812142862554"
+UIKit.StudSize = 26 -- taille d'un plot des panneaux (unités) ; cartes et boutons : 20
+
+UIKit.TitleFont = Font.fromEnum(Enum.Font.FredokaOne)
+UIKit.LabelFont = UIKit.TitleFont
+UIKit.BodyFont = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+
+UIKit.DesignSize = Vector2.new(1280, 720) -- taille du cadre Root, en unités
+
+-- Écran tactile sans clavier (téléphone, tablette). Studio : attribut StudioTouch de ReplicatedStorage pour tester.
+UIKit.Touch = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
+	or (RunService:IsStudio() and ReplicatedStorage:GetAttribute("StudioTouch") == true)
+
+-- Sons de l'interface : remplacé par le brief 16 (UIKit.Sound = function(name) ... end)
+UIKit.Sound = function(_name: string) end
+
+local function playSound(name: string)
+	local ok, err = pcall(UIKit.Sound :: any, name)
+	if not ok then
+		warn("[UIKit] son " .. name .. " : " .. tostring(err))
+	end
+end
+
+-- ===== Base =====
+
+-- Crée une instance : UIKit.new("Frame", { Size = ..., Parent = ... }, { enfants }). Parent est posé en dernier.
+function UIKit.new(className: string, props: { [string]: any }?, children: { Instance }?): any
+	local inst = Instance.new(className)
+	local parent = nil
+	local propTable: { [string]: any } = props or {}
+	local childList: { Instance } = children or {}
+	for key, value in propTable do
+		if key == "Parent" then
+			parent = value
+		else
+			(inst :: any)[key] = value
+		end
+	end
+	for _, child in childList do
+		child.Parent = inst
+	end
+	if parent then
+		inst.Parent = parent
+	end
+	return inst
+end
+local new = UIKit.new
+
+-- Coins presque droits (le style est carré) ; un grand rayon (40 et plus) reste rond (pastilles)
+function UIKit.corner(radius: number?): UICorner
+	local r = radius or 10
+	return new("UICorner", { CornerRadius = UDim.new(0, if r >= 40 then r else math.min(r, 3)) })
+end
+
+function UIKit.stroke(color: Color3?, thickness: number?): UIStroke
+	return new("UIStroke", {
+		Color = color or INK,
+		Thickness = (thickness or 3) + 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	})
+end
+
+function UIKit.gradient(color0: Color3, color1: Color3, rotation: number?): UIGradient
+	return new("UIGradient", { Color = ColorSequence.new(color0, color1), Rotation = rotation or 90 })
+end
+
+local function lighten(color: Color3, amount: number): Color3
+	return color:Lerp(WHITE, amount)
+end
+
+local function darken(color: Color3, amount: number): Color3
+	return color:Lerp(BLACK, amount)
+end
+UIKit.Lighten = lighten
+UIKit.Darken = darken
+
+-- Couleur neutre (sombre ou grise) : case gris foncé à plots ; couleur vive : carte en dégradé
+local function isNeutral(color: Color3): boolean
+	local _, saturation, value = color:ToHSV()
+	return saturation < 0.2 or value < 0.3
+end
+UIKit.IsNeutral = isNeutral
+
+-- Dégradé d'une case vive : couleur pleine sur les bords, claire au milieu
+local function cardSequence(c: Color3): ColorSequence
+	return ColorSequence.new({
+		ColorSequenceKeypoint.new(0, c),
+		ColorSequenceKeypoint.new(0.5, lighten(c, 0.38)),
+		ColorSequenceKeypoint.new(1, c),
+	})
+end
+UIKit.CardSequence = cardSequence
+
+-- Dégradé d'un bouton : clair en haut, couleur pleine en bas
+local function buttonSequence(c: Color3): ColorSequence
+	return ColorSequence.new({
+		ColorSequenceKeypoint.new(0, lighten(c, 0.32)),
+		ColorSequenceKeypoint.new(0.55, c),
+		ColorSequenceKeypoint.new(1, darken(c, 0.08)),
+	})
+end
+UIKit.ButtonSequence = buttonSequence
+
+local SLATE_SEQUENCE = ColorSequence.new(lighten(SLATE, 0.1), darken(SLATE, 0.12))
+UIKit.SlateSequence = SLATE_SEQUENCE
+
+local RAINBOW = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, C(255, 80, 110)),
+	ColorSequenceKeypoint.new(0.2, C(255, 196, 50)),
+	ColorSequenceKeypoint.new(0.4, C(120, 235, 80)),
+	ColorSequenceKeypoint.new(0.6, C(60, 210, 250)),
+	ColorSequenceKeypoint.new(0.8, C(170, 100, 255)),
+	ColorSequenceKeypoint.new(1, C(255, 100, 200)),
+})
+UIKit.RainbowSequence = RAINBOW
+
+-- ===== Animation =====
+
+UIKit.Motion = {
+	Fast = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+	Bouncy = TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+	Smooth = TweenInfo.new(0.22, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+}
+
+-- Un tween en cours sur la même propriété du même élément est annulé avant d'en lancer un nouveau
+local liveTweens: { [Instance]: { [string]: Tween } } = setmetatable({}, { __mode = "k" }) :: any
+
+function UIKit.tween(inst: Instance, duration: number, props: { [string]: any }, style: Enum.EasingStyle?, direction: Enum.EasingDirection?): Tween
+	local live = liveTweens[inst]
+	if not live then
+		live = {}
+		liveTweens[inst] = live
+	end
+	for key in props do
+		local previous = live[key]
+		if previous and previous.PlaybackState == Enum.PlaybackState.Playing then
+			previous:Cancel()
+		end
+	end
+	local info = TweenInfo.new(duration, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out)
+	local tween = TweenService:Create(inst, info, props)
+	for key in props do
+		live[key] = tween
+	end
+	tween:Play()
+	return tween
+end
+
+-- ===== Plots =====
+
+-- Couche de plots en mosaïque dans `parent` (un plot = `stud` unités). La texture est gris clair : sa couleur vient du
+-- UIGradient « Tint » (`sequence`, `rotation`). Sans texture (StudTexture = ""), un aplat du même dégradé.
+function UIKit.studLayer(parent: GuiObject, stud: number?, sequence: ColorSequence?, rotation: number?): ImageLabel
+	local px = stud or UIKit.StudSize
+	local flat = UIKit.StudTexture == ""
+	local layer = new("ImageLabel", {
+		Name = "Studs",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = if flat then 0 else 1,
+		BackgroundColor3 = WHITE,
+		BorderSizePixel = 0,
+		Image = UIKit.StudTexture,
+		ScaleType = Enum.ScaleType.Tile,
+		TileSize = UDim2.fromOffset(px, px),
+		ZIndex = parent.ZIndex,
+		Parent = parent,
+	})
+	new("UIGradient", { Name = "Tint", Rotation = rotation or 90, Color = sequence or SLATE_SEQUENCE, Parent = layer })
+	return layer
+end
+
+-- ===== Texte =====
+
+-- Texte du kit : Fredoka One blanc cerné de noir. Options en plus des propriétés de TextLabel :
+-- Body = true (texte courant Builder Sans, sans contour), StrokeThickness (0 = sans contour), MaxTextSize.
+function UIKit.label(props: { [string]: any }): TextLabel
+	local body = props.Body
+	local strokeThickness = props.StrokeThickness
+	local maxSize = props.MaxTextSize
+	props.Body = nil
+	props.StrokeThickness = nil
+	props.MaxTextSize = nil
+	props.BackgroundTransparency = props.BackgroundTransparency or 1
+	if props.FontFace == nil then
+		props.FontFace = if body then UIKit.BodyFont else UIKit.LabelFont
+	end
+	props.TextColor3 = props.TextColor3 or Colors.Text
+	if props.TextScaled == nil then
+		props.TextScaled = true
+	end
+	if maxSize == nil and body then
+		maxSize = 20
+	end
+	local label = new("TextLabel", props)
+	if maxSize and label.TextScaled then
+		new("UITextSizeConstraint", { MaxTextSize = maxSize, Parent = label })
+	end
+	new("UIStroke", {
+		Thickness = math.min(if strokeThickness == nil then (if body then 0 else 3) else strokeThickness, 3),
+		Color = INK,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+		Parent = label,
+	})
+	return label
+end
+
+-- ===== Cases =====
+
+-- Face d'un élément : carré à plots cerné de noir. Couleur vive : plots en dégradé de la couleur (clair au milieu) avec
+-- un liseré intérieur plus sombre ; couleur neutre : plots gris foncé. Changer l'attribut « Tint » de la face la
+-- repeint ; l'attribut « Rainbow » la peint aux couleurs de l'arc-en-ciel (Secret).
+function UIKit.makeFace(outer: GuiObject, color: Color3, thickness: number?, strokeColor: Color3?): Frame
+	local face = new("Frame", {
+		Name = "Face",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = outer.ZIndex,
+		Parent = outer,
+	})
+	new("UIStroke", { Name = "Stroke", Color = strokeColor or INK, Thickness = thickness or 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = face })
+	local studs = UIKit.studLayer(face, 20)
+	local gradient = studs:FindFirstChild("Tint") :: UIGradient
+	local bevel = new("Frame", {
+		Name = "Bevel",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -4, 1, -4),
+		BackgroundTransparency = 1,
+		ZIndex = face.ZIndex + 1,
+		Parent = face,
+	})
+	local bevelStroke: UIStroke = new("UIStroke", { Thickness = 2.5, Transparency = 0.15, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = bevel })
+	local function paint()
+		local tint = face:GetAttribute("Tint")
+		local c = if typeof(tint) == "Color3" then tint else color
+		if face:GetAttribute("Rainbow") then
+			gradient.Rotation = 20
+			gradient.Color = RAINBOW
+			bevelStroke.Color = WHITE
+			bevelStroke.Transparency = 0.55
+		elseif isNeutral(c) then
+			gradient.Rotation = 90
+			gradient.Color = SLATE_SEQUENCE
+			bevelStroke.Color = lighten(SLATE, 0.12)
+			bevelStroke.Transparency = 0.35
+		else
+			gradient.Rotation = 35
+			gradient.Color = cardSequence(c)
+			bevelStroke.Color = darken(c, 0.35)
+			bevelStroke.Transparency = 0.15
+		end
+	end
+	face:SetAttribute("Tint", color)
+	paint()
+	face:GetAttributeChangedSignal("Tint"):Connect(paint)
+	face:GetAttributeChangedSignal("Rainbow"):Connect(paint)
+	return face
+end
+
+-- Carte à plots : props.Color = couleur (vive : dégradé, neutre : gris foncé), props.Accent = couleur du contour,
+-- props.Rainbow = carte arc-en-ciel. Les autres props sont celles du cadre. La face est dans card.Face.
+function UIKit.card(props: { [string]: any }): Frame
+	local color = props.Color or SLATE
+	local accent = props.Accent
+	local rainbow = props.Rainbow
+	local parent = props.Parent
+	props.Color = nil
+	props.Accent = nil
+	props.Rainbow = nil
+	props.Parent = nil
+	props.BackgroundTransparency = 1
+	props.BorderSizePixel = 0
+	local outer = new("Frame", props)
+	local face = UIKit.makeFace(outer, color, if accent then 4 else 3, accent)
+	if rainbow then
+		face:SetAttribute("Rainbow", true)
+	end
+	outer.Parent = parent
+	return outer
+end
+
+-- ===== Boutons =====
+
+-- Retour des boutons : x1.05 au survol (pas sur écran tactile), x0.95 à l'appui
+function UIKit.packHover(button: GuiButton, scaleTarget: Instance?)
+	local target = scaleTarget or button
+	local existing = target:FindFirstChild("HoverScale")
+	local scale: UIScale = if existing and existing:IsA("UIScale") then existing else new("UIScale", { Name = "HoverScale", Parent = target })
+	local hovering = false
+	local function hoverScale(): number
+		local value = button:GetAttribute("HoverScale")
+		return if type(value) == "number" then value else 1.05
+	end
+	button.MouseEnter:Connect(function()
+		if UIKit.Touch or button:GetAttribute("Disabled") then
+			return
+		end
+		hovering = true
+		UIKit.tween(scale, 0.15, { Scale = hoverScale() })
+		playSound("Hover")
+	end)
+	button.MouseLeave:Connect(function()
+		hovering = false
+		UIKit.tween(scale, 0.15, { Scale = 1 })
+	end)
+	button.MouseButton1Down:Connect(function()
+		UIKit.tween(scale, 0.08, { Scale = 0.95 })
+	end)
+	button.MouseButton1Up:Connect(function()
+		UIKit.tween(scale, 0.12, { Scale = if hovering then hoverScale() else 1 }, Enum.EasingStyle.Back)
+	end)
+end
+
+-- Face d'un bouton : plots en dégradé (clair en haut), lèvre sombre en bas, fin reflet, contour noir.
+-- Renvoie la face et une fonction (couleur, arc-en-ciel) pour la repeindre.
+local function buttonFace(button: GuiObject): (Frame, (Color3, boolean?) -> ())
+	local face = new("Frame", {
+		Name = "Face",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = button.ZIndex,
+		Parent = button,
+	})
+	new("UIStroke", { Name = "Stroke", Color = INK, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = face })
+	local studs = UIKit.studLayer(face, 18)
+	local gradient = studs:FindFirstChild("Tint") :: UIGradient
+	new("Frame", {
+		Name = "Lip",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.fromScale(1, 0.16),
+		BackgroundColor3 = BLACK,
+		BackgroundTransparency = 0.62,
+		BorderSizePixel = 0,
+		ZIndex = button.ZIndex + 1,
+		Parent = face,
+	})
+	new("Frame", {
+		Name = "Shine",
+		Position = UDim2.fromOffset(5, 4),
+		Size = UDim2.new(1, -10, 0, 3),
+		BackgroundColor3 = WHITE,
+		BackgroundTransparency = 0.55,
+		BorderSizePixel = 0,
+		ZIndex = button.ZIndex + 1,
+		Parent = face,
+	})
+	return face, function(c: Color3, rainbow: boolean?)
+		if rainbow then
+			gradient.Rotation = 0
+			gradient.Color = RAINBOW
+		elseif isNeutral(c) and c ~= Colors.Disabled then
+			gradient.Rotation = 90
+			gradient.Color = SLATE_SEQUENCE
+		else
+			gradient.Rotation = 90
+			gradient.Color = buttonSequence(c)
+		end
+	end
+end
+UIKit.buttonFace = buttonFace
+
+-- Bouton à plots : props.Color = couleur (Colors.Green pour acheter), props.Text, props.Rainbow, props.MaxTextSize.
+-- Les autres props sont celles du TextButton. Changer button.Text met à jour le texte ; l'attribut « Disabled » le grise
+-- (le clic reste possible pour que le serveur explique pourquoi).
+function UIKit.button(props: { [string]: any }, onClick: (() -> ())?): TextButton
+	local color = props.Color or Colors.Disabled
+	local text = props.Text or ""
+	local rainbow = props.Rainbow
+	local maxTextSize = props.MaxTextSize
+	local parent = props.Parent
+	props.Color = nil
+	props.Text = nil
+	props.Rainbow = nil
+	props.MaxTextSize = nil
+	props.Parent = nil
+	props.BackgroundTransparency = 1
+	props.BorderSizePixel = 0
+	props.AutoButtonColor = false
+	local button: TextButton = new("TextButton", props)
+	button.Text = text
+	button.TextTransparency = 1
+	local face, paint = buttonFace(button)
+	paint(color, rainbow)
+	local label = UIKit.label({
+		Name = "Label",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.47),
+		Size = UDim2.fromScale(0.88, 0.62),
+		Text = text,
+		MaxTextSize = maxTextSize or 40,
+		ZIndex = button.ZIndex + 2,
+		Parent = face,
+	})
+	button:GetPropertyChangedSignal("Text"):Connect(function()
+		label.Text = button.Text
+	end)
+	button:GetAttributeChangedSignal("Disabled"):Connect(function()
+		local off = button:GetAttribute("Disabled") == true
+		label.TextTransparency = if off then 0.35 else 0
+		paint(if off then Colors.Disabled else color, rainbow and not off)
+	end)
+	UIKit.packHover(button)
+	button.Activated:Connect(function()
+		playSound("Click")
+		if onClick then
+			onClick()
+		end
+	end)
+	button.Parent = parent
+	return button
+end
+
+-- Croix rouge carrée
+function UIKit.closeButton(props: { [string]: any }, onClick: () -> ()): TextButton
+	props.BackgroundTransparency = 1
+	props.Text = ""
+	props.AutoButtonColor = false
+	local parent = props.Parent
+	props.Parent = nil
+	local button: TextButton = new("TextButton", props)
+	local _, paint = buttonFace(button)
+	paint(Colors.Tomato)
+	UIKit.label({
+		Name = "X",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.47),
+		Size = UDim2.fromScale(0.62, 0.62),
+		Text = "X",
+		ZIndex = button.ZIndex + 2,
+		Parent = button,
+	})
+	button:SetAttribute("HoverScale", 1.08)
+	UIKit.packHover(button)
+	button.Activated:Connect(function()
+		playSound("Click")
+		onClick()
+	end)
+	button.Parent = parent
+	return button
+end
+
+-- ===== Composants =====
+
+-- Barre de progression : rail gris foncé cerné de noir, remplissage à plots, texte au milieu.
+-- props.Color = couleur du remplissage. Renvoie la barre et une fonction (fraction 0..1, texte?) pour la mettre à jour.
+function UIKit.progressBar(props: { [string]: any }): (Frame, (fraction: number, text: string?) -> ())
+	local color = props.Color or Colors.Green
+	props.Color = nil
+	props.BackgroundColor3 = C(28, 29, 36)
+	props.BackgroundTransparency = 0
+	props.BorderSizePixel = 0
+	local back: Frame = new("Frame", props, {
+		new("UIStroke", { Color = INK, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+	})
+	local fill: Frame = new("Frame", {
+		Name = "Fill",
+		Size = UDim2.fromScale(0, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		Visible = false,
+		ZIndex = back.ZIndex + 1,
+		Parent = back,
+	})
+	UIKit.studLayer(fill, 16, buttonSequence(color), 90)
+	local label = UIKit.label({
+		Name = "Label",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.96, 0.78),
+		Text = "",
+		ZIndex = back.ZIndex + 2,
+		Parent = back,
+	})
+	return back, function(fraction: number, text: string?)
+		local f = if fraction == fraction then math.clamp(fraction, 0, 1) else 0
+		fill.Visible = f > 0.001
+		UIKit.tween(fill, 0.3, { Size = UDim2.fromScale(f, 1) })
+		label.Text = text or ""
+	end
+end
+
+-- Étiquette de rareté : case de la couleur de la rareté, nom en blanc cerné de noir
+function UIKit.rarityTag(rarity: string, props: { [string]: any }): Frame
+	local colors = UIKit.Rarity[rarity] or UIKit.Rarity.Common
+	props.Color = colors.Fill
+	props.Rainbow = colors.Rainbow
+	local tag = UIKit.card(props)
+	UIKit.label({
+		Name = "Text",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.9, 0.72),
+		Text = string.upper(rarity),
+		ZIndex = tag.ZIndex + 2,
+		Parent = tag,
+	})
+	return tag
+end
+
+-- ===== Écran =====
+
+-- ScreenGui `name` dans le PlayerGui (créé s'il n'existe pas) et son cadre « Root » de UIKit.DesignSize unités,
+-- mis à l'échelle de l'écran. Renvoie (ScreenGui, Root).
+function UIKit.Root(name: string, displayOrder: number?): (ScreenGui, Frame)
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local gui = playerGui:FindFirstChild(name)
+	if gui and gui:IsA("ScreenGui") then
+		return gui, gui:WaitForChild("Root") :: Frame
+	end
+	local screen: ScreenGui = new("ScreenGui", {
+		Name = name,
+		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		DisplayOrder = displayOrder or 0,
+	})
+	local root: Frame = new("Frame", {
+		Name = "Root",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(UIKit.DesignSize.X, UIKit.DesignSize.Y),
+		BackgroundTransparency = 1,
+		Parent = screen,
+	})
+	local scale: UIScale = new("UIScale", { Parent = root })
+	local function fit()
+		local camera = Workspace.CurrentCamera
+		local viewport = if camera then camera.ViewportSize else UIKit.DesignSize
+		if viewport.X <= 0 or viewport.Y <= 0 then
+			return
+		end
+		-- (le cadre couvre tout l'écran : l'axe le plus serré donne l'échelle, l'autre s'allonge)
+		local s = math.min(viewport.X / UIKit.DesignSize.X, viewport.Y / UIKit.DesignSize.Y)
+		scale.Scale = s
+		root.Size = UDim2.fromOffset(viewport.X / s, viewport.Y / s)
+	end
+	fit()
+	local camera = Workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
+	end
+	screen.Parent = playerGui
+	return screen, root
+end
+
+-- ===== Panneaux =====
+
+export type Panel = {
+	Frame: Frame,
+	Content: Frame,
+	HeaderRight: Frame,
+	IsOpen: () -> boolean,
+	Open: () -> (),
+	Close: () -> (),
+	Toggle: () -> (),
+	OnOpen: (() -> ())?,
+	OnClose: (() -> ())?,
+}
+
+local openPanels: { Panel } = {}
+UIKit.HeaderHeight = 76
+-- Un menu vient de s'ouvrir (true) ou plus aucun n'est ouvert (false) : le HUD s'efface pendant ce temps
+UIKit.PanelsChanged = Signal.new()
+
+function UIKit.AnyPanelOpen(): boolean
+	for _, panel in openPanels do
+		if panel.IsOpen() then
+			return true
+		end
+	end
+	return false
+end
+
+-- Panneau à plots dans `root` (le cadre Root de UIKit.Root) : corps gris foncé à plots cerné de noir avec une ombre
+-- nette, barre de titre de la couleur `accent`, croix rouge. `size` en unités ; réduit d'un bloc s'il ne tient pas.
+-- Contenu dans panel.Content ; panel.HeaderRight reçoit onglets ou infos à droite du titre. Cliquer à côté ferme.
+function UIKit.panel(root: GuiObject, title: string, accent: Color3, size: Vector2): Panel
+	local headerHeight = UIKit.HeaderHeight
+	local backdrop: TextButton = new("TextButton", {
+		Name = title .. "Backdrop",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = C(6, 6, 14),
+		BackgroundTransparency = 1,
+		Text = "",
+		AutoButtonColor = false,
+		Visible = false,
+		ZIndex = 20,
+		Parent = root,
+	})
+	local holder: Frame = new("Frame", {
+		Name = title,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(size.X, size.Y),
+		BackgroundTransparency = 1,
+		ZIndex = 21,
+		Parent = backdrop,
+	})
+	local scale: UIScale = new("UIScale", { Parent = holder })
+	local function fitScale(): number
+		local available = root.AbsoluteSize
+		local unit = if root.Size.X.Offset > 0 then available.X / root.Size.X.Offset else 1
+		if available.X <= 0 or unit <= 0 then
+			return 1
+		end
+		return math.min(1, (available.X / unit - 24) / size.X, (available.Y / unit - 40) / size.Y)
+	end
+	new("Frame", {
+		Name = "Shadow",
+		Position = UDim2.fromOffset(8, 10),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = BLACK,
+		BackgroundTransparency = 0.5,
+		BorderSizePixel = 0,
+		ZIndex = 20,
+		Parent = holder,
+	})
+	local body: Frame = new("Frame", {
+		Name = "Body",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = SLATE,
+		BorderSizePixel = 0,
+		ZIndex = 21,
+		Parent = holder,
+	}, { new("UIStroke", { Color = INK, Thickness = 5, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }) })
+	UIKit.studLayer(body, UIKit.StudSize, ColorSequence.new(C(68, 70, 82), C(46, 48, 58)), 90).ZIndex = 21
+	-- (les clics dans le panneau ne le ferment pas)
+	new("TextButton", {
+		Name = "Blocker",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = "",
+		AutoButtonColor = false,
+		ZIndex = 21,
+		Parent = body,
+	})
+	local header: Frame = new("Frame", {
+		Name = "Header",
+		Size = UDim2.new(1, 0, 0, headerHeight),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = 22,
+		Parent = body,
+	})
+	local bar = UIKit.studLayer(header, UIKit.StudSize, ColorSequence.new(lighten(accent, 0.3), darken(accent, 0.06)), 90)
+	bar.Name = "Bar"
+	bar.ZIndex = 22
+	new("Frame", {
+		Name = "Line",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, 4),
+		BackgroundColor3 = INK,
+		BorderSizePixel = 0,
+		ZIndex = 23,
+		Parent = header,
+	})
+	UIKit.label({
+		Name = "Title",
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 20, 0.5, -1),
+		Size = UDim2.fromScale(0.42, 0.64),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		FontFace = UIKit.TitleFont,
+		Text = title,
+		ZIndex = 24,
+		Parent = header,
+	})
+	local closeSize = math.floor(headerHeight * 0.74)
+	local headerRight: Frame = new("Frame", {
+		Name = "HeaderRight",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -(closeSize + 24), 0.5, -1),
+		Size = UDim2.fromScale(0.52, 0.7),
+		BackgroundTransparency = 1,
+		ZIndex = 24,
+		Parent = header,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Right,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	local content: Frame = new("Frame", {
+		Name = "Content",
+		Position = UDim2.fromOffset(16, headerHeight + 12),
+		Size = UDim2.new(1, -32, 1, -(headerHeight + 12) - 14),
+		BackgroundTransparency = 1,
+		ZIndex = 22,
+		Parent = body,
+	})
+
+	local panel = {} :: Panel
+	panel.Frame = body
+	panel.Content = content
+	panel.HeaderRight = headerRight
+
+	-- (un jeton évite qu'une fermeture en cours cache le panneau qu'on vient de rouvrir)
+	local closeToken = 0
+	local closing = false
+
+	function panel.IsOpen(): boolean
+		return backdrop.Visible and not closing
+	end
+
+	function panel.Close()
+		if not backdrop.Visible or closing then
+			return
+		end
+		closing = true
+		closeToken += 1
+		local token = closeToken
+		playSound("Close")
+		UIKit.tween(scale, 0.15, { Scale = fitScale() * 0.9 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		UIKit.tween(backdrop, 0.15, { BackgroundTransparency = 1 })
+		task.delay(0.15, function()
+			if token ~= closeToken then
+				return
+			end
+			closing = false
+			backdrop.Visible = false
+			if panel.OnClose then
+				panel.OnClose()
+			end
+			if not UIKit.AnyPanelOpen() then
+				UIKit.PanelsChanged:Fire(false)
+			end
+		end)
+	end
+
+	function panel.Open()
+		closeToken += 1
+		closing = false
+		for _, other in openPanels do
+			if other ~= panel and other.IsOpen() then
+				other.Close()
+			end
+		end
+		local target = fitScale()
+		scale.Scale = target * 0.9
+		backdrop.BackgroundTransparency = 1
+		backdrop.Visible = true
+		UIKit.tween(scale, 0.22, { Scale = target }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+		UIKit.tween(backdrop, 0.2, { BackgroundTransparency = 0.6 })
+		playSound("Open")
+		UIKit.PanelsChanged:Fire(true)
+		if panel.OnOpen then
+			panel.OnOpen()
+		end
+	end
+
+	function panel.Toggle()
+		if panel.IsOpen() then
+			panel.Close()
+		else
+			panel.Open()
+		end
+	end
+
+	UIKit.closeButton({
+		Name = "Close",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -12, 0.5, -1),
+		Size = UDim2.fromOffset(closeSize, closeSize),
+		ZIndex = 25,
+		Parent = header,
+	}, panel.Close)
+	backdrop.Activated:Connect(panel.Close)
+	root:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		if panel.IsOpen() then
+			scale.Scale = fitScale()
+		end
+	end)
+
+	table.insert(openPanels, panel)
+	return panel
+end
+
+-- ===== Messages =====
+
+local TOAST_COLORS: { [string]: Color3 } = {
+	info = SLATE,
+	success = Colors.Green,
+	error = Colors.Tomato,
+	money = Colors.Money,
+}
+local MAX_TOASTS = 4
+local toastList: Frame? = nil
+
+local function getToastList(): Frame
+	local list = toastList
+	if list and list.Parent then
+		return list
+	end
+	local _, root = UIKit.Root("Toasts", 50)
+	local created: Frame = new("Frame", {
+		Name = "Toasts",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 70),
+		Size = UDim2.fromOffset(520, 300),
+		BackgroundTransparency = 1,
+		Parent = root,
+	}, {
+		new("UIListLayout", {
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	toastList = created
+	return created
+end
+
+local toastOrder = 0
+
+-- Message court en haut de l'écran pendant `duration` secondes (3 par défaut). kind : info, success, error, money.
+function UIKit.toast(text: string, kind: string?, duration: number?): Frame
+	local list = getToastList()
+	local toasts = {}
+	for _, child in list:GetChildren() do
+		if child:IsA("Frame") then
+			table.insert(toasts, child)
+		end
+	end
+	table.sort(toasts, function(a, b)
+		return a.LayoutOrder < b.LayoutOrder
+	end)
+	for index = 1, #toasts - MAX_TOASTS + 1 do
+		toasts[index]:Destroy()
+	end
+	toastOrder += 1
+	local toast = UIKit.card({
+		Name = "Toast",
+		Color = TOAST_COLORS[kind or "info"] or SLATE,
+		Size = UDim2.fromOffset(460, 52),
+		LayoutOrder = toastOrder,
+		Parent = list,
+	})
+	UIKit.label({
+		Name = "Text",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -24, 0, 30),
+		Text = text,
+		ZIndex = toast.ZIndex + 2,
+		Parent = toast,
+	})
+	local pop: UIScale = new("UIScale", { Scale = 0.6, Parent = toast })
+	UIKit.tween(pop, 0.2, { Scale = 1 }, Enum.EasingStyle.Back)
+	playSound("Notify")
+	task.delay(duration or 3, function()
+		if toast.Parent then
+			UIKit.tween(pop, 0.15, { Scale = 0 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			task.wait(0.16)
+			toast:Destroy()
+		end
+	end)
+	return toast
+end
+
+return UIKit

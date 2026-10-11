@@ -69,7 +69,16 @@ local dino = DinoBuilder.CreateProxy("Velociraptor", { Size = "Big", Mutation = 
 dino:PivotTo(cf) ; dino.Parent = workspace
 dino:SetAttribute("State", "Walk") ; dino:SetAttribute("StateAt", workspace:GetServerTimeNow())
 dino:SetAttribute("Speed", 6)      -- la marche se cale sur la vitesse : pas de pieds qui glissent
+dino:SetAttribute("Rarity", "Epic")  -- anneau, aura et cubes lumineux de la rareté (ou l'option Rarity de CreateProxy)
 ```
+
+**Rareté sur le dino** (demande de Snaky) : attribut `Rarity` (Common, Uncommon, Rare, Epic, Legendary, Mythic, Secret) ;
+sans lui, le client prend la rareté de l'espèce dans `Config.Rarity.Species`, et sa couleur dans `Config.Rarity.Info`
+(les mêmes que les blocs de fossiles). Les effets s'empilent avec la rareté (`DinoBuilder.Rarities`) : anneau de briques
+au sol (studs mats pour Common et Uncommon, Neon ensuite), cubes lumineux qui montent dès Uncommon, paillettes qui
+scintillent sur les briques du corps dès Rare, aura de cubes qui tournent dès Epic, couronne de petits losanges au-dessus
+de la tête dès Legendary, braises qui vacillent pour Mythic, arc-en-ciel qui tourne pour Secret. Seuls les dinos proches
+et visibles font vivre les cubes et les paillettes.
 
 `DinoAnimController` (client) anime tout modèle tagué `Dino` : fondus de 0,2 s, variantes d'Idle au hasard, cadence plus
 lente pour les gros, animation complète près de la caméra, cadence réduite au loin, figée hors de vue ou très loin.

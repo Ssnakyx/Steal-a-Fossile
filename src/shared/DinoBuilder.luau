@@ -56,6 +56,22 @@ export type BuildOptions = {
 	Scale: number?, -- échelle en plus (gardiens x1.5 à x3)
 	Mutation: string?, -- "Amber" | "Crystal" | "Lava"
 	Level: string?, -- "Normal" | "Golden" | "Diamond"
+	Rarity: string?, -- "Common" ... "Secret" : anneau et effets de rareté (DinoAnimController)
+}
+
+-- Apparence de la rareté sur le dino (DinoAnimController) : effets qui s'empilent avec la rareté
+export type RarityLook = {
+	Name: string,
+	Level: number, -- 1 Common ... 7 Secret
+	Color: Color3, -- couleur de secours (le jeu prend celle de Config.Rarity, la même que les blocs de fossiles)
+	Neon: boolean, -- anneau lumineux (sinon briques à studs)
+	Particles: number, -- cubes lumineux qui montent, par seconde
+	Glitter: number, -- paillettes qui scintillent sur le corps, par seconde
+	Orbiters: number, -- cubes de l'aura qui tournent autour
+	Halo: number, -- cubes de la couronne au-dessus de la tête
+	Pulse: boolean, -- l'anneau bat
+	Flicker: boolean, -- braises qui vacillent
+	Rainbow: boolean, -- couleurs qui tournent
 }
 
 export type Rig = {
@@ -75,6 +91,22 @@ DinoBuilder.Sizes = { Small = 0.75, Normal = 1, Big = 1.5, Huge = 2.5 } :: { [st
 DinoBuilder.Mutations = { "Amber", "Crystal", "Lava" }
 DinoBuilder.Levels = { "Normal", "Golden", "Diamond" }
 DinoBuilder.Tag = "Dino" -- tag CollectionService des dinos animés par DinoAnimController
+
+-- 7 raretés du GDD : chaque rareté ajoute un effet (anneau, cubes qui montent, paillettes, aura, couronne, braises,
+-- arc-en-ciel), toujours en cubes nets
+DinoBuilder.Rarities = {
+	{ Name = "Common", Level = 1, Color = Color3.fromRGB(163, 162, 165), Neon = false, Particles = 0, Glitter = 0, Orbiters = 0, Halo = 0, Pulse = false, Flicker = false, Rainbow = false },
+	{ Name = "Uncommon", Level = 2, Color = Color3.fromRGB(75, 175, 75), Neon = false, Particles = 0.8, Glitter = 0, Orbiters = 0, Halo = 0, Pulse = false, Flicker = false, Rainbow = false },
+	{ Name = "Rare", Level = 3, Color = Color3.fromRGB(30, 110, 220), Neon = true, Particles = 1.6, Glitter = 3, Orbiters = 0, Halo = 0, Pulse = false, Flicker = false, Rainbow = false },
+	{ Name = "Epic", Level = 4, Color = Color3.fromRGB(140, 60, 210), Neon = true, Particles = 2.5, Glitter = 5, Orbiters = 2, Halo = 0, Pulse = false, Flicker = false, Rainbow = false },
+	{ Name = "Legendary", Level = 5, Color = Color3.fromRGB(255, 145, 20), Neon = true, Particles = 3.5, Glitter = 7, Orbiters = 3, Halo = 6, Pulse = false, Flicker = false, Rainbow = false },
+	{ Name = "Mythic", Level = 6, Color = Color3.fromRGB(215, 35, 35), Neon = true, Particles = 5, Glitter = 9, Orbiters = 4, Halo = 8, Pulse = true, Flicker = true, Rainbow = false },
+	{ Name = "Secret", Level = 7, Color = Color3.fromRGB(255, 90, 200), Neon = true, Particles = 7, Glitter = 12, Orbiters = 6, Halo = 10, Pulse = true, Flicker = false, Rainbow = true },
+} :: { RarityLook }
+DinoBuilder.RarityByName = {} :: { [string]: RarityLook }
+for _, r in DinoBuilder.Rarities do
+	DinoBuilder.RarityByName[r.Name] = r
+end
 
 local MATERIALS: { [string]: Enum.Material } = {
 	Plastic = Enum.Material.Plastic,
@@ -364,6 +396,9 @@ function DinoBuilder.Build(species: string | Data, options: BuildOptions?): Mode
 	if level then
 		model:SetAttribute("Level", level)
 	end
+	if options and options.Rarity then
+		model:SetAttribute("Rarity", options.Rarity)
+	end
 	return model
 end
 
@@ -386,9 +421,41 @@ function DinoBuilder.CreateProxy(species: string, options: BuildOptions?): Model
 	if options and options.Level then
 		model:SetAttribute("Level", options.Level)
 	end
+	if options and options.Rarity then
+		model:SetAttribute("Rarity", options.Rarity)
+	end
 	model:SetAttribute("State", "Idle")
 	model:AddTag(DinoBuilder.Tag)
 	return model
+end
+
+-- Demi-largeur (X) et demi-longueur (Z) de l'anneau de rareté, en studs, autour de l'empreinte du dino
+function DinoBuilder.RingShape(data: Data, scale: number): (number, number)
+	local sx, sz = data.Size.X / 2, data.Size.Z / 2
+	local margin = 0.6 + 0.04 * math.max(data.Size.X, data.Size.Z)
+	return (math.min(sx, 0.9 * sz) + margin) * scale, (sz + margin) * scale
+end
+
+-- Briques de l'anneau (repère du modèle, pivot au sol) : { position et orientation, taille }
+function DinoBuilder.RingSegments(data: Data, scale: number): { { any } }
+	local a, b = DinoBuilder.RingShape(data, scale)
+	local h = ((a - b) / (a + b)) ^ 2
+	local perimeter = math.pi * (a + b) * (1 + 3 * h / (10 + math.sqrt(4 - 3 * h)))
+	local n = math.clamp(math.floor(perimeter / (2.4 * math.sqrt(scale)) + 0.5), 10, 24)
+	local width = math.max(0.8, math.sqrt(scale))
+	local thick = 0.4 * math.max(1, math.sqrt(scale))
+	local out: { { any } } = {}
+	for i = 0, n - 1 do
+		local t0, t1 = i / n * 2 * math.pi, (i + 1) / n * 2 * math.pi
+		local p0 = Vector3.new(a * math.cos(t0), 0, b * math.sin(t0))
+		local p1 = Vector3.new(a * math.cos(t1), 0, b * math.sin(t1))
+		local dir = p1 - p0
+		local mid = (p0 + p1) / 2 + Vector3.new(0, thick / 2 + 0.02, 0)
+		local cf = CFrame.fromMatrix(mid, dir.Unit, Vector3.yAxis)
+		local entry: { any } = { cf, Vector3.new(dir.Magnitude + width * 0.35, thick, width) }
+		table.insert(out, entry)
+	end
+	return out
 end
 
 -- ====================================================================== animations
