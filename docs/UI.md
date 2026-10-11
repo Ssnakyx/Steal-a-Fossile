@@ -23,7 +23,7 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
 - **Cuves** à droite : une ligne par cuve (rareté, temps restant, barre), **OPEN** quand elle est prête (ouvre la cuve
   de loin), « +N fossils waiting », bouton **NEW TANK $X**. Visible dès qu'une cuve sert.
 - **Shop** (4 onglets à icône, style des Steal a ... du moment) : chaque onglet est une page de **sections** (« -- FEATURED -- »,
-  « -- SPEED -- », « -- PASSES -- »...) en titres d'une couleur par section, barre de titre à reflets en diagonale, puis de **grandes cartes illustrées** (3 par ligne) :
+  « -- SPEED -- », « -- PASSES -- »...) en titres d'une couleur par section, barre de titre à reflets en diagonale, cartes et boutons en verre (reflet clair en haut, bande de lumière qui les traverse toutes les 3,5 s, `UIKit.glass`), puis de **grandes cartes illustrées** (3 par ligne) :
   icône du pack de Steal a Snack, gros « x2 », nom, description, bouton vert. Prix Robux : logo Robux dessiné et prix
   (le texte du bouton reste « R$ 99 »).
   - *Speed* : FEATURED = carte large du Treadmill (gain actuel par seconde, même AFK ; niveau suivant ; pastilles des

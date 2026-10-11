@@ -529,6 +529,74 @@ function UIKit.sectionTitle(props: { [string]: any }): Frame
 	return frame
 end
 
+-- Effet de verre sur une carte ou un bouton : reflet clair sur la moitié haute, fin liseré blanc en haut, et une bande
+-- de lumière en diagonale qui traverse l'élément quand on appelle la fonction renvoyée (durée en secondes).
+-- `z` = ZIndex du reflet (au-dessus des plots, sous le contenu) ; la bande passe au-dessus de tout (z + 6).
+function UIKit.glass(frame: GuiObject, z: number?): (duration: number?) -> ()
+	local base = z or frame.ZIndex + 1
+	new("Frame", {
+		Name = "Glass",
+		Size = UDim2.fromScale(1, 0.5),
+		BackgroundColor3 = WHITE,
+		BorderSizePixel = 0,
+		ZIndex = base,
+		Parent = frame,
+	}, {
+		new("UIGradient", {
+			Rotation = 90,
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.6),
+				NumberSequenceKeypoint.new(0.7, 0.88),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+		}),
+	})
+	new("Frame", {
+		Name = "GlassRim",
+		Position = UDim2.fromOffset(5, 5),
+		Size = UDim2.new(1, -10, 0, 3),
+		BackgroundColor3 = WHITE,
+		BackgroundTransparency = 0.3,
+		BorderSizePixel = 0,
+		ZIndex = base,
+		Parent = frame,
+	})
+	local clip: Frame = new("Frame", {
+		Name = "ShineClip",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		ZIndex = base + 6,
+		Parent = frame,
+	})
+	local bar: Frame = new("Frame", {
+		Name = "Shine",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(-0.5, 0.5),
+		Size = UDim2.fromScale(0.28, 3),
+		Rotation = 25,
+		BackgroundColor3 = WHITE,
+		BorderSizePixel = 0,
+		ZIndex = base + 6,
+		Parent = clip,
+	}, {
+		new("UIGradient", {
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.5, 0.45),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+		}),
+	})
+	return function(duration: number?)
+		if not bar.Parent then
+			return
+		end
+		bar.Position = UDim2.fromScale(-0.5, 0.5)
+		UIKit.tween(bar, duration or 0.75, { Position = UDim2.fromScale(1.5, 0.5) }, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+	end
+end
+
 -- ===== Boutons =====
 
 -- Retour des boutons : x1.05 au survol (pas sur écran tactile), x0.95 à l'appui

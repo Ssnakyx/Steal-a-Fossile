@@ -72,6 +72,9 @@ local reloadQueued = false
 local lastLoad = -math.huge
 local busy: { [string]: boolean } = {}
 local updaters: { () -> () } = {} -- (mises à jour de la page affichée sans la refaire : argent, trails portées...)
+local shines: { (number?) -> () } = {} -- (bandes de lumière des cartes de la page affichée)
+local SHINE_EVERY = 3.5 -- secondes entre deux passages de lumière sur les cartes
+local SHINE_STAGGER = 0.12 -- décalage d'une carte à la suivante
 local current = "Speed"
 
 local function num(key: string): number
@@ -328,6 +331,7 @@ local function buttonsOf(frame: Frame, specs: { ButtonSpec }, wide: boolean): { 
 		end
 		local button = UIKit.button(props, buttonSpec.OnClick)
 		button:SetAttribute("Disabled", buttonSpec.Disabled == true)
+		table.insert(shines, UIKit.glass(button, Z + 4))
 		table.insert(buttons, button)
 	end
 	return buttons
@@ -368,6 +372,7 @@ local function card(sec: Section, spec: CardSpec): (Frame, { TextButton }, TextL
 		Text = spec.Subtitle,
 		Parent = frame,
 	})
+	table.insert(shines, UIKit.glass(frame, Z + 1))
 	return frame, buttonsOf(frame, spec.Buttons, false), subtitle
 end
 
@@ -436,6 +441,7 @@ local function wideCard(sec: Section, spec: CardSpec): (Frame, { TextButton }, T
 			}, { new("UIStroke", { Color = Colors.Ink, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }) })
 		end
 	end
+	table.insert(shines, UIKit.glass(frame, Z + 1))
 	return frame, buttonsOf(frame, spec.Buttons, true), subtitle
 end
 
@@ -890,6 +896,7 @@ local function draw()
 		end
 	end
 	updaters = {}
+	shines = {}
 	sectionOrder = 0
 	local build: (ScrollingFrame) -> () = PAGES[current] or treadmillPage
 	build(page)
@@ -1010,12 +1017,24 @@ function ShopController.Init()
 	end
 end
 
+-- Lumière qui traverse les cartes l'une après l'autre (effet de verre)
+local function sweep()
+	for index, shine in shines do
+		task.delay((index - 1) * SHINE_STAGGER, shine)
+	end
+end
+
 function ShopController.Start()
-	-- (minuteur du Server Luck)
+	-- (minuteur du Server Luck, passages de lumière)
+	local lastShine = 0
 	while true do
-		task.wait(1)
+		task.wait(0.5)
 		if ShopController.IsOpen() then
 			update()
+			if os.clock() - lastShine >= SHINE_EVERY then
+				lastShine = os.clock()
+				sweep()
+			end
 		end
 	end
 end
