@@ -259,7 +259,7 @@ local broken: any = {
 }
 SpeedData.Sanitize(broken)
 T.eq(broken.Speed, 0, "Sanitize : vitesse NaN")
-T.eq(broken.TreadmillLevel, 10, "Sanitize : niveau borné")
+T.eq(broken.TreadmillLevel, 50, "Sanitize : niveau borné au dernier (50)")
 T.check(broken.Trails.Owned.Dust and not broken.Trails.Owned.Nope, "Sanitize : trail inconnue retirée")
 T.eq(broken.Trails.Equipped, "", "Sanitize : trail portée inconnue retirée")
 T.check(broken.Passes.VIP and broken.Passes.Bad == nil, "Sanitize : passes")

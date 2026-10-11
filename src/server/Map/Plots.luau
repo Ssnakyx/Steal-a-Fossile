@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Map = require(ReplicatedStorage.Shared.Config.Map)
 local Kit = require(script.Parent.Kit)
 local Props = require(script.Parent.Props)
+local Treadmills = require(script.Parent.Treadmills)
 
 local Plots = {}
 
@@ -116,24 +117,15 @@ local function labo(model: Instance, origin: CFrame, x: number, z: number)
 	Kit.text(board, Enum.NormalId.Back, "Title", { { Text = "FUSION LAB", Color = rgb(170, 255, 220), Weight = 1 } })
 end
 
+-- Tapis (pièce taguée Treadmill) et son modèle de niveau 0 (Map/Treadmills : TreadmillService le change à chaque
+-- niveau acheté par le propriétaire du parc)
 local function treadmill(model: Instance, origin: CFrame, x: number, z: number)
 	local base = origin * CFrame.new(x, 0, z)
-	Kit.block(model, Vector3.new(8, 1, 16), base * CFrame.new(0, 0.5, 0), rgb(70, 74, 82))
-	local belt = Kit.block(model, Vector3.new(6, 0.4, 14), base * CFrame.new(0, 1.2, 0), rgb(36, 36, 40), Enum.Material.SmoothPlastic)
+	local belt = Kit.block(model, Treadmills.BeltSize, base * CFrame.new(0, Treadmills.BeltY, 0), rgb(36, 36, 40), Enum.Material.SmoothPlastic)
 	belt.Name = "Treadmill"
 	belt:AddTag("Treadmill")
-	for k = -2, 2 do
-		Kit.prop(model, Vector3.new(6, 0.06, 0.5), base * CFrame.new(0, 1.42, k * 2.8), rgb(80, 80, 88), Enum.Material.SmoothPlastic)
-	end
-	for _, side in { -1, 1 } do
-		Kit.prop(model, Vector3.new(0.5, 3.6, 0.5), base * CFrame.new(side * 3.6, 2.8, 6.8), METAL)
-		Kit.prop(model, Vector3.new(0.4, 0.4, 6), base * CFrame.new(side * 3.6, 4.4, 4), shade(METAL, -0.3))
-	end
-	Kit.block(model, Vector3.new(7.6, 2, 0.8), base * CFrame.new(0, 4.6, 7.2) * CFrame.Angles(math.rad(-20), 0, 0), rgb(60, 64, 72))
-	local screen = Kit.prop(model, Vector3.new(3, 1, 0.1), base * CFrame.new(0, 4.75, 6.75) * CFrame.Angles(math.rad(-20), 0, 0), rgb(120, 220, 255), Enum.Material.Neon)
-	screen.Transparency = 0.3
-	local board = Kit.prop(model, Vector3.new(7, 1.4, 0.4), base * CFrame.new(0, 6.6, 7.2), WOOD_DARK)
-	Kit.text(board, Enum.NormalId.Back, "Title", { { Text = "TREADMILL", Color = rgb(255, 230, 140), Weight = 1 } })
+	Treadmills.Paint(belt, 0)
+	Treadmills.Build(0, base).Parent = model
 end
 
 local function pen(model: Instance, origin: CFrame, cfg: typeof(Map.Plots))
