@@ -1,6 +1,8 @@
 --!strict
 -- Zone 6 : Volcano. Basalte sombre, deux coulées de lave le long de la route, falaises noires avec des traînées de
--- lave, roches fissurées, souches calcinées, aiguilles d'obsidienne et le grand volcan derrière la falaise droite.
+-- lave, roches fissurées, souches calcinées, aiguilles d'obsidienne et le grand volcan derrière la falaise droite, avec
+-- son panache de fumée ; mares et fontaines de lave, fumerolles qui crachent de la vapeur, géodes et cristaux couleur
+-- braise (rouge, orange, jaune).
 
 local Kit = require(script.Parent.Parent.Kit)
 local Props = require(script.Parent.Parent.Props)
@@ -11,6 +13,7 @@ local shade = Kit.shade
 
 local BASALT = rgb(56, 48, 50)
 local LAVA = rgb(255, 112, 32)
+local EMBER_GLOW = { Crystal = rgb(255, 84, 40), Crystal2 = rgb(255, 160, 40), Crystal3 = rgb(255, 222, 90), Rock = rgb(40, 34, 38) }
 
 local function lava(parent: Instance, size: Vector3, cframe: CFrame): Part
 	local part = Kit.prop(parent, size, cframe, LAVA, Enum.Material.Neon)
@@ -69,6 +72,17 @@ local function landmark(info: ZoneBase.Info)
 		end
 	end
 	lava(info.Decor, Vector3.new(30, 1, 30), CFrame.new(vx, top + 0.3, vz))
+	-- panache de fumée au-dessus du cratère : gros cubes gris de plus en plus clairs et transparents, qui penchent avec
+	-- le vent (le premier, rougi par la lave)
+	local plume = Kit.group("SmokePlume")
+	for k = 0, 8 do
+		local size = 16 + k * 4
+		local center = CFrame.new(vx + 6 + k * 4, top + 10 + k * 12, vz - k * 2.5) * CFrame.Angles(0, k * 0.5, 0)
+		local tone = if k == 0 then rgb(130, 74, 60) else rgb(84, 78, 80):Lerp(rgb(170, 164, 166), k / 8)
+		Kit.prop(plume, Vector3.new(size, size * 0.8, size), center, tone, Enum.Material.SmoothPlastic).Transparency = 0.3 + k * 0.05
+		Kit.prop(plume, Vector3.new(size * 0.6, size * 0.5, size * 0.6), center * CFrame.new(size * 0.45, size * 0.2, size * 0.2), shade(tone, -0.08), Enum.Material.SmoothPlastic).Transparency = 0.35 + k * 0.05
+	end
+	plume.Parent = info.Decor
 end
 
 local theme: ZoneBase.Theme = {
@@ -87,12 +101,21 @@ local theme: ZoneBase.Theme = {
 	ArchTop = archTop,
 	Landmark = landmark,
 	Scatter = {
-		{ Prop = Props.lavaRock, Count = 26, Radius = 4 },
+		{ Prop = Props.lavaPool, Count = 4, Radius = 6, XMin = 34, XMax = 70, Scale = { 0.9, 1.3 }, Pal = { Glow = LAVA, Rock = BASALT } },
+		{ Prop = Props.lavaGeyser, Count = 3, Radius = 5, XMin = 34, XMax = 70, Scale = { 0.9, 1.2 }, Pal = { Glow = LAVA, Rock = BASALT } },
+		{ Prop = Props.steamVent, Count = 6, Radius = 4, Scale = { 0.9, 1.3 }, Pal = { Rock = rgb(64, 54, 56), Glow = LAVA } },
+		{ Prop = Props.geode, Count = 3, Radius = 5, XMin = 36, XMax = 70, Scale = { 0.9, 1.2 }, Pal = { Rock = rgb(64, 54, 56), Crystal = EMBER_GLOW.Crystal, Crystal2 = EMBER_GLOW.Crystal2, Crystal3 = EMBER_GLOW.Crystal3 } },
+		{ Prop = Props.glowCrystal, Count = 5, Radius = 3.5, Scale = { 0.7, 1.1 }, Pal = EMBER_GLOW },
+		{ Prop = Props.glowCrystal, Count = 4, Radius = 4, XMin = 104, XMax = 122, Scale = { 1.1, 1.5 }, Pal = EMBER_GLOW },
+		{ Prop = Props.lavaRock, Count = 24, Radius = 4 },
 		{ Prop = Props.deadTree, Count = 12, Radius = 5, XMin = 30, Pal = { Trunk = rgb(40, 34, 34) } },
-		{ Prop = Props.stump, Count = 14, Radius = 3, Pal = { Trunk = rgb(36, 32, 32), Ring = rgb(255, 120, 40) } },
-		{ Prop = Props.rock, Count = 16, Radius = 4, Pal = { Rock = rgb(72, 64, 64) } },
+		{ Prop = Props.stump, Count = 12, Radius = 3, Pal = { Trunk = rgb(36, 32, 32), Ring = rgb(255, 120, 40) } },
+		{ Prop = Props.rock, Count = 14, Radius = 4, Pal = { Rock = rgb(72, 64, 64) } },
 		{ Prop = Props.spike, Count = 14, Radius = 3, Scale = { 1, 1.6 }, Pal = { Ice = rgb(40, 30, 52) } },
 		{ Prop = Props.lavaRock, Count = 8, Radius = 5, XMin = 104, XMax = 122, Scale = { 1.2, 1.6 } },
+	},
+	Wall = {
+		{ Prop = Props.glowCrystal, Count = 5, Radius = 0, Scale = { 0.6, 1 }, Pal = EMBER_GLOW },
 	},
 }
 

@@ -2,7 +2,8 @@
 -- Squelette commun des 8 zones de la route (brief 10) : étendue (Area), sol et taches de couleur, chemin central,
 -- falaises de bord, arche d'entrée avec nom et vitesse conseillée (Arch), gisements décorés (DigSites/SiteN avec leurs
 -- Attachments Slot1...), clairière et nid du gardien (Guardian), puis le décor de la zone posé par raycast en évitant
--- une grille de places réservées. Chaque module de zone (Map/Zones/<Nom>.luau) donne son thème et son lieu marquant.
+-- une grille de places réservées, et le décor accroché aux parois des falaises. Chaque module de zone
+-- (Map/Zones/<Nom>.luau) donne son thème et son lieu marquant.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -46,6 +47,7 @@ export type Theme = {
 	Glow: Color3?, -- lanternes des gisements
 	Pal: Props.Palette?, -- couleurs du décor des gisements
 	Scatter: { Scatter },
+	Wall: { Scatter }?, -- décor qui sort des parois des falaises (cristaux), vers la route ; XMin/XMax inutilisés
 	Border: ((info: Info, side: number) -> boolean)?, -- bord spécial (renvoie true si fait, sinon falaises)
 	ArchTop: ((info: Info, beam: CFrame) -> ())?,
 	Landmark: ((info: Info) -> ())?,
@@ -358,6 +360,44 @@ function ZoneBase.Scatter(info: Info, entry: Scatter)
 	return placed
 end
 
+-- Décor accroché aux parois des falaises (Theme.Wall) : trouvé par un raycast horizontal depuis le couloir, penché
+-- vers la route et un peu vers le haut, entre 3 et 12 studs au-dessus du sol. Côté Side seulement s'il est donné.
+function ZoneBase.WallScatter(info: Info, entry: Scatter): number
+	local rng, gt, hw = info.Rng, info.GroundTop, info.HalfWidth
+	local scale = entry.Scale or { 0.85, 1.25 }
+	local placed, attempts = 0, entry.Count * 4
+	while placed < entry.Count and attempts > 0 do
+		attempts -= 1
+		local side = entry.Side or (if rng:NextNumber() < 0.5 then -1 else 1)
+		local z = Kit.range(rng, info.Z0 + 12, info.Z1 - 8)
+		local y = gt + Kit.range(rng, 3, 12)
+		-- pas devant un lieu marquant (cascade, galerie de mine...) ni sur un gros volume entre le couloir et la paroi
+		local x = if Kit.isFree(info.Grid, side * (hw - 1), z, 2) then Kit.wallAt(info.Ctx, side, hw - 24, y, z, side * (hw + 1), hw - 1) else nil
+		if x then
+			local cf = CFrame.new(x + side * 0.5, y, z) * CFrame.Angles(0, 0, side * math.rad(Kit.range(rng, 62, 74))) * CFrame.Angles(0, rng:NextNumber() * math.pi * 2, 0)
+			entry.Prop(info.Decor, cf, Kit.range(rng, scale[1], scale[2]), rng, entry.Pal)
+			placed += 1
+		end
+	end
+	return placed
+end
+
+-- Place libre pour un lieu marquant : disque de `radius` studs, X entre xMin et xMax de l'axe (côté `side` ou au
+-- hasard), à une fraction de la longueur entre tMin et tMax ; marque la place prise. nil si rien n'est libre.
+function ZoneBase.Spot(info: Info, radius: number, xMin: number, xMax: number, tMin: number, tMax: number, side: number?): Vector3?
+	local rng = info.Rng
+	for _ = 1, 80 do
+		local s = side or (if rng:NextNumber() < 0.5 then -1 else 1)
+		local x = s * Kit.range(rng, xMin, xMax)
+		local z = info.Z0 + info.Length * Kit.range(rng, tMin, tMax)
+		if Kit.isFree(info.Grid, x, z, radius) then
+			Kit.markCircle(info.Grid, x, z, radius)
+			return Vector3.new(x, Kit.groundAt(info.Ctx, x, z, info.GroundTop), z)
+		end
+	end
+	return nil
+end
+
 -- ===================================================================== zone
 
 -- Construit la zone `zone` de z0 à z0 + length dans `parent`, avec le thème `theme`
@@ -429,6 +469,10 @@ function ZoneBase.Build(zone: Zones.Zone, theme: Theme, z0: number, length: numb
 	end
 	for _, entry in theme.Scatter do
 		ZoneBase.Scatter(info, entry)
+	end
+	local wall: { Scatter } = theme.Wall or {}
+	for _, entry in wall do
+		ZoneBase.WallScatter(info, entry)
 	end
 	return model
 end
