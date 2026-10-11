@@ -303,9 +303,10 @@ T.section("assez rapide : le gardien abandonne")
 local fast = T.join({ Name = "Fast", Character = true })
 env.flush()
 SpeedService.Set(fast, 1e4)
-local near = slotBy("Fern Forest", false)
+-- (le gisement le plus loin : il repasse devant le gardien, qui le poursuit jusqu'à la Beach)
+local farSlot = slotBy("Fern Forest", true)
 caughtBefore = #caught
-grab(fast, near)
+grab(fast, farSlot)
 T.check(CarryService.IsCarrying(fast), "bloc de la Fern Forest")
 T.check(fast.Character.Humanoid.WalkSpeed > fern.Speed, "chargé, il court plus vite que le gardien")
 local states = {}

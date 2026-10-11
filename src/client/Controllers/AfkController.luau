@@ -54,7 +54,7 @@ local function refresh()
 	if requestedAt then
 		current.Hint.Text = "Reconnecting to keep you AFK..."
 	elseif level <= 0 then
-		current.Hint.Text = "You can stay AFK here! Buy the Treadmill in the Shop to go faster."
+		current.Hint.Text = "You can stay AFK here! Upgrade your Treadmill to go faster."
 	else
 		current.Hint.Text = "You can stay AFK here: you keep gaining speed."
 	end

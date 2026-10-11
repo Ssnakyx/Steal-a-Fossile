@@ -10,6 +10,9 @@
 --                            Dive, Jump pour les nageurs). Un état absent retombe sur un proche puis sur Idle.
 --   StateAt (number)         (facultatif) workspace:GetServerTimeNow() du début de l'état : même phase chez tous
 --   Speed (number)           (facultatif) vitesse de déplacement en studs/s : la marche se cale dessus (pas de glisse)
+--   WalkFrom, WalkTo         (facultatifs) promenade dans l'enclos (src/shared/Roam.luau) : avec State = "Walk", le dino
+--                            va de la pose WalkFrom (CFrame) au point WalkTo (Vector3) à Speed studs/s depuis StateAt ;
+--                            la pose est calculée ici et la pièce Root y est posée chez ce client (le nom suit)
 --   AlwaysAnimate (boolean)  (facultatif) pour les ViewportFrame (Index) : pas de coupure à distance ou hors écran
 --   Rarity (string)          (facultatif) Common ... Secret ; sans lui, la rareté de l'espèce (Config.Rarity.Species).
 --                            Aura de rareté (module Aura, le même que les blocs de fossiles) : cercle magique à runes au
@@ -29,6 +32,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local DinoBuilder = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DinoBuilder"))
+local Roam = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Roam"))
 local Aura = require(script.Parent.Parent.Aura)
 
 local DinoAnimController = {}
@@ -256,6 +260,25 @@ local function buildAura(d: Dino)
 	})
 end
 
+-- Promenade en cours (State = "Walk" avec WalkFrom et WalkTo) : pose calculée (Roam.PoseAt) et pièce Root posée là chez
+-- ce client (le serveur ne la déplace qu'à l'arrivée) ; nil sinon
+local function walkPose(d: Dino): CFrame?
+	if d.State ~= "Walk" then
+		return nil
+	end
+	local model = d.Model
+	local from = model:GetAttribute("WalkFrom")
+	local to = model:GetAttribute("WalkTo")
+	local speed = model:GetAttribute("Speed")
+	local at = model:GetAttribute("StateAt")
+	if typeof(from) ~= "CFrame" or typeof(to) ~= "Vector3" or type(speed) ~= "number" or type(at) ~= "number" then
+		return nil
+	end
+	local pose = Roam.PoseAt(from, to, speed, workspace:GetServerTimeNow() - at)
+	d.Root.CFrame = pose
+	return pose
+end
+
 local function step(d: Dino, dt: number, full: boolean)
 	local clip = d.Clip
 	local t0 = d.Time
@@ -301,8 +324,8 @@ local function step(d: Dino, dt: number, full: boolean)
 		pose = DinoBuilder.Blend(d.From :: DinoBuilder.Pose, pose, w, d.Mix)
 	end
 	DinoBuilder.Copy(pose, d.Last)
-	-- repère : suit la pièce Root (déplacée par le serveur à basse fréquence) en lissant
-	local target = d.Root.CFrame
+	-- repère : suit la pièce Root (déplacée par le serveur à basse fréquence) en lissant, ou la promenade en cours
+	local target = walkPose(d) or d.Root.CFrame
 	local k = 1 - math.exp(-dt * 14)
 	if (d.Base.Position - target.Position).Magnitude > 8 * d.Rig.Scale then
 		d.Base = target

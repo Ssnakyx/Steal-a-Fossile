@@ -16,7 +16,7 @@ Même map et même boucle que **Steal an Egg** (pas Steal a Brainrot) : bases al
 - Deux modes de fusion : « Upgrade » (3 identiques) et « Hybride » (2 espèces différentes).
 - 8 zones dès le lancement.
 - Pas de Rebirth.
-- Treadmill obligatoire : achat pas cher en Robux, puis améliorations en Robux dont le prix monte à chaque achat.
+- Treadmill obligatoire : déblocage à $1K en argent du jeu (comme Steal an Egg), puis améliorations en argent dont le prix monte à chaque niveau ; chaque niveau peut aussi s'acheter en Robux pour aller plus vite.
 
 ## Carte (serveur de 8)
 - **Spawn** : une rangée de 5 parcs (un par joueur, serveurs de 5 joueurs) face à la route. Chaque parc contient : cuves de réanimation (2 au départ, achetables jusqu'à 6), enclos à dinos (slots, agrandissable), treadmill, labo de fusion.
@@ -34,7 +34,7 @@ Même map et même boucle que **Steal an Egg** (pas Steal a Brainrot) : bases al
 | 8 | Meteor Crater | 25 M |
 
 - **Gisements (Dig Sites)** : plusieurs par zone, chacun avec des blocs fossiles. Ils se remplissent toutes les 5 min (compte à rebours affiché). Un bloc Secret est annoncé dans le chat du serveur.
-- **Gardiens** : dans chaque zone, un dino vivant dort près des gisements. Quand on arrache un bloc, il se réveille (« RUN!! ») et poursuit le joueur. Plus la zone est loin, plus il est rapide. S'il attrape le joueur : ragdoll cartoon, le bloc est lâché et retourne au gisement.
+- **Gardiens** : dans chaque zone, un dino vivant dort près des gisements. Quand on arrache un bloc, il se réveille (« RUN!! ») et poursuit le joueur sur toute la route, jusqu'au bord de la Beach. Plus la zone est loin, plus il est rapide : trop lent pour la zone, on est rattrapé avant d'être rentré. S'il attrape le joueur : ragdoll cartoon, le bloc est lâché et retourne au gisement.
 
 ## Boucle principale
 1. Courir vers une zone adaptée à sa vitesse.
@@ -124,7 +124,7 @@ Les zones lointaines ont de meilleures probas. La couleur du bloc fixe la raret�
 
 ## Monétisation
 - Passes : x2 Money, x2 Treadmill, Fast Revive (cuves 2x plus rapides), VIP (tag + petite chance en plus).
-- Produits : Treadmill et ses niveaux, Bear Traps x5, Server Luck x2 pendant 15 min, Instant Revive.
+- Produits : niveaux du Treadmill (raccourci Robux, ils s'achètent aussi en argent), Bear Traps x5, Server Luck x2 pendant 15 min, Instant Revive.
 - Jamais de dino ni de bloc vendu directement en Robux. Toute chance payante affiche ses probas.
 - Ids = 0 jusqu'à création dans le Creator Hub par Snaky.
 

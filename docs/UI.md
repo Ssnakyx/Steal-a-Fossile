@@ -27,8 +27,9 @@ d'emoji. Le client ne décide rien : chaque achat ou action passe par un remote 
   icône du pack de Steal a Snack, gros « x2 », nom, description, bouton vert. Prix Robux : logo Robux dessiné et prix
   (le texte du bouton reste « R$ 99 »).
   - *Speed* : FEATURED = carte large du Treadmill (gain actuel par seconde, même AFK ; niveau suivant ; pastilles des
-    10 niveaux ; bouton en argent du jeu quand le serveur donne `Next.Cash`, bouton Robux quand `Next.Price` existe ;
-    MAX au niveau 10). SPEED = passe x2 Treadmill et raccourci vers les trails.
+    10 niveaux ; bouton en argent du jeu toujours là, grisé tant qu'il est trop cher (`Next.Cash`, déblocage $1K) ;
+    bouton Robux seulement quand le produit est en vente (`Next.Price`) ; MAX au niveau 10). SPEED = passe x2
+    Treadmill et raccourci vers les trails.
   - *Trails* : SUPER TRAILS (Neon x1.5, Galaxy x2, Golden x3, passes Robux, EQUIP / EQUIPPED une fois achetées) puis
     CASH TRAILS (10 trails en argent, grisées tant qu'elles sont trop chères). L'image : la fusée au bout d'une bande
     aux couleurs de la trail.
@@ -101,7 +102,7 @@ Un nouvel élément d'interface prend une place libre de ce tableau, ou le compl
 - `HudController.SetVisible(bool)` : cache tout le HUD (cinématique). `HudController.Heading(de, vers, caméra)` :
   angle de la flèche.
 - `ShopController.Open(onglet?)` (« Speed », « Trails », « Passes », « Items »), `Close`, `Toggle`, `IsOpen`,
-  `Select(onglet)`. Ex. : le message « Buy the Treadmill in the Shop » peut appeler `ShopController.Open("Speed")`.
+  `Select(onglet)`. Ex. : le message « Unlock the Treadmill » peut appeler `ShopController.Open("Speed")`.
 - `IndexController.Open(page?)` (nom de zone, « Secret », « Hybrids »), `Close`, `Toggle`, `IsOpen`, `Unseen()`.
 - `LabController.Open`, `Close`, `IsOpen`, `Select(ids)`, `Selected()`. Il met `FusionController.MenuReady = true`.
 - `RevealController.Show(infos, "Tank" | "Fusion")`, `IsOpen`, `Pending`, signal `Closed(genre)`. Le brief 11 peut

@@ -15,6 +15,7 @@ local Services = script.Parent.Parent.Services
 local DataService = require(Services.DataService)
 local DebugService = require(Services.DebugService)
 local MoneyService = require(Services.MoneyService)
+local PlotService = require(Services.PlotService)
 local ReceiptService = require(Services.ReceiptService)
 local ShopService = require(Services.ShopService)
 local SpeedService = require(Services.SpeedService)
@@ -125,6 +126,19 @@ return {
 			TreadmillService.SetLevel(player, level)
 		end
 		t:Equal(data.TreadmillLevel, level, "level restored")
+		if level < maxLevel then
+			local cash = Shop.Treadmill.Levels[level + 1].Cash
+			local money = MoneyService.Get(player)
+			MoneyService.Set(player, money + cash, "Debug") -- (Set : ne compte pas dans TotalEarned)
+			local ok, text = TreadmillService.Buy(player, "Cash")
+			t:Check(ok, "next level bought with cash (" .. text .. ")")
+			t:Equal(data.TreadmillLevel, level + 1, "cash level went up")
+			t:Equal(MoneyService.Get(player), money, "cash price paid")
+			TreadmillService.SetLevel(player, level)
+		end
+		local plot = PlotService.Get(player)
+		local prompt = plot and plot.Treadmill and plot.Treadmill:FindFirstChild("TreadmillPrompt")
+		t:Check(prompt ~= nil and prompt:IsA("ProximityPrompt"), "unlock/upgrade prompt on the park treadmill")
 		local belts = CollectionService:GetTagged(SpeedConfig.Treadmill.Tag)
 		t:Note(string.format("%d treadmill belt(s) tagged %q, player on one: %s", #belts, SpeedConfig.Treadmill.Tag, tostring(TreadmillService.IsOnTreadmill(player))))
 	end,

@@ -1,6 +1,10 @@
 --!strict
 -- Enclos du parc (brief 3 « boucle ») : les dinos du joueur (data.Dinos), un nombre de slots agrandissable
--- (Config.Economy.Enclosure) et leurs modèles posés sur la pièce « Enclosure » du parc (ils regardent vers son +Z).
+-- (Config.Economy.Enclosure) et leurs modèles posés sur la pièce « Enclosure » du parc, à une place libre au hasard.
+-- Promenade (Config.Park.Roam, src/shared/Roam.luau) : chaque dino fait une pause, puis marche vers un autre point
+-- libre de l'enclos, et ainsi de suite. Un trajet = attributs WalkFrom (CFrame), WalkTo (Vector3), Speed, State
+-- « Walk » et StateAt : chaque client calcule la pose en cours (DinoAnimController) ; le serveur ne déplace la pièce
+-- Root qu'à l'arrivée. Les dinos provisoires en briques (espèce sans modèle) restent à leur place.
 -- Modèle d'un dino, compatible avec le pipeline dinos (brief 2) : Model tagué « Dino », pièce invisible « Root » au sol
 -- (PrimaryPart), attributs Species (nom du module de src/shared/DinoModels), Scale, Mutation, Level ("Normal",
 -- "Golden", "Diamond"), State, StateAt, plus DinoId et OwnerUserId. Si l'espèce a son module DinoModels, le client
@@ -15,8 +19,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Economy = require(ReplicatedStorage.Shared.Config.Economy)
+local Park = require(ReplicatedStorage.Shared.Config.Park)
 local Rarity = require(ReplicatedStorage.Shared.Config.Rarity)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Roam = require(ReplicatedStorage.Shared.Roam)
 local Guard = require(script.Parent.Parent.Lib.Guard)
 local Net = require(script.Parent.Parent.Lib.Net)
 local Notify = require(script.Parent.Parent.Lib.Notify)
@@ -47,16 +53,28 @@ for _, mutation in Economy.Mutations do
 	MUTATIONS[mutation.Name] = true
 end
 
+-- Un dino qui se promène (Config.Park.Roam)
+type Walker = {
+	Model: Model,
+	Radius: number, -- rayon du corps pour les places (studs) : Footprint x taille du dino
+	Speed: number, -- vitesse de marche (studs/s)
+	Pose: CFrame, -- où il est à l'arrêt, ou où il arrive pendant un trajet
+	Walking: boolean,
+	Until: number, -- os.clock() de la fin du trajet ou de la pause
+}
+
 type Pen = {
 	Plot: PlotService.Plot,
 	Folder: Folder,
 	Models: { [string]: Model },
-	Spots: { [string]: number }, -- id -> place sur la grille
+	Spots: { [string]: number }, -- id -> place sur la grille (dinos provisoires, ou enclos plein)
+	Walkers: { [string]: Walker }, -- id -> promenade
 	Prompt: ProximityPrompt?,
 }
 
 local pens: { [Player]: Pen } = {}
 local looks: { [string]: SpeciesLook } = {}
+local rng = Random.new()
 
 local function rateText(income: number): string
 	if income < 10 then
@@ -282,13 +300,128 @@ local function freeSpot(pen: Pen): number
 	return spot
 end
 
+-- ===================================================================== promenade
+
+local function flat(v: Vector3): Vector3
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+-- Place libre autour d'un point : studs entre ce corps et le plus proche des autres dinos (à l'arrêt, ou là où ils
+-- arrivent), corps compris (négatif : ils se touchent)
+local function clearance(pen: Pen, point: Vector3, radius: number, skip: string?): number
+	local best = math.huge
+	for id, other in pen.Walkers do
+		if id ~= skip then
+			best = math.min(best, (flat(other.Pose.Position) - flat(point)).Magnitude - radius - other.Radius)
+		end
+	end
+	return best
+end
+
+-- Point de l'enclos pour un corps de rayon `radius`, loin du bord, à Gap studs au moins des autres dinos. Avec `from` :
+-- à une distance de MinLeg à MaxLeg studs de ce point. Si aucun essai n'a assez de place : nil (`strict`), sinon le
+-- plus dégagé des essais (apparition dans un enclos très plein).
+local function pickPoint(pen: Pen, radius: number, from: Vector3?, skip: string?, strict: boolean): Vector3?
+	local roam = Park.Roam
+	local enclosure = pen.Plot.Enclosure
+	local size = enclosure.Size
+	local hx = math.max(0, size.X / 2 - radius - roam.Margin)
+	local hz = math.max(0, size.Z / 2 - radius - roam.Margin)
+	local best: Vector3? = nil
+	local bestClearance = -math.huge
+	for _ = 1, roam.Tries do
+		local point = enclosure.CFrame:PointToWorldSpace(Vector3.new(rng:NextNumber(-hx, hx), size.Y / 2, rng:NextNumber(-hz, hz)))
+		if from then
+			local leg = (flat(point) - flat(from)).Magnitude
+			if leg < roam.MinLeg or leg > roam.MaxLeg then
+				continue
+			end
+		end
+		local room = clearance(pen, point, radius, skip)
+		if room >= roam.Gap then
+			return point
+		elseif room > bestClearance then
+			best, bestClearance = point, room
+		end
+	end
+	return if strict then nil else best
+end
+
+local function restTime(): number
+	return rng:NextNumber(Park.Roam.RestMin, Park.Roam.RestMax)
+end
+
+local function setState(model: Model, state: string)
+	model:SetAttribute("State", state)
+	model:SetAttribute("StateAt", Workspace:GetServerTimeNow())
+end
+
+-- État de la pause : Idle, parfois une humeur (Config.Park.Roam.Moods)
+local function restState(): string
+	local roll = rng:NextNumber()
+	for mood, chance in Park.Roam.Moods do
+		if roll < chance then
+			return mood
+		end
+		roll -= chance
+	end
+	return "Idle"
+end
+
+-- Un passage de la promenade : fin des trajets et des pauses, nouveaux trajets
+local function roamStep(now: number)
+	for _, pen in pens do
+		for id, w in pen.Walkers do
+			if now < w.Until then
+				continue
+			end
+			local model = w.Model
+			if not model.Parent then
+				continue
+			end
+			if w.Walking then
+				-- arrivé : la pièce Root le rejoint (les clients l'y montrent déjà), puis une pause
+				w.Walking = false
+				model:PivotTo(w.Pose)
+				model:SetAttribute("Speed", 0)
+				setState(model, restState())
+				w.Until = now + restTime()
+				continue
+			end
+			local goal = if rng:NextNumber() < Park.Roam.WalkChance then pickPoint(pen, w.Radius, w.Pose.Position, id, true) else nil
+			if not goal then
+				w.Until = now + restTime()
+				continue
+			end
+			local from = w.Pose
+			local duration = Roam.Duration(from, goal, w.Speed)
+			w.Walking = true
+			w.Pose = Roam.PoseAt(from, goal, w.Speed, duration)
+			w.Until = now + duration
+			model:SetAttribute("WalkFrom", from)
+			model:SetAttribute("WalkTo", goal)
+			model:SetAttribute("Speed", w.Speed)
+			setState(model, "Walk")
+		end
+	end
+end
+
 local function spawnModel(player: Player, pen: Pen, id: string, dino: Dino, state: string)
-	local spot = freeSpot(pen)
-	pen.Spots[id] = spot
-	local base = spotCFrame(pen.Plot.Enclosure, spot)
 	local sizeInfo = SIZE_INFO[dino.Size]
 	local scale = if sizeInfo then sizeInfo.Scale else 1
 	local moduleName = EnclosureService.ModelName(dino.Species)
+	local roams = Park.Roam.Enabled and hasDinoModel(dino.Species, moduleName)
+	local radius = baseSize(dino.Species) * scale * Park.Roam.Footprint
+	-- (une place libre au hasard dans l'enclos, tournée au hasard ; les dinos provisoires sur la grille)
+	local point = if roams then pickPoint(pen, radius, nil, id, false) else nil
+	local base: CFrame
+	if point then
+		base = CFrame.new(point) * CFrame.Angles(0, rng:NextNumber(0, 2 * math.pi), 0)
+	else
+		local spot = freeSpot(pen)
+		pen.Spots[id] = spot
+		base = spotCFrame(pen.Plot.Enclosure, spot)
+	end
 	local model = Instance.new("Model")
 	model.Name = dino.Species
 	local root = Instance.new("Part")
@@ -329,12 +462,26 @@ local function spawnModel(player: Player, pen: Pen, id: string, dino: Dino, stat
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	model.Parent = pen.Folder
 	pen.Models[id] = model
+	if roams then
+		local walk = Roam.WalkSpeed(moduleName)
+		local roam = Park.Roam
+		pen.Walkers[id] = {
+			Model = model,
+			Radius = radius,
+			Speed = if walk then math.clamp(walk * scale, roam.MinSpeed, roam.MaxSpeed) else roam.DefaultSpeed,
+			Pose = base,
+			Walking = false,
+			-- (après Spawn ou Fusion, il reste un moment là où il est apparu)
+			Until = os.clock() + restTime() + (if state ~= "Idle" then roam.SpawnRest else 0),
+		}
+	end
 end
 
 local function removeModel(pen: Pen, id: string)
 	local model = pen.Models[id]
 	pen.Models[id] = nil
 	pen.Spots[id] = nil
+	pen.Walkers[id] = nil
 	if model then
 		model:Destroy()
 	end
@@ -459,13 +606,22 @@ function EnclosureService.Init()
 	})
 end
 
+function EnclosureService.Start()
+	while true do
+		task.wait(Park.Roam.TickRate)
+		if Park.Roam.Enabled then
+			roamStep(os.clock())
+		end
+	end
+end
+
 function EnclosureService.OnPlayerReady(player: Player, data: { [string]: any })
 	local plot = PlotService.Get(player)
 	if plot then
 		local folder = Instance.new("Folder")
 		folder.Name = "Dinos"
 		folder.Parent = plot.Model
-		local pen: Pen = { Plot = plot, Folder = folder, Models = {}, Spots = {}, Prompt = nil }
+		local pen: Pen = { Plot = plot, Folder = folder, Models = {}, Spots = {}, Walkers = {}, Prompt = nil }
 		pens[player] = pen
 		-- (ordre stable : identifiants croissants)
 		local ids = {}
